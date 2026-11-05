@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day2 — 知识库 + 记忆系统</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--text3:#9ca3af;--border:#e5e7eb;--primary:#2563eb;--primary-light:#eff6ff;--green:#059669;--green-bg:#ecfdf5}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}
+h1{font-size:20px;margin-bottom:4px}h1 span{font-weight:400;color:var(--text3);font-size:14px}
+.subtitle{color:var(--text2);font-size:12px;margin-bottom:20px}
+.layout{display:flex;gap:16px;max-width:1200px}
+.main{flex:1;min-width:0}
+.side{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.card h3{font-size:13px;margin-bottom:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:var(--primary-light);color:var(--primary);margin-right:4px}
+.search-row{display:flex;gap:8px;margin-bottom:12px}
+.search-row input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
+.search-row button{padding:8px 16px;border:none;border-radius:6px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px;font-weight:600}
+.result-area{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;min-height:80px;max-height:350px;overflow-y:auto;font-size:13px;white-space:pre-wrap}
+.memory-list{font-size:12px;line-height:1.8;max-height:250px;overflow-y:auto}
+.memory-list .entry{padding:4px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:8px}
+.memory-list .cat{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.cat-identity{background:#eff6ff;color:#2563eb}.cat-preference{background:#fef3c7;color:#92400e}
+.cat-project{background:#f3e8ff;color:#7c3aed}.cat-general{background:#f3f4f6;color:#6b7280}
+.mem-input{display:flex;gap:6px;margin-top:8px}
+.mem-input input{flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px}
+.mem-input select{padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px}
+.mem-input button{padding:6px 12px;border:none;border-radius:4px;background:var(--green);color:#fff;cursor:pointer;font-size:12px}
+.btn-sm{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer;font-size:11px;color:var(--text2)}
+.chart-row{display:flex;gap:8px;font-size:12px;margin-top:8px}
+.chart-bar{flex:1;background:#f3f4f6;border-radius:4px;overflow:hidden}
+.chart-fill{height:20px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10px;color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+<h1>Day2 — 知识库 + 记忆系统 <span>| 5G 基站运维知识库</span></h1>
+<p class="subtitle">RAG 检索 · Memory 读写 · Callback 监控 · 对应实验 2.1/2.5/2.7/2.8</p>
+
+<div class="layout">
+<div class="main">
+  <!-- RAG 检索 -->
+  <div class="card" style="margin-bottom:14px">
+    <h3><span class="tag">2.1 FAISS</span><span class="tag">2.5 RAG</span>知识库检索</h3>
+    <div class="search-row">
+      <input id="ragInput" placeholder="输入故障现象，如：光模块功率异常怎么排查？" onkeydown="if(event.key==='Enter')searchRAG()">
+      <button onclick="searchRAG()">检索</button>
+    </div>
+    <div class="result-area" id="ragResult"><span style="color:var(--text3)">输入问题后，系统自动检索知识库 → LLM 基于文档回答</span></div>
+  </div>
+
+  <!-- 知识库文档列表 -->
+  <div class="card">
+    <h3>知识库文档（3 篇）</h3>
+    <div style="font-size:12px;color:var(--text2);line-height:2">
+      <div>01-故障排查.md — 光模块/端口/AAU 故障排查步骤</div>
+      <div>02-告警等级.md — P0~P3 告警定义与 SLA</div>
+      <div>03-维护规范.md — AAU/BBU 维护标准</div>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:8px">换场景 = 替换 data/knowledge/ 下的 MD 文件</p>
+  </div>
+</div>
+
+<div class="side">
+  <!-- Memory -->
+  <div class="card">
+    <h3><span class="tag">2.7 Memory</span>长期记忆 <button class="btn-sm" onclick="loadMemory()" style="margin-left:auto">刷新</button></h3>
+    <div class="memory-list" id="memoryList"><span style="color:var(--text3)">加载中…</span></div>
+    <div class="mem-input">
+      <input id="memFact" placeholder="写入事实…">
+      <select id="memCat"><option value="general">通用</option><option value="identity">身份</option><option value="project">项目</option></select>
+      <button onclick="writeMemory()">写入</button>
+    </div>
+    <button class="btn-sm" onclick="resetMemory()" style="margin-top:6px;color:var(--danger)">重置记忆</button>
+  </div>
+
+  <!-- Metrics -->
+  <div class="card">
+    <h3><span class="tag">2.8 Callbacks</span>调用监控</h3>
+    <div class="chart-row" id="metricsRow"><span style="color:var(--text3)">暂无调用</span></div>
+    <p style="font-size:10px;color:var(--text3);margin-top:6px">每次 RAG 检索自动记录 · 重启后清空</p>
+  </div>
+
+  <!-- 概念说明 -->
+  <div class="card" style="background:var(--primary-light)">
+    <h3>Day2 核心概念</h3>
+    <div style="font-size:11px;line-height:1.8;color:var(--text2)">
+      <b>RAG</b>：文档→切割→向量→检索→LLM 回答<br>
+      <b>Memory</b>：LLM 自主判断→写入持久文件<br>
+      <b>Callbacks</b>：每次调用记录 Token/延迟<br>
+      <b>可复用</b>：换 data/knowledge/ 下的 MD 文件 = 换场景
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+async function searchRAG(){
+  var q=document.getElementById('ragInput').value.trim();if(!q)return;
+  var out=document.getElementById('ragResult');out.textContent='';
+  var resp=await fetch('/rag/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+  var reader=resp.body.getReader();var decoder=new TextDecoder();
+  while(true){var r=await reader.read();if(r.done)break;
+    for(var line of decoder.decode(r.value).split('\n')){
+      if(!line.startsWith('data: '))continue;var p=line.slice(6);if(p==='[DONE]')continue;
+      try{out.textContent+=JSON.parse(p).content}catch(e){}
+    }
+  }
+  loadMetrics();
+}
+async function loadMemory(){
+  var r=await fetch('/memory/read');var d=await r.json();
+  var el=document.getElementById('memoryList');
+  el.innerHTML=d.memory.split('\n').filter(function(l){return l.trim()}).map(function(l){
+    var cat='general';if(l.includes('[identity]'))cat='identity';else if(l.includes('[project]'))cat='project';else if(l.includes('[preference]'))cat='preference';
+    return '<div class="entry"><span class="cat cat-'+cat+'">'+cat+'</span>'+l.replace(/\[.*?\] /,'')+'</div>';
+  }).join('')||'（空）';
+}
+async function writeMemory(){
+  var f=document.getElementById('memFact').value.trim();if(!f)return;
+  var c=document.getElementById('memCat').value;
+  await fetch('/memory/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fact:f,category:c})});
+  document.getElementById('memFact').value='';loadMemory();
+}
+async function resetMemory(){await fetch('/memory/reset',{method:'POST'});loadMemory();}
+async function loadMetrics(){
+  var r=await fetch('/metrics');var d=await r.json();
+  var el=document.getElementById('metricsRow');
+  if(!d.calls.length){el.innerHTML='<span style="color:var(--text3)">暂无调用</span>';return;}
+  el.innerHTML=d.calls.slice(-8).map(function(c){return '<div class="chart-bar"><div class="chart-fill" style="width:100%;background:var(--primary)">'+c.time+' '+c.endpoint+'</div></div>';}).join('');
+}
+loadMemory();loadMetrics();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# ── LangChain 家族 ──
+langgraph
+langchain
+langchain-core
+langchain-openai
+langchain-community
+langchain-text-splitters
+
+# ── 向量检索（FAISS 走 langchain_community 的封装，需要底层 faiss-cpu）──
+faiss-cpu
+numpy
+
+# ── 工具 ──
+python-dotenv
+requests
+pydantic
+
+# ── 观测（lab 25 可选）──
+langfuse
+
+# ── Web（少数 lab 起本地服务）──
+flask

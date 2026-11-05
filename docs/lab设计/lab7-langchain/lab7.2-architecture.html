@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 7.2 — RAG 检索增强生成 · 架构图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.controls{position:fixed;top:20px;right:20px;z-index:10;display:flex;gap:8px}
+.controls button{padding:8px 16px;border:1px solid #475569;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:13px;transition:.2s}
+.controls button:hover,.controls button.active{background:#3b82f6;border-color:#3b82f6}
+
+.wrapper{display:flex;align-items:center;justify-content:center;width:100%;padding:20px}
+.slide{background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.4);border-radius:8px;overflow:hidden;display:none}
+.slide.active{display:block}
+
+.slide-landscape{width:1280px;height:720px}
+.slide-portrait{width:405px;height:720px}
+
+.slide-header{padding:18px 28px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px}
+.slide-header .dot{width:12px;height:12px;border-radius:4px}
+.slide-header h2{font-size:18px;font-weight:700;color:#1e293b;flex:1}
+.slide-header span{font-size:13px;color:#64748b}
+
+.diagram{display:flex;align-items:center;justify-content:center}
+.landscape .diagram{height:640px;padding:20px 30px}
+
+/* Custom RAG diagram */
+.rag-flow{display:flex;align-items:center;gap:0;width:100%;height:100%}
+.rag-node{text-align:center;border-radius:12px;padding:16px 20px}
+.rag-node .icon{font-size:32px;margin-bottom:8px}
+.rag-node .label{font-weight:700;font-size:15px;color:#1e293b}
+.rag-node .sub{font-size:12px;color:#64748b;margin-top:4px}
+.arrow{font-size:24px;color:#94a3b8;margin:0 8px}
+
+.rag-user{background:#f1f5f9;border:2px solid #cbd5e1}
+.rag-retrieve{background:#eff6ff;border:2px solid #3b82f6}
+.rag-generate{background:#ecfdf5;border:2px solid #10b981}
+.rag-answer{background:#f0f9ff;border:2px solid #0ea5e9}
+
+.rag-col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.rag-row{display:flex;align-items:center;gap:8px}
+
+.tag{font-size:11px;padding:2px 8px;border-radius:10px}
+.tag-r{background:#dbeafe;color:#1e40af}
+.tag-g{background:#d1fae5;color:#065f46}
+
+/* Portrait */
+.portrait .diagram{height:640px;padding:16px;flex-direction:column}
+.flow-v{display:flex;flex-direction:column;align-items:center;gap:10px}
+.flow-v .rag-node{width:90%}
+.v-arrow{font-size:20px;color:#94a3b8}
+
+/* Comparison */
+.compare{display:flex;gap:24px;width:100%;padding:0 20px;align-items:center;justify-content:center}
+.compare-box{border-radius:16px;padding:24px 30px;text-align:center;min-width:280px}
+.compare-box.bad{background:#fff1f2;border:2px solid #fda4af}
+.compare-box.good{background:#ecfdf5;border:2px solid #6ee7b7}
+.compare-box h3{font-size:18px;margin-bottom:16px}
+.compare-box .flow-item{font-size:15px;color:#475569;margin:8px 0;display:flex;align-items:center;gap:8px;justify-content:center}
+.compare-vs{font-size:28px;font-weight:900;color:#94a3b8}
+
+.steps-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:0 20px}
+.step-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center}
+.step-card .num{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;margin:0 auto 8px}
+.step-card .num.r{background:#eff6ff;color:#3b82f6}
+.step-card .num.g{background:#ecfdf5;color:#10b981}
+.step-card .title{font-weight:600;font-size:14px;color:#1e293b;margin-bottom:4px}
+.step-card .desc{font-size:12px;color:#64748b}
+
+@media print{
+  body{background:#fff}
+  .controls{display:none}
+  .slide{box-shadow:none;border:1px solid #e2e8f0}
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <button id="btn16x9" class="active" onclick="switchRatio('16:9')">16:9 横版</button>
+  <button id="btn9x16" onclick="switchRatio('9:16')">9:16 竖版</button>
+</div>
+
+<div class="wrapper">
+
+<!-- ====== 16:9 横版 ====== -->
+<div class="slide slide-landscape landscape active" id="slide-landscape">
+  <div class="slide-header">
+    <span class="dot" style="background:#3b82f6"></span>
+    <h2>Lab 7.2 — RAG 检索增强生成</h2>
+    <span>LangChain · FAISS · Embedding</span>
+  </div>
+  <div class="diagram">
+    <div class="rag-flow">
+      <!-- User -->
+      <div class="rag-node rag-user" style="min-width:130px">
+        <div class="icon">👤</div>
+        <div class="label">用户提问</div>
+        <div class="sub">"SF6 气体泄漏<br/>怎么处理？"</div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Embedding -->
+      <div class="rag-node rag-retrieve" style="min-width:130px">
+        <div class="icon">📐</div>
+        <div class="label">Embedding</div>
+        <div class="sub">问题 → 向量</div>
+        <span class="tag tag-r">text-embedding-v2</span>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Vector Store -->
+      <div class="rag-node rag-retrieve" style="min-width:150px">
+        <div class="icon">📦</div>
+        <div class="label">ChromaDB</div>
+        <div class="sub">向量相似度搜索</div>
+        <span class="tag tag-r">Top-3 文档</span>
+        <div class="sub" style="margin-top:8px;font-size:11px;color:#94a3b8">← 12 篇电力文档<br/>分块 → Embedding → 存储</div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Augment -->
+      <div class="rag-node rag-generate" style="min-width:150px">
+        <div class="icon">📝</div>
+        <div class="label">增强 Prompt</div>
+        <div class="sub">文档作为上下文<br/>拼入 Prompt</div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- LLM -->
+      <div class="rag-node rag-generate" style="min-width:130px">
+        <div class="icon">🤖</div>
+        <div class="label">LLM 生成</div>
+        <div class="sub">基于文档回答<br/>不编造</div>
+        <span class="tag tag-g">qwen-plus</span>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Answer -->
+      <div class="rag-node rag-answer" style="min-width:160px">
+        <div class="icon">✅</div>
+        <div class="label">基于真实文档的回答</div>
+        <div class="sub">"SF6年泄漏率≤0.5%<br/>用检漏仪沿密封面检测"</div>
+      </div>
+    </div>
+  </div>
+  <!-- Bottom: comparison -->
+  <div style="padding:0 30px 16px;display:flex;gap:16px;align-items:center;justify-content:center">
+    <div class="compare-box bad" style="min-width:200px;padding:12px 20px">
+      <h3 style="font-size:14px">❌ 无 RAG</h3>
+      <div style="font-size:13px">问题 → LLM → 编造或不知道</div>
+    </div>
+    <div style="font-size:20px;color:#94a3b8">vs</div>
+    <div class="compare-box good" style="min-width:200px;padding:12px 20px">
+      <h3 style="font-size:14px">✅ 有 RAG</h3>
+      <div style="font-size:13px">问题 → 检索文档 → LLM → 基于文档回答</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 9:16 竖版 ====== -->
+<div class="slide slide-portrait portrait" id="slide-portrait">
+  <div class="slide-header">
+    <span class="dot" style="background:#10b981"></span>
+    <h2 style="font-size:15px">RAG 检索增强生成</h2>
+    <span style="font-size:11px">Lab 7.2</span>
+  </div>
+  <div class="diagram">
+    <div class="flow-v">
+      <div class="rag-node rag-user">
+        <div class="icon">👤</div>
+        <div class="label">用户提问</div>
+        <div class="sub">"SF6 泄漏怎么处理？"</div>
+      </div>
+      <div class="v-arrow">↓</div>
+      <div class="rag-node rag-retrieve">
+        <div class="icon">📐</div>
+        <div class="label">Embedding → 向量</div>
+        <div class="sub">text-embedding-v2</div>
+      </div>
+      <div class="v-arrow">↓</div>
+      <div class="rag-node rag-retrieve">
+        <div class="icon">📦</div>
+        <div class="label">ChromaDB 相似度搜索</div>
+        <div class="sub">12 篇文档 · Top-3</div>
+      </div>
+      <div class="v-arrow">↓</div>
+      <div class="rag-node rag-generate">
+        <div class="icon">📝</div>
+        <div class="label">增强 Prompt</div>
+        <div class="sub">文档注入上下文</div>
+      </div>
+      <div class="v-arrow">↓</div>
+      <div class="rag-node rag-generate">
+        <div class="icon">🤖</div>
+        <div class="label">LLM 生成</div>
+        <div class="sub">qwen-plus · 不编造</div>
+      </div>
+      <div class="v-arrow">↓</div>
+      <div class="rag-node rag-answer">
+        <div class="icon">✅</div>
+        <div class="label">基于文档回答</div>
+        <div class="sub">"泄漏率≤0.5%"</div>
+      </div>
+    </div>
+  </div>
+  <!-- 5 steps -->
+  <div style="padding:0 12px 10px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:8px">1</span>
+        <span style="color:#475569">12篇文档分块→Embedding→ChromaDB</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:8px">2</span>
+        <span style="color:#475569">用户提问"SF6泄漏怎么处理？"</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:8px">3</span>
+        <span style="color:#475569">问题→向量→ChromaDB搜索→Top-3</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="background:#ecfdf5;color:#10b981;padding:2px 8px;border-radius:8px">4</span>
+        <span style="color:#475569">3篇文档拼入Prompt作为上下文</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="background:#ecfdf5;color:#10b981;padding:2px 8px;border-radius:8px">5</span>
+        <span style="color:#475569">LLM基于上下文回答（不编造）</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function switchRatio(ratio){
+  document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));
+  if(ratio==='16:9'){
+    document.getElementById('btn16x9').classList.add('active');
+    document.getElementById('slide-landscape').classList.add('active');
+  }else{
+    document.getElementById('btn9x16').classList.add('active');
+    document.getElementById('slide-portrait').classList.add('active');
+  }
+}
+</script>
+</body>
+</html>

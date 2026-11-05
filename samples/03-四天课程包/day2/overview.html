@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day2 — 单 Agent 全栈实战</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--border:#e5e7eb;--primary:#2563eb;--primary-light:#eff6ff;--green:#059669;--green-bg:#ecfdf5;--amber:#d97706;--amber-bg:#fffbeb;--purple:#7c3aed;--purple-bg:#f5f3ff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:32px;line-height:1.7}
+.container{max-width:900px;margin:0 auto}
+h1{font-size:28px;margin-bottom:4px}h1 span{font-weight:400;color:var(--text2);font-size:16px}
+.subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--border)}
+h2{font-size:20px;margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;margin-bottom:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}
+.tag-core{background:var(--primary-light);color:var(--primary)}.tag-opt{background:var(--amber-bg);color:var(--amber)}.tag-done{background:var(--green-bg);color:var(--green)}
+pre{background:#f3f4f6;padding:12px 16px;border-radius:6px;font-size:12px;overflow-x:auto;line-height:1.5}
+code{font-family:'SF Mono','Fira Code',monospace;font-size:12px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:#f8fafc;font-weight:600;color:var(--text2);font-size:11px}
+.arch-row{display:flex;gap:14px;margin:16px 0}
+.arch-box{flex:1;border-radius:8px;padding:14px;text-align:center;font-size:12px}
+.arch-box strong{display:block;font-size:14px;margin-bottom:4px}
+.arch-rag{background:var(--primary-light);border:1px solid var(--primary)}
+.arch-mem{background:var(--purple-bg);border:1px solid var(--purple)}
+.arch-cb{background:var(--green-bg);border:1px solid var(--green)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Day2 — 单 Agent 全栈实战 <span>| 知识库 + 记忆 + 监控</span></h1>
+<p class="subtitle">11 个实验 · 核心路径 7 个 · 产出：一个能检索知识库、记住用户偏好的 Agent</p>
+
+<h2>学什么</h2>
+<div class="arch-row">
+  <div class="arch-box arch-rag"><strong>RAG 知识库</strong>文档→向量→检索→LLM 回答</div>
+  <div class="arch-box arch-mem"><strong>Memory 记忆</strong>Buffer/Window/Summary/SummaryBuffer</div>
+  <div class="arch-box arch-cb"><strong>Callbacks 监控</strong>Token · 延迟 · 工具调用统计</div>
+</div>
+
+<h2>11 个实验</h2>
+<table>
+<tr><th>#</th><th>实验</th><th>类型</th><th>阶段</th></tr>
+<tr><td>2.1</td><td>FAISS 向量库</td><td><span class="tag tag-core">核心</span></td><td>向量检索</td></tr>
+<tr><td>2.2</td><td>阿里云 DashVector</td><td><span class="tag tag-opt">选做</span></td><td>向量检索</td></tr>
+<tr><td>2.3</td><td>手写余弦相似度</td><td><span class="tag tag-opt">选做</span></td><td>向量检索</td></tr>
+<tr><td>2.4</td><td>图片相似度匹配</td><td><span class="tag tag-opt">选做</span></td><td>向量检索</td></tr>
+<tr><td>2.5</td><td>RAG Agent</td><td><span class="tag tag-core">核心</span></td><td>RAG</td></tr>
+<tr><td>2.6</td><td>Dify RAG Agent</td><td><span class="tag tag-core">核心</span></td><td>RAG</td></tr>
+<tr><td>2.7</td><td>Memory 三种策略</td><td><span class="tag tag-core">核心</span></td><td>Memory+监控</td></tr>
+<tr><td>2.8</td><td>Callbacks</td><td><span class="tag tag-core">核心</span></td><td>Memory+监控</td></tr>
+<tr><td>2.9</td><td>LLM Caching</td><td><span class="tag tag-opt">选做</span></td><td>Memory+监控</td></tr>
+<tr><td>2.10</td><td>RAG 评测</td><td><span class="tag tag-core">核心</span></td><td>评测</td></tr>
+<tr><td>2.11</td><td>Text-to-SQL</td><td><span class="tag tag-opt">选做</span></td><td>评测</td></tr>
+</table>
+
+<h2>Day2 独立包架构</h2>
+<pre><code>sample-4days/day2/
+├── app.py              Flask 入口（端口 8200）
+├── agents/
+│   └── tools.py        @tool 工具集（search_kb / write_memory / read_memory）
+├── data/knowledge/     知识库文档（换场景 = 换这里的 MD 文件）
+│   ├── 01-故障排查.md
+│   ├── 02-告警等级.md
+│   └── 03-维护规范.md
+├── templates/
+│   └── index.html      RAG 搜索 + Memory 面板 + 调用监控
+└── memory.json         长期记忆文件（首次运行自动生成）</code></pre>
+
+<h2>三条功能通道</h2>
+<table>
+<tr><th>通道</th><th>接口</th><th>对应实验</th></tr>
+<tr><td>RAG 检索+回答</td><td><code>POST /rag/search</code></td><td>2.1 FAISS · 2.5 RAG Agent</td></tr>
+<tr><td>Memory 读写</td><td><code>POST /memory/write</code> + <code>GET /memory/read</code></td><td>2.7 Memory 策略</td></tr>
+<tr><td>Callback 监控</td><td><code>GET /metrics</code></td><td>2.8 Callbacks · 2.9 Caching</td></tr>
+</table>
+
+<h2>快速启动</h2>
+<pre><code>cp .env.example .env   # 填 DEEPSEEK_API_KEY
+pip install -r requirements.txt
+python app.py          # → http://localhost:8200</code></pre>
+
+<h2>和 Day1 的关系</h2>
+<div class="card">
+  <p><strong>不依赖 Day1</strong>，完全自包含。但两者可以叠加：Day1 的 Agent 调 Day2 的 RAG 接口查知识库。</p>
+  <p>Day1 = 搭 Agent 骨架（ReAct 循环）<br>Day2 = 给 Agent 加知识库和记忆</p>
+</div>
+
+<h2>学员要能回答</h2>
+<div class="card">
+  <p>1. 向量检索和关键词检索有什么区别？什么时候用哪个？</p>
+  <p>2. 128K 窗口的 Token 预算怎么分？</p>
+  <p>3. Buffer/Window/Summary 三种 Memory 策略各自适合什么场景？</p>
+</div>
+
+</div>
+</body>
+</html>

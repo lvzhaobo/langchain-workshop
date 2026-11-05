@@ -1,0 +1,28 @@
+# BAT Work 定时任务配置
+# 启动后自动注册到 APScheduler
+
+# ── Cron 任务 ──
+- name: "每日销售数据汇总"
+  schedule: "0 9 * * *"          # 每天 9:00
+  type: cron
+  prompt: "读取 sales.csv，按产品和区域统计销售额，生成昨日销售数据汇总到 daily_summary.md"
+  enabled: false                  # 默认关闭，通过 UI 手动开启
+
+- name: "每小时健康检查"
+  schedule: "0 * * * *"          # 每小时整点
+  type: cron
+  prompt: "扫描 workspace 目录，检查是否有新生成的文件。列出最近 1 小时内修改过的文件及其大小"
+  enabled: true
+
+- name: "每周五周报生成"
+  schedule: "0 17 * * 5"         # 每周五 17:00
+  type: cron
+  prompt: "基于 workspace 目录中本周生成的所有文件，生成一份工作周报（本周完成事项/下周计划/风险与阻塞），保存到 weekly_report.md"
+  enabled: false
+
+# ── Interval 任务（固定间隔） ──
+- name: "数据完整性巡检"
+  schedule: "1800"               # 每 30 分钟 (1800秒)
+  type: interval
+  prompt: "检查 sales.csv 文件是否完整，验证关键字段（日期、产品、金额）是否有空值或异常值"
+  enabled: true

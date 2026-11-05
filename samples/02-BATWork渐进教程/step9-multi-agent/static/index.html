@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAT Work</title>
+<style>
+/* ═══════════ BAT Work Style ═══════════ */
+:root {
+  --bg-root: #f5f5f7; --bg-sidebar: #ececf1; --bg-main: #fff; --bg-input: #f5f5f7;
+  --bg-card: #f0f0f5; --bg-hover: #e8e8ee; --bg-overlay: rgba(0,0,0,.3);
+  --border: #e0e0e6; --border-light: #ededf2;
+  --accent: #6b5ce7; --accent-dim: rgba(107,92,231,.08); --accent-glow: rgba(107,92,231,.2);
+  --blue: #3b82f6; --green: #22c55e; --orange: #f59e0b; --red: #ef4444;
+  --text-primary: #1a1a2e; --text-secondary: #6b6b80; --text-muted: #9a9ab0;
+  --radius: 8px; --radius-sm: 6px; --radius-lg: 12px;
+  --shadow: 0 2px 16px rgba(0,0,0,.06);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+[data-theme="dark"] {
+  --bg-root: #111118; --bg-sidebar: #16161f; --bg-main: #1a1a26; --bg-input: #222230;
+  --bg-card: #222236; --bg-hover: #2a2a42; --bg-overlay: rgba(0,0,0,.55);
+  --border: #2e2e46; --border-light: #363658;
+  --accent: #7c5cfc; --accent-dim: rgba(124,92,252,.12); --accent-glow: rgba(124,92,252,.25);
+  --text-primary: #e4e4ed; --text-secondary: #9898b0; --text-muted: #6a6a80;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg-root);color:var(--text-primary);height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:13px;transition:background .3s,color .3s}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Header ── */
+.header{height:44px;background:var(--bg-sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;-webkit-app-region:drag}
+.header .logo{display:flex;align-items:center;gap:6px}
+.header .logo svg{flex-shrink:0}
+.header .logo span{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.header .spacer{flex:1}
+.header .header-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-hover);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:all .15s;-webkit-app-region:no-drag}
+.header .header-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.header .header-btn svg{transition:transform .3s}
+
+/* ── Main Layout ── */
+.main-layout{display:flex;flex:1;overflow:hidden}
+
+/* ── Left Sidebar: Task List ── */
+.sidebar-left{width:260px;background:var(--bg-sidebar);display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid var(--border);transition:background .3s}
+.task-search{padding:12px 14px 8px}
+.task-search input{width:100%;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:12.5px;color:var(--text-primary);outline:none;transition:border-color .15s}
+.task-search input:focus{border-color:var(--accent)}
+.task-search input::placeholder{color:var(--text-muted)}
+.task-list-wrap{flex:1;overflow-y:auto;padding:0 8px}
+.task-group{margin-bottom:4px}
+.task-group-title{font-size:10.5px;font-weight:600;text-transform:uppercase;color:var(--text-muted);padding:8px 10px 4px;letter-spacing:.04em;display:flex;align-items:center;gap:4px}
+.task-group-title svg{opacity:.5}
+.task-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-sm);font-size:12.5px;color:var(--text-secondary);cursor:pointer;transition:all .12s;margin-bottom:1px;position:relative}
+.task-item:hover{background:var(--bg-hover)}
+.task-item.active{background:var(--accent-dim);color:var(--accent)}
+.task-item.active::before{content:'';position:absolute;left:-4px;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:0 2px 2px 0}
+.task-item .task-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0;opacity:.7}
+.task-item .task-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-item .task-badge{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--bg-hover);color:var(--text-muted)}
+.task-item.active .task-badge{background:var(--accent-glow);color:var(--accent)}
+.sidebar-bottom{padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px}
+.sidebar-bottom-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted);cursor:pointer;transition:all .12s}
+.sidebar-bottom-row:hover{background:var(--bg-hover);color:var(--text-secondary)}
+.sidebar-bottom-row svg{opacity:.5;flex-shrink:0}
+.sidebar-bottom-row .sched-dot{width:6px;height:6px;border-radius:50%;margin-left:auto}
+.sidebar-bottom-row .sched-dot.on{background:var(--green)}
+.sidebar-bottom-row .sched-dot.off{background:var(--red)}
+
+/* ── Center: Chat ── */
+.chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg-main);min-width:0;transition:background .3s}
+.chat-header{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+.chat-header .task-title{font-size:13px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-header .mode-group{display:flex;gap:2px;margin-left:auto;background:var(--bg-input);border-radius:var(--radius);padding:2px}
+.chat-header .mode-btn{padding:4px 12px;border-radius:6px;border:none;background:transparent;font-size:11.5px;cursor:pointer;color:var(--text-muted);transition:all .12s;font-family:var(--font)}
+.chat-header .mode-btn:hover{color:var(--text-secondary)}
+.chat-header .mode-btn.active{background:var(--bg-main);color:var(--text-primary);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.chat-header .model-badge{font-size:11px;color:var(--text-muted);padding:3px 10px;border-radius:12px;border:1px solid var(--border);cursor:pointer;transition:all .12s}
+.chat-header .model-badge:hover{border-color:var(--accent);color:var(--accent)}
+
+.chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-muted)}
+.welcome .big-icon{opacity:.15;margin-bottom:4px}
+.welcome h2{font-size:16px;font-weight:500;color:var(--text-secondary)}
+.welcome .hints{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.welcome .hint{background:var(--bg-input);border:1px solid var(--border);padding:8px 14px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s;color:var(--text-secondary)}
+.welcome .hint:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+.message{display:flex;gap:10px;max-width:85%;animation:fadeIn .25s ease}
+.message.user{align-self:flex-end;flex-direction:row-reverse}
+.message.agent{align-self:flex-start}
+.message .avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.message.user .avatar{background:var(--accent);color:#fff}
+.message.agent .avatar{background:var(--bg-card);border:1px solid var(--border);color:var(--text-secondary)}
+.message .bubble{padding:10px 16px;border-radius:var(--radius);font-size:13px;line-height:1.6;word-break:break-word}
+.message.user .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:2px}
+.message.agent .bubble{background:var(--bg-card);border:1px solid var(--border);border-bottom-left-radius:2px}
+.message .bubble pre{background:var(--bg-root);padding:10px;border-radius:6px;overflow-x:auto;font-size:11.5px;margin:6px 0;border:1px solid var(--border)}
+.message .bubble code{font-size:11.5px;background:var(--accent-dim);padding:1px 5px;border-radius:3px}
+.message.user .bubble pre{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.1)}
+.message.user .bubble code{background:rgba(255,255,255,.15)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.cursor-blink{animation:blink .8s infinite;color:var(--accent)}@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Input Bar */
+.input-bar{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--bg-main);position:relative}
+.input-bar .attach-btn{width:32px;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all .12s;flex-shrink:0}
+.input-bar .attach-btn:hover{border-color:var(--accent);color:var(--accent)}
+.input-bar .skill-selector{position:relative;flex-shrink:0}
+.input-bar .skill-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);font-size:12px;color:var(--text-secondary);cursor:pointer;transition:all .12s;white-space:nowrap}
+.input-bar .skill-btn:hover{border-color:var(--accent);color:var(--accent)}
+.input-bar .skill-btn .skill-count{font-size:10px;padding:0 5px;border-radius:6px;background:var(--accent);color:#fff;font-weight:500;min-width:16px;text-align:center}
+.input-bar .skill-dropdown{position:absolute;bottom:42px;left:0;width:240px;max-height:260px;overflow-y:auto;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);z-index:50;display:none}
+.input-bar .skill-dropdown.show{display:block}
+.input-bar .skill-dropdown .skill-opt{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--text-secondary);transition:background .1s}
+.input-bar .skill-dropdown .skill-opt:hover{background:var(--bg-hover)}
+.input-bar .skill-dropdown .skill-opt input{margin:0}
+.input-bar .skill-dropdown .skill-opt .opt-label{flex:1}
+.input-bar .skill-dropdown .skill-dropdown-footer{padding:8px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--accent);cursor:pointer;text-align:center}
+.input-bar .skill-dropdown .skill-dropdown-footer:hover{background:var(--accent-dim)}
+.input-bar input{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--text-primary);outline:none;transition:border-color .15s;min-width:0}
+.input-bar input:focus{border-color:var(--accent)}
+.input-bar input::placeholder{color:var(--text-muted)}
+.input-bar .send-btn{width:34px;height:34px;border-radius:50%;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.input-bar .send-btn:hover{filter:brightness(1.1);transform:scale(1.05)}
+.input-bar .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.input-bar .send-btn svg{width:15px;height:15px}
+
+/* ── Right Panel: Results ── */
+.sidebar-right{width:300px;background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:background .3s}
+.result-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.result-tab{flex:1;padding:11px 6px;text-align:center;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;background:none;font-family:var(--font)}
+.result-tab:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.result-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.result-panel{flex:1;overflow-y:auto;display:none;padding:8px}
+.result-panel.active{display:flex;flex-direction:column}
+
+/* Products panel */
+.product-list{display:flex;flex-direction:column;gap:6px}
+.product-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);font-size:12px;color:var(--text-secondary);cursor:pointer;transition:all .12s}
+.product-item:hover{border-color:var(--accent);background:var(--bg-hover)}
+.product-item .p-icon{font-size:16px;flex-shrink:0;opacity:.7}
+.product-item .p-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-item .p-meta{font-size:10.5px;color:var(--text-muted);flex-shrink:0}
+
+/* Files panel */
+.file-list-r{padding:0}
+.file-item-r{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);cursor:default;transition:background .1s}
+.file-item-r:hover{background:var(--bg-hover)}
+.file-item-r .f-icon{width:18px;text-align:center;flex-shrink:0;font-size:13px;opacity:.7}
+.file-item-r .f-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item-r .f-size{font-size:10.5px;color:var(--text-muted);flex-shrink:0}
+
+/* Changes panel */
+.change-item{padding:8px 10px;border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);margin-bottom:4px;border:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.change-item .c-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.change-item .c-dot.add{background:var(--green)}.change-item .c-dot.mod{background:var(--blue)}.change-item .c-dot.del{background:var(--red)}
+.change-item .c-name{flex:1}
+.change-item .c-time{font-size:10.5px;color:var(--text-muted)}
+
+/* Empty state */
+.empty-state{text-align:center;padding:32px 16px;color:var(--text-muted);font-size:12.5px;line-height:1.6}
+.empty-state .empty-icon{font-size:28px;margin-bottom:8px;opacity:.3}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:var(--bg-overlay);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn .2s ease}
+.modal-overlay.hidden{display:none}
+.modal{width:480px;max-height:65vh;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.modal .m-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal .m-header h3{font-size:14px;font-weight:600}
+.modal .m-close{width:28px;height:28px;border-radius:50%;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background .1s}
+.modal .m-close:hover{background:var(--bg-hover)}
+.modal .m-body{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.m-skill-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);transition:border-color .12s}
+.m-skill-item:hover{border-color:var(--accent)}
+.m-skill-item .m-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.m-skill-item .m-info{flex:1;min-width:0}
+.m-skill-item .m-name{font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.m-skill-item .m-desc{font-size:11.5px;color:var(--text-muted);margin-bottom:4px}
+.m-skill-item .m-tags{display:flex;gap:3px;flex-wrap:wrap}
+.m-skill-item .m-tag{font-size:10px;padding:1px 6px;border-radius:6px;background:var(--accent-dim);color:var(--accent)}
+.m-skill-item .m-btn{padding:5px 14px;border-radius:var(--radius);border:1px solid var(--accent);background:var(--accent-dim);color:var(--accent);font-size:11px;cursor:pointer;transition:all .1s;flex-shrink:0;font-family:var(--font)}
+.m-skill-item .m-btn:hover{background:var(--accent);color:#fff}
+.m-skill-item .m-btn.installed{background:var(--bg-hover);border-color:var(--border);color:var(--text-muted);cursor:default}
+.s-badge{font-size:10px;padding:1px 6px;border-radius:6px;font-weight:500}
+.s-badge.free{color:var(--green);background:rgba(34,197,94,.1)}
+.s-badge.premium{color:var(--orange);background:rgba(245,158,11,.1)}
+
+/* Scheduler Modal */
+.sched-task-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);gap:10px}
+.sched-task-item .s-info{flex:1;min-width:0}
+.sched-task-item .s-name{font-size:12.5px;font-weight:500;color:var(--text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.sched-task-item .s-name .s-type{font-size:9.5px;padding:1px 6px;border-radius:6px;font-weight:600}
+.sched-task-item .s-name .s-type.cron{background:rgba(59,130,246,.12);color:var(--blue)}
+.sched-task-item .s-name .s-type.interval{background:rgba(34,197,94,.12);color:var(--green)}
+.sched-task-item .s-sched{font-size:10.5px;color:var(--text-muted);font-family:'SF Mono','Fira Code',monospace}
+.sched-task-item .s-meta{font-size:10px;color:var(--text-muted);margin-top:2px;display:flex;gap:10px}
+
+/* Toggle Switch */
+.toggle{position:relative;width:36px;height:20px;cursor:pointer;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:var(--border);border-radius:20px;transition:.2s}
+.toggle .slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.slider{background:var(--accent)}
+.toggle input:checked+.slider::before{transform:translateX(16px)}
+
+/* Toast */
+.toast{position:fixed;top:52px;right:20px;padding:10px 18px;border-radius:var(--radius-sm);font-size:12.5px;z-index:200;animation:slideIn .3s ease;box-shadow:var(--shadow);border:1px solid}
+.toast.success{background:rgba(34,197,94,.1);color:var(--green);border-color:var(--green)}
+.toast.error{background:rgba(239,68,68,.1);color:var(--red);border-color:var(--red)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── Responsive: 窄屏折叠面板，显示切换按钮 ── */
+@media(max-width:768px){.sidebar-left,.sidebar-right{display:none}}
+.sidebar-toggle{display:none;position:fixed;z-index:99}
+@media(max-width:768px){.sidebar-toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.3);font-size:16px;transition:all .15s}.sidebar-toggle:hover{transform:scale(1.08)}.sidebar-toggle-left{bottom:24px;left:16px}.sidebar-toggle-right{bottom:24px;right:16px}}
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<div class="header">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <!-- ByteDance Cyan --><rect x="1" y="1" width="12" height="12" rx="2.5" fill="#00B4D8" opacity=".9"/>
+      <!-- Alibaba Orange --><rect x="15" y="1" width="12" height="12" rx="2.5" fill="#FF6A00" opacity=".9"/>
+      <!-- Tencent Blue --><rect x="7" y="14" width="14" height="13" rx="2.5" fill="#0052D9" opacity=".9"/>
+      <!-- 交汇高亮 --><rect x="13" y="11" width="4" height="4" rx="1" fill="#fff" opacity=".6"/>
+    </svg>
+    <span>BAT Work</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="header-btn" onclick="toggleTheme()" title="切换主题">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path id="iconDark" d="M12 8.5A5 5 0 016.5 3 5 5 0 1012 8.5z"/>
+      <circle id="iconLight" cx="8" cy="8" r="3.5" style="display:none"/>
+      <g id="iconRays" stroke-width="1.2" style="display:none"><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.9 11.9l1.06 1.06M3.05 12.95l1.06-1.06M11.9 4.1l1.06-1.06"/></g>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══ Main Layout ═══ -->
+<div class="main-layout">
+
+  <!-- Left: Task List -->
+  <aside class="sidebar-left">
+    <div class="task-search">
+      <input type="text" placeholder="搜索任务…" oninput="filterTasks(this.value)">
+    </div>
+    <div class="task-list-wrap" id="taskListWrap">
+      <div class="task-group">
+        <div class="task-group-title"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="4" height="4" rx=".8"/><rect x="7" y="1" width="4" height="4" rx=".8"/><rect x="1" y="7" width="4" height="4" rx=".8"/><rect x="7" y="7" width="4" height="4" rx=".8"/></svg> 工作空间</div>
+        <div class="task-item active" data-task="current" onclick="selectTask(this,'current')">
+          <span class="task-icon">📊</span>
+          <span class="task-name">数据分析任务</span>
+          <span class="task-badge">1</span>
+        </div>
+      </div>
+      <div class="task-group">
+        <div class="task-group-title"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4"/><path d="M6 3.5v3l2 1.5" stroke-linecap="round"/></svg> 最近</div>
+        <div class="task-item" data-task="report">
+          <span class="task-icon">📝</span><span class="task-name">周报生成</span><span class="task-badge">3</span>
+        </div>
+        <div class="task-item" data-task="clean">
+          <span class="task-icon">🧹</span><span class="task-name">文件整理</span><span class="task-badge">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-bottom-row" onclick="openSkillMarket()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="10" height="10" rx="2"/><path d="M4.5 6.5l1.5 1.5 2.5-2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Skill 市场
+        <span style="margin-left:auto;font-size:10px;color:var(--accent)" id="skillCountBadge">0</span>
+      </div>
+      <div class="sidebar-bottom-row" onclick="openScheduler()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 3.5v3.5l2.5 1.5" stroke-linecap="round"/></svg>
+        定时任务
+        <span class="sched-dot off" id="schedDot"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Center: Chat -->
+  <main class="chat-area">
+    <div class="chat-header">
+      <span class="task-title" id="chatTaskTitle">数据分析任务</span>
+      <div class="mode-group" id="modeGroup">
+        <button class="mode-btn" data-mode="ask" onclick="setMode('ask')">问一问</button>
+        <button class="mode-btn active" data-mode="craft" onclick="setMode('craft')">做一做</button>
+        <button class="mode-btn" data-mode="plan" onclick="setMode('plan')">想一想</button>
+      </div>
+      <span class="model-badge" id="modelBadge">--</span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome" id="welcome">
+        <div class="big-icon"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="var(--accent)" opacity=".12"/><path d="M12 24l9 9 15-18" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h2>今天想做什么？</h2>
+        <p style="font-size:13px;color:var(--text-muted)">直接描述，我来帮你完成</p>
+        <div class="hints">
+          <span class="hint" onclick="sendHint(this.textContent)">列出当前目录的文件</span>
+          <span class="hint" onclick="sendHint(this.textContent)">分析 sales.csv 的销售数据</span>
+          <span class="hint" onclick="sendHint(this.textContent)">帮我生成月度经营分析报告</span>
+        </div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <button class="attach-btn" title="添加文件" onclick="document.getElementById('fileInput').click()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+      </button>
+      <input type="file" id="fileInput" style="display:none" onchange="handleFileAttach(this)" multiple>
+      <div class="skill-selector">
+        <button class="skill-btn" onclick="toggleSkillDropdown()" id="skillSelectBtn">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M4 6l1.5 1.5L8 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          技能 <span class="skill-count" id="selectedSkillCount" style="display:none">0</span>
+        </button>
+        <div class="skill-dropdown" id="skillDropdown"></div>
+      </div>
+      <input type="text" id="msgInput" placeholder="描述你的需求…" onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMessage()">
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="2" x2="8" y2="14"/><polyline points="4 6 8 2 12 6"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- Right: Results -->
+  <aside class="sidebar-right">
+    <div class="result-tabs">
+      <button class="result-tab active" onclick="switchResultTab('products')">产物</button>
+      <button class="result-tab" onclick="switchResultTab('files')">文件</button>
+      <button class="result-tab" onclick="switchResultTab('changes')">变更</button>
+    </div>
+    <div class="result-panel active" id="panel-products">
+      <div class="empty-state"><div class="empty-icon">📦</div>暂无产物<br><span style="font-size:11px">执行任务后产物会显示在这里</span></div>
+    </div>
+    <div class="result-panel" id="panel-files">
+      <div class="file-list-r" id="fileListRight"><div class="empty-state">加载中…</div></div>
+    </div>
+    <div class="result-panel" id="panel-changes">
+      <div class="empty-state"><div class="empty-icon">📋</div>暂无变更记录</div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ═══ Responsive 面板切换按钮 ═══ -->
+<button class="sidebar-toggle sidebar-toggle-left" onclick="toggleLeftPanel()" title="切换任务列表">📋</button>
+<button class="sidebar-toggle sidebar-toggle-right" onclick="toggleRightPanel()" title="切换结果面板">📊</button>
+
+<!-- ═══ Skill Market Modal ═══ -->
+<div class="modal-overlay hidden" id="marketOverlay" onclick="if(event.target===this)closeMarket()">
+  <div class="modal"><div class="m-header"><h3>Skill 市场</h3><button class="m-close" onclick="closeMarket()">✕</button></div><div class="m-body" id="marketBody"></div></div>
+</div>
+
+<!-- ═══ Scheduler Modal ═══ -->
+<div class="modal-overlay hidden" id="schedulerOverlay" onclick="if(event.target===this)closeScheduler()">
+  <div class="modal" style="width:540px;max-height:75vh"><div class="m-header"><h3>定时任务</h3><div style="display:flex;gap:8px"><button style="padding:5px 14px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-dim);color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--font)" onclick="showTaskForm()">+ 添加任务</button><button class="m-close" onclick="closeScheduler()">✕</button></div></div><div class="m-body" id="schedulerBody"><div class="empty-state">加载中…</div></div></div>
+</div>
+
+<!-- ═══ Task Edit Form Modal ═══ -->
+<div class="modal-overlay hidden" id="taskFormOverlay" onclick="if(event.target===this)closeTaskForm()">
+  <div class="modal" style="width:440px"><div class="m-header"><h3 id="taskFormTitle">创建任务</h3><button class="m-close" onclick="closeTaskForm()">✕</button></div><div class="m-body" style="gap:12px"><input id="tfName" placeholder="任务名称" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;font-family:var(--font)"><input id="tfSchedule" placeholder="调度表达式 (cron: 0 9 * * *  或间隔: 3600)" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;font-family:var(--font)"><textarea id="tfPrompt" rows="4" placeholder="Agent 提示词（描述此任务要做什么）" style="width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;font-family:var(--font);resize:vertical"></textarea><div style="display:flex;gap:4px"><span style="font-size:10px;color:var(--text-muted);line-height:1.4">Cron 示例: 0 9 * * * (每天9点) · 0 * * * * (每小时) · 0 17 * * 5 (每周五17点)<br>间隔示例: 1800 (每30分钟) · 3600 (每小时) · 86400 (每天)</span></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button onclick="closeTaskForm()" style="padding:6px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font)">取消</button><button onclick="saveTask()" style="padding:6px 16px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font)">保存</button></div></div></div>
+</div>
+
+<script>
+/* ═══════════ GLOBALS ═══════════ */
+const NODE_LABELS={understand_intent:'意图理解',enrich_context:'上下文补齐',plan_tasks:'任务规划',execute_tool:'工具执行',validate_result:'结果校验',generate_output:'产物生成',handle_error:'兜底处理'};
+const FILE_ICONS={csv:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="3" y1="5" x2="10" y2="5"/><line x1="3" y1="8" x2="10" y2="8"/></svg>',md:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="3" y1="5" x2="10" y2="5"/><line x1="3" y1="8" x2="7" y2="8"/></svg>',py:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><text x="4.5" y="10" font-size="7" fill="currentColor" stroke="none">&lt;/&gt;</text></svg>',json:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><text x="4" y="10" font-size="6.5" fill="currentColor" stroke="none">{ }</text></svg>',default:'<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="4" y1="4" x2="9" y2="4"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="10" x2="7" y2="10"/></svg>'};
+const ICON_USER='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="4.5" r="2.5"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke-linecap="round"/></svg>';
+const ICON_AGENT='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5"/><path d="M5 7l1.5 1.5 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+let ws=null,currentMode='craft',attachedFiles=[],selectedSkills=[],skillListData=[];
+const WS_URL=`ws://${location.host}/ws`;
+
+/* ═══════════ MODE ═══════════ */
+function setMode(mode){currentMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode))}
+
+/* ═══════════ THEME ═══════════ */
+function getTheme(){const s=localStorage.getItem('wb-theme');if(s)return s;return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('wb-theme',t);const dark=t==='dark';byId('iconDark').style.display=dark?'':'none';byId('iconLight').style.display=dark?'none':'';byId('iconRays').style.display=dark?'none':''}
+function toggleTheme(){applyTheme((document.documentElement.getAttribute('data-theme')||'dark')==='dark'?'light':'dark')}
+function byId(id){return document.getElementById(id)}
+
+/* ═══════════ CHAT ═══════════ */
+function connect(){if(ws&&ws.readyState===WebSocket.OPEN)return;ws=new WebSocket(WS_URL);ws.onopen=()=>{console.log('WS connected')};ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.type==='model_info'){byId('modelBadge').textContent=d.model}else if(d.type==='token'){handleStream(d)}else if(d.type==='stream_start'){}else if(d.type==='stream_end'){}else if(d.type==='node_update'){}else if(d.type==='done'){handleDone(d)}else if(d.type==='error'){handleError(d)}}catch(ex){}};ws.onclose=()=>{setTimeout(connect,3000)};ws.onerror=()=>{}}
+function sendMessage(){const inp=byId('msgInput');const text=inp.value.trim();if(!text||!ws||ws.readyState!==WebSocket.OPEN)return;byId('welcome')?.remove();addMessage('user',text);inp.value='';byId('sendBtn').disabled=true;byId('sendBtn').classList.add('loading');const msgEl=addMessage('agent','');msgEl._cursor=document.createElement('span');msgEl._cursor.className='cursor-blink';msgEl._cursor.textContent='▍';msgEl.querySelector('.bubble').appendChild(msgEl._cursor);const payload={prompt:text,mode:currentMode,skills:selectedSkills.map(s=>s.name),attachments:attachedFiles.map(f=>f.name)};ws.send(JSON.stringify(payload));attachedFiles=[]}
+function sendHint(t){byId('msgInput').value=t;sendMessage()}
+function addMessage(role,text){const div=document.createElement('div');div.className=`message ${role}`;const avatar=role==='user'?ICON_USER:ICON_AGENT;div.innerHTML=`<div class="avatar">${avatar}</div><div class="bubble">${escapeHtml(text)}</div>`;byId('chatMessages').appendChild(div);byId('chatMessages').scrollTop=byId('chatMessages').scrollHeight;return div}
+function handleStream(d){const msgs=byId('chatMessages').querySelectorAll('.message.agent');const last=msgs[msgs.length-1];if(!last)return;const bubble=last.querySelector('.bubble');if(last._cursor){last._cursor.remove();last._cursor=null}bubble.innerHTML=(d.content||'')+`<span class="cursor-blink">▍</span>`;byId('chatMessages').scrollTop=byId('chatMessages').scrollHeight}
+function handleDone(d){const msgs=byId('chatMessages').querySelectorAll('.message.agent');const last=msgs[msgs.length-1];if(!last)return;const bubble=last.querySelector('.bubble');bubble.querySelector('.cursor-blink')?.remove();byId('sendBtn').disabled=false;byId('sendBtn').classList.remove('loading');if(d.products&&d.products.length>0)updateProducts(d.products);if(d.output_files&&d.output_files.length>0)updateProducts(d.output_files.map(f=>({name:f,path:f,size:''})));addChange(d);loadFilesRight()}
+function handleError(d){const msgs=byId('chatMessages').querySelectorAll('.message.agent');const last=msgs[msgs.length-1];if(!last)return;const bubble=last.querySelector('.bubble');bubble.querySelector('.cursor-blink')?.remove();bubble.innerHTML='<span style="color:var(--red)">❌ '+escapeHtml(d.message||'执行出错')+'</span>';byId('sendBtn').disabled=false;byId('sendBtn').classList.remove('loading')}
+
+/* ═══════════ FILE ATTACH ═══════════ */
+function handleFileAttach(inp){attachedFiles=Array.from(inp.files);const names=attachedFiles.map(f=>f.name).join(', ');showToast(`已添加: ${names}`,'success')}
+
+/* ═══════════ SKILL DROPDOWN ═══════════ */
+async function loadSkillDropdown(){try{const r=await fetch('/api/skills');const d=await r.json();skillListData=d.skills||[];byId('skillCountBadge').textContent=skillListData.length;renderSkillDropdown()}catch(e){}}
+function renderSkillDropdown(){const dd=byId('skillDropdown');if(skillListData.length===0){dd.innerHTML='<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:12px">暂无已安装 Skill</div><div class="skill-dropdown-footer" onclick="openSkillMarket()">+ 前往 Skill 市场安装</div>';return}dd.innerHTML=skillListData.map(s=>`<label class="skill-opt"><input type="checkbox" value="${escapeHtml(s.name)}" onchange="toggleSkillSelect('${escapeHtml(s.name)}',this.checked)" ${selectedSkills.find(x=>x.name===s.name)?'checked':''}><span class="opt-label">${escapeHtml(s.name)}</span><span class="skill-status-dot" style="background:var(--green);width:6px;height:6px;border-radius:50%;margin-left:auto;flex-shrink:0" title="已生效"></span></label>`).join('')+'<div class="skill-dropdown-footer" style="display:flex;gap:6px"><span style="flex:1;text-align:left;cursor:pointer" onclick="openSkillMarket()">+ 获取更多 Skill</span><span style="cursor:pointer;color:var(--green)" onclick="reloadSkills()">🔄 热重载</span></div>'}
+
+async function reloadSkills(){try{const r=await fetch('/api/skills/reload',{method:'POST'});const d=await r.json();if(d.success){showToast(d.message,'success');loadSkillDropdown()}else{showToast(d.error||'重载失败','error')}}catch(e){showToast('网络错误','error')}}
+function toggleSkillDropdown(){byId('skillDropdown').classList.toggle('show')}
+function toggleSkillSelect(name,checked){if(checked){const s=skillListData.find(x=>x.name===name);if(s&&!selectedSkills.find(x=>x.name===name)){selectedSkills.push(s)}}else{selectedSkills=selectedSkills.filter(x=>x.name!==name)}const cnt=byId('selectedSkillCount');cnt.textContent=selectedSkills.length;cnt.style.display=selectedSkills.length?'':'none';byId('skillSelectBtn').style.borderColor=selectedSkills.length?'var(--accent)':''}
+document.addEventListener('click',e=>{if(!e.target.closest('.skill-selector'))byId('skillDropdown').classList.remove('show')})
+
+/* ═══════════ RIGHT PANEL TABS ═══════════ */
+function switchResultTab(tab){document.querySelectorAll('.result-tab').forEach(t=>t.classList.toggle('active',t.textContent.trim()===({products:'产物',files:'文件',changes:'变更'}[tab])));document.querySelectorAll('.result-panel').forEach(p=>p.classList.remove('active'));byId('panel-'+tab).classList.add('active');if(tab==='files')loadFilesRight()}
+
+/* ═══════════ PRODUCTS ═══════════ */
+let productsList=[];
+function updateProducts(products){productsList=[...productsList,...products.filter(p=>!productsList.find(x=>x.name===p.name))];const panel=byId('panel-products');panel.innerHTML=productsList.length===0?'<div class="empty-state"><div class="empty-icon">📦</div>暂无产物</div>':'<div class="product-list">'+productsList.map(p=>`<div class="product-item" title="${escapeHtml(p.path||'')}"><span class="p-icon">📄</span><span class="p-name">${escapeHtml(p.name)}</span><span class="p-meta">${p.size||''}</span></div>`).join('')+'</div>'}
+
+/* ═══════════ FILES (RIGHT PANEL) ═══════════ */
+async function loadFilesRight(){try{const r=await fetch('/api/files');const data=await r.json();const panel=byId('panel-files');if(!data.files||data.files.length===0){panel.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div>暂无文件</div>';return}panel.innerHTML='<div class="file-list-r">'+data.files.map(f=>{const ext=f.name.split('.').pop();const icon=FILE_ICONS[ext]||FILE_ICONS.default;const size=formatSize(f.size);return`<div class="file-item-r"><span class="f-icon">${icon}</span><span class="f-name">${escapeHtml(f.name)}</span><span class="f-size">${size}</span></div>`}).join('')+'</div>'}catch(e){}}
+function formatSize(b){if(!b)return'';if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB'}
+
+/* ═══════════ CHANGES ═══════════ */
+let changesList=[];
+function addChange(d){const now=new Date().toLocaleTimeString('zh-CN');changesList.unshift({type:'add',name:d.task||'任务完成',time:now});if(changesList.length>20)changesList.pop();renderChanges()}
+function renderChanges(){const panel=byId('panel-changes');if(changesList.length===0){panel.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div>暂无变更记录</div>';return}panel.innerHTML=changesList.map(c=>`<div class="change-item"><span class="c-dot add"></span><span class="c-name">${escapeHtml(c.name)}</span><span class="c-time">${c.time}</span></div>`).join('')}
+
+/* ═══════════ TASK LIST ═══════════ */
+function selectTask(el,id){document.querySelectorAll('.task-item').forEach(t=>t.classList.remove('active'));el.classList.add('active');byId('chatTaskTitle').textContent=el.querySelector('.task-name').textContent}
+function filterTasks(q){document.querySelectorAll('.task-item').forEach(t=>{const name=t.querySelector('.task-name').textContent.toLowerCase();t.style.display=name.includes(q.toLowerCase())?'':'none'})}
+
+/* ═══════════ SKILL MARKET ═══════════ */
+async function openSkillMarket(){const overlay=byId('marketOverlay'),body=byId('marketBody');overlay.classList.remove('hidden');body.innerHTML='<div class="empty-state">加载中…</div>';try{const r=await fetch('/api/skills/marketplace');const d=await r.json();body.innerHTML=d.skills.map(s=>{const badge=s.premium?'<span class="s-badge premium">Premium</span>':'<span class="s-badge free">Free</span>';const btnCls=s.installed?'m-btn installed':'m-btn';const btnTxt=s.installed?'已安装':'安装';return`<div class="m-skill-item"><div class="m-icon">🧩</div><div class="m-info"><div class="m-name">${escapeHtml(s.name)}${badge}</div><div class="m-desc">${escapeHtml(s.description)}</div><div class="m-tags">${(s.triggers||[]).slice(0,3).map(t=>`<span class="m-tag">${escapeHtml(t)}</span>`).join('')}</div></div><button class="${btnCls}" onclick="installSkill('${s.id}',this)" ${s.installed?'disabled':''}>${btnTxt}</button></div>`}).join('')}catch(e){body.innerHTML='<div class="empty-state">加载失败</div>'}}
+function closeMarket(){byId('marketOverlay').classList.add('hidden')}
+async function installSkill(id,btn){btn.textContent='安装中…';btn.disabled=true;try{const r=await fetch(`/api/skills/install/${id}`,{method:'POST'});const d=await r.json();if(d.success){btn.textContent='已安装';btn.classList.add('installed');showToast(d.message,'success');await loadSkillDropdown();await fetch('/api/skills/reload',{method:'POST'});setTimeout(openSkillMarket,1000)}else{btn.textContent='安装';btn.disabled=false;showToast(d.error,'error')}}catch(e){btn.textContent='安装';btn.disabled=false;showToast('网络错误','error')}}
+
+/* ═══════════ SCHEDULER MODAL ═══════════ */
+async function openScheduler(){const overlay=byId('schedulerOverlay'),body=byId('schedulerBody');overlay.classList.remove('hidden');body.innerHTML='<div class="empty-state">加载中…</div>';try{const r=await fetch('/api/scheduler/status');const d=await r.json();if(!d.running){body.innerHTML='<div class="empty-state"><div class="empty-icon">⏰</div>调度器未启用<br><span style="font-size:11px">启动时添加 --enable-scheduler 参数</span></div>';return}body.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+d.tasks.map((t,i)=>{const typeCls=t.task_type==='cron'?'cron':'interval';const typeTxt=t.task_type==='cron'?'Cron':'间隔';const lastRun=t.last_run?new Date(t.last_run).toLocaleString('zh-CN'):'从未';return`<div class="sched-task-item" style="opacity:${t.enabled?1:.5};flex-direction:column;align-items:stretch"><div style="display:flex;align-items:center;justify-content:space-between"><div class="s-info"><div class="s-name">${escapeHtml(t.name)}<span class="s-type ${typeCls}">${typeTxt}</span></div><div class="s-sched">⏱ ${escapeHtml(t.schedule)}</div><div class="s-meta"><span>最近: ${lastRun}</span><span>执行 ${t.run_count} 次</span></div></div><label class="toggle"><input type="checkbox" ${t.enabled?'checked':''} onchange="toggleTask('${escapeHtml(t.name)}',this)"><span class="slider"></span></label></div><div id="taskLog-${i}" style="margin-top:6px;padding:8px;background:var(--bg-input);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);max-height:120px;overflow-y:auto;display:none"></div><div style="display:flex;gap:4px;margin-top:6px"><button style="padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-muted);font-size:11px;cursor:pointer" onclick="loadTaskLogs('${escapeHtml(t.name)}',${i})">📋 日志</button><button style="padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-muted);font-size:11px;cursor:pointer" onclick="showTaskForm('${escapeHtml(t.name)}','${escapeHtml(t.schedule)}','${escapeHtml(t.prompt).replace(/'/g,"\\'")}')">✏️ 编辑</button><button style="padding:4px 10px;border:1px solid var(--red);border-radius:var(--radius-sm);background:transparent;color:var(--red);font-size:11px;cursor:pointer" onclick="deleteTask('${escapeHtml(t.name)}')">🗑 删除</button></div></div>`}).join('')+'</div>'}catch(e){body.innerHTML='<div class="empty-state">无法连接调度器</div>'}}
+function closeScheduler(){byId('schedulerOverlay').classList.add('hidden')}
+async function toggleTask(name,cb){const was=cb.checked;try{const r=await fetch('/api/scheduler/toggle/'+encodeURIComponent(name),{method:'POST'});const d=await r.json();if(d.success){showToast(`"${name}" ${d.enabled?'已启用':'已禁用'}`,'success');setTimeout(openScheduler,500)}else{cb.checked=!was;showToast(d.error||'失败','error')}}catch(e){cb.checked=!was;showToast('网络错误','error')}}
+
+async function loadTaskLogs(taskName,idx){const el=byId('taskLog-'+idx);if(el.style.display==='block'){el.style.display='none';return}el.style.display='block';el.innerHTML='<span style="color:var(--text-muted)">加载中…</span>';try{const r=await fetch('/api/scheduler/logs?task_name='+encodeURIComponent(taskName)+'&limit=5');const d=await r.json();if(d.logs.length===0){el.innerHTML='<span style="color:var(--text-muted)">暂无执行记录</span>';return}el.innerHTML=d.logs.map(l=>`<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)"><div style="color:var(--accent);margin-bottom:2px">🕐 ${new Date(l.time).toLocaleString('zh-CN')} · 第${l.run}次</div><div style="color:var(--text-secondary);word-break:break-all">${escapeHtml((l.result||'').substring(0,200))}${(l.result||'').length>200?'…':''}</div>${l.output_files&&l.output_files.length?`<div style="margin-top:3px;color:var(--green)">📄 产出: ${l.output_files.join(', ')}</div>`:''}</div>`).join('')}catch(e){el.innerHTML='<span style="color:var(--red)">加载失败</span>'}}
+
+/* ═══════════ TASK FORM ═══════════ */
+let editingTaskName=null;
+function showTaskForm(name,schedule,prompt){editingTaskName=name||null;byId('taskFormTitle').textContent=name?'编辑任务':'创建任务';byId('tfName').value=name||'';byId('tfName').disabled=!!name;byId('tfSchedule').value=schedule||'';byId('tfPrompt').value=prompt||'';byId('taskFormOverlay').classList.remove('hidden')}
+function closeTaskForm(){byId('taskFormOverlay').classList.add('hidden')}
+async function saveTask(){const name=byId('tfName').value.trim();const schedule=byId('tfSchedule').value.trim();const prompt=byId('tfPrompt').value.trim();if(!name||!schedule||!prompt){showToast('请填写所有字段','error');return}try{const r=await fetch('/api/scheduler/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,schedule,prompt,enabled:true})});const d=await r.json();if(d.success){showToast(`任务已${d.action==='updated'?'更新':'创建'}: ${name}`,'success');closeTaskForm();setTimeout(openScheduler,500)}else{showToast(d.error,'error')}}catch(e){showToast('网络错误','error')}}
+async function deleteTask(name){if(!confirm(`确定删除任务 "${name}" 吗？`))return;try{const r=await fetch('/api/scheduler/tasks/'+encodeURIComponent(name),{method:'DELETE'});const d=await r.json();if(d.success){showToast(`已删除: ${name}`,'success');setTimeout(openScheduler,500)}else{showToast(d.error,'error')}}catch(e){showToast('网络错误','error')}}
+
+/* ═══════════ SCHEDULER STATUS DOT ═══════════ */
+async function updateSchedDot(){try{const r=await fetch('/api/scheduler/status');const d=await r.json();const dot=byId('schedDot');dot.className='sched-dot '+(d.running?'on':'off')}catch(e){}}
+
+/* ═══════════ UTILS ═══════════ */
+function escapeHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;')}
+function showToast(msg,type){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+
+/* ═══════════ PANEL TOGGLES ═══════════ */
+function toggleLeftPanel(){const el=document.querySelector('.sidebar-left');el.style.display=el.style.display==='none'?'flex':'none'}
+function toggleRightPanel(){const el=document.querySelector('.sidebar-right');el.style.display=el.style.display==='none'?'flex':'none'}
+
+/* ── INIT ── */
+applyTheme(getTheme());
+connect();
+loadSkillDropdown();
+loadFilesRight();
+updateSchedDot();
+setInterval(updateSchedDot,30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day2 — 知识库 + 记忆系统（完整真实版 · 真 LLM）</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#333;height:100vh;display:flex;overflow:hidden}
+/* ═══ 左侧 ═══ */
+.sidebar{width:225px;background:#fff;border-right:1px solid #e8e8e8;padding:18px 14px;flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar h2{font-size:16px;color:#1677ff}
+.sidebar .sub{font-size:10px;color:#999;margin-bottom:10px}
+.sidebar .cmd{display:flex;align-items:center;padding:7px 8px;margin:2px 0;border-radius:6px;cursor:pointer;font-size:12px;transition:.15s}
+.sidebar .cmd:hover{background:#f0f5ff}
+.cmd .ci{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;margin-right:7px;font-size:13px;flex-shrink:0}
+.ci-r{background:#e6f7ff;color:#1677ff}.ci-s{background:#f6ffed;color:#52c41a}.ci-q{background:#fff7e6;color:#fa8c16}
+.cmd .lab{margin-left:auto;font-size:9px;color:#bbb;flex-shrink:0}
+.sidebar hr{margin:9px 0;border:none;border-top:1px solid #f0f0f0}
+.sidebar label{font-size:11px;display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer}
+.sidebar label .lab{margin-left:auto;font-size:9px;color:#bbb}
+.sidebar button{width:100%;padding:6px;margin:3px 0;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;color:#666}
+.sidebar button:hover{border-color:#1677ff;color:#1677ff}
+.hint{font-size:10px;color:#aaa;margin:2px 0 6px 6px;line-height:1.5}
+.map-note{margin-top:auto;font-size:9.5px;color:#aaa;line-height:1.7;border-top:1px solid #f0f0f0;padding-top:8px}
+.map-note b{color:#888}
+/* ═══ 中间 ═══ */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:42px;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;padding:0 16px;font-size:11px;color:#888;gap:10px;flex-shrink:0}
+.header .dot{width:6px;height:6px;border-radius:50%;background:#faad14}
+.header .dot.ok{background:#52c41a}
+.header .cost-badge{color:#1677ff;cursor:pointer;margin-left:auto}
+.chat-area{flex:1;overflow-y:auto;padding:16px 20px}
+.welcome{text-align:center;margin:34px auto 0;max-width:520px}
+.welcome h1{font-size:21px;color:#1a1a2e;margin-bottom:4px}
+.welcome p{font-size:12px;color:#888;margin-bottom:14px}
+.tab-desc{background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;padding:8px 10px;margin:8px auto 14px;font-size:10.5px;color:#888;line-height:1.7;text-align:left}
+.tab-desc b{color:#555}.tab-desc .tip{color:#1677ff}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:480px;margin:0 auto}
+.quick-q{background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:11px;text-align:left;transition:.15s}
+.quick-q:hover{border-color:#1677ff}
+.msg{margin-bottom:10px;animation:fadeIn .25s}
+.msg.user{text-align:right}
+.msg.user .bubble{background:#1677ff;color:#fff;display:inline-block;max-width:65%;padding:9px 14px;border-radius:12px 12px 4px 12px;font-size:13px;text-align:left}
+.msg.assistant .bubble{background:#fff;border:1px solid #e8e8e8;max-width:85%;padding:12px 16px;border-radius:4px 12px 12px 12px;font-size:13px;line-height:1.65;display:inline-block;text-align:left}
+.badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;margin:0 4px 4px 0}
+.badge-rag{background:#e6f7ff;color:#1677ff}.badge-sim{background:#f6ffed;color:#52c41a}
+.badge-sql{background:#fff7e6;color:#fa8c16}.badge-cache{background:#fff0f6;color:#eb2f96}
+.badge-tk{background:#f9f0ff;color:#722ed1}
+.src{background:#fafafa;border-left:3px solid #1677ff;padding:6px 10px;margin:4px 0;border-radius:0 5px 5px 0;font-size:11px;line-height:1.55}
+.simbar{display:flex;align-items:center;gap:6px;margin-top:3px}
+.simbar .track{flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden}
+.simbar .fill{height:100%;border-radius:2px}
+.sqlcode{background:#1a1a2e;color:#a8d8a8;border-radius:6px;padding:9px 12px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre-wrap;overflow-x:auto;margin:6px 0}
+.rtable{border-collapse:collapse;font-size:11px;margin:4px 0}
+.rtable th{background:#f5f5f5;padding:3px 9px;border:1px solid #eee;font-weight:600;color:#555}
+.rtable td{padding:3px 9px;border:1px solid #f0f0f0;color:#666}
+.cursor{display:inline-block;width:7px;height:14px;background:#52c41a;vertical-align:-2px;animation:blink .8s infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes flash{0%{background:#fffbe6}100%{background:transparent}}
+/* ═══ 输入 ═══ */
+.input-area{padding:10px 16px;background:#fff;border-top:1px solid #e8e8e8;display:flex;gap:8px;flex-shrink:0}
+.input-area input{flex:1;padding:9px 14px;border:1px solid #d9d9d9;border-radius:18px;font-size:13px;outline:none;background:#fafafa}
+.input-area input:focus{border-color:#1677ff;background:#fff}
+.input-area button{width:34px;height:34px;border-radius:50%;border:none;background:#1677ff;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0}
+.input-area button:disabled{background:#bbb}
+/* ═══ 右侧面板 ═══ */
+.mem-panel{width:390px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;flex-shrink:0;font-size:11px}
+.mem-tabs{display:flex;border-bottom:1px solid #e8e8e8;flex-wrap:wrap}
+.mem-tab{flex:1;padding:8px 4px;text-align:center;font-size:10.5px;cursor:pointer;color:#888;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.mem-tab:hover{color:#1677ff}.mem-tab.on{color:#1677ff;border-bottom-color:#1677ff;background:#f5f8ff}
+.mem-tab .cnt{font-size:9px;color:#1677ff;margin-left:2px}
+.mem-sub .mem-tab{min-width:25%}
+.mem-desc{background:#fafafa;border-bottom:1px solid #f0f0f0;padding:7px 10px;font-size:10px;color:#888;line-height:1.6}
+.mem-desc b{color:#555}
+.mem-body{flex:1;overflow-y:auto;padding:10px 12px;line-height:1.7}
+.mem-body .sec{margin-bottom:8px}.mem-body .sec .tt{font-weight:600;color:#333;margin-bottom:2px;font-size:11px}
+.mem-body .it{padding:3px 6px;margin:2px 0;border-radius:3px;background:#f9f9f9;border-left:2px solid #e0e0e0;font-size:10px;word-break:break-all}
+.mem-body .it.U{border-left-color:#1677ff}.mem-body .it.A{border-left-color:#52c41a}
+.mem-body .it.new{animation:flash 1.6s}
+.mem-body .it.dropped{opacity:.45;text-decoration:line-through;border-left-color:#ff4d4f}
+.mem-body .empty{color:#ccc;text-align:center;padding:20px;font-size:11px}
+.delta{background:#fffbe6;border:1px solid #ffe58f;border-radius:5px;padding:5px 8px;margin-bottom:8px;font-size:10px;color:#ad6800;line-height:1.6}
+.mem-foot{padding:8px 10px;border-top:1px solid #e8e8e8;display:flex;gap:4px}
+.mem-foot button{flex:1;padding:4px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:10px;color:#666}
+.chunk{background:#f9f9f9;border:1px solid #f0f0f0;border-radius:5px;padding:5px 8px;margin:3px 0;font-size:10px;line-height:1.5}
+.chunk b{color:#555}
+.chunk.hit{background:#e6f7ff;border-color:#91caff}
+/* ═══ Cost 滑出 ═══ */
+.cost-overlay{position:fixed;top:0;right:0;width:430px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.12);z-index:1000;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column}
+.cost-overlay.open{transform:translateX(0)}
+.cost-overlay .ch{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e8e8e8}
+.cost-overlay .ch h3{font-size:15px}.cost-overlay .ch button{background:none;border:none;font-size:20px;cursor:pointer;color:#999}
+.cost-overlay .cb{flex:1;overflow-y:auto;padding:14px 18px}
+.cost-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.cost-sum .st{background:#f5f8ff;padding:10px;border-radius:8px;text-align:center}
+.cost-sum .st .v{font-size:19px;font-weight:700;color:#1677ff}.cost-sum .st .l{font-size:10px;color:#888}
+.cost-table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:14px}
+.cost-table th{background:#f5f5f5;padding:5px 6px;text-align:left;font-weight:600;color:#555}
+.cost-table td{padding:4px 6px;border-bottom:1px solid #f0f0f0;color:#666}
+.cost-table tr.cached td{color:#eb2f96}
+.cost-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:999;display:none}
+.cost-backdrop.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- ═══ 左侧 ═══ -->
+<div class="sidebar">
+  <h2>📚 Day2 知识库+记忆</h2>
+  <div class="sub">5G 基站运维 · <b style="color:#52c41a">完整真实版</b> · 真 Embedding + 真 LLM</div>
+  <div class="hint">检索走 <b>FAISS + DashScope text-embedding-v3</b>（1024维），回答走 <b>DeepSeek 真流式</b>，Token 为 API 返回的真实用量</div>
+  <hr>
+  <div class="cmd" onclick="setQ('/rag ')"><div class="ci ci-r">🔍</div><div>/rag 知识检索</div><span class="lab">2.1·2.5</span></div>
+  <div class="hint">真向量检索知识分块 → 相关度排序 → DeepSeek 流式回答 + 溯源</div>
+  <div class="cmd" onclick="setQ('/sim ')"><div class="ci ci-s">📐</div><div>/sim 相似度拆解</div><span class="lab">2.3</span></div>
+  <div class="hint">query 真实向量化（1024维），与每条分块算余弦相似度</div>
+  <div class="cmd" onclick="setQ('/sql 统计各厂商故障设备数量')"><div class="ci ci-q">🗄️</div><div>/sql Text-to-SQL</div><span class="lab">2.11</span></div>
+  <div class="hint">LLM 真生成 SQL → SQLite 真执行（50 行设备表）→ LLM 总结</div>
+  <hr>
+  <label><input type="checkbox" id="showSources" checked> 显示检索溯源<span class="lab">2.1</span></label>
+  <div class="hint" style="margin-top:6px">检索 Top-K：<b id="topkVal" style="color:#1677ff">4</b> 条（拖动即时生效，后端全局同步）
+  <input type="range" id="topkSlider" min="1" max="8" step="1" value="4" style="width:100%;margin-top:2px" oninput="el('topkVal').textContent=this.value" onchange="setTopK(this.value)"></div>
+  <div class="hint">服务端 LLM 缓存常开（2.9）：重复问题 0 Token 秒回</div>
+  <button onclick="clearChat()">🧹 清空对话</button>
+  <button onclick="toggleApi()">🔌 后端接口与连接状态</button>
+  <button onclick="toggleCost()">💰 查看成本（2.8 Callbacks）</button>
+  <button onclick="switchMainTab('eval',document.querySelectorAll('.main-tabs .mem-tab')[2])">🧪 运行 RAG 评测（2.10）</button>
+  <div class="map-note">
+    <b>实验对照（全真实链路）</b><br>
+    2.1 FAISS向量库 → 启动时真建索引<br>
+    2.2 阿里云向量库 → DashScope Embedding<br>
+    2.3 余弦相似度 → /sim 真向量拆解<br>
+    2.5 RAG-Agent → 检索+DeepSeek流式<br>
+    2.7 Memory → 摘要由真 LLM 压缩<br>
+    2.8 Callbacks → 真实 token_usage<br>
+    2.9 LLM-Caching → 服务端缓存<br>
+    2.10 RAG评测 → 真检索跑用例<br>
+    2.11 Text-to-SQL → LLM 生成+真执行
+  </div>
+</div>
+
+<!-- ═══ 中间 ═══ -->
+<div class="main">
+  <div class="header"><div class="dot" id="statusDot"></div><span id="statusText">连接后端…</span>
+    <span style="color:#bbb;font-size:10px;cursor:pointer" onclick="toggleApi()" id="originText"></span>
+    <span class="cost-badge" id="costBadge" onclick="toggleCost()">💰</span></div>
+  <div class="chat-area" id="chatArea"></div>
+  <div class="input-area">
+    <input type="text" id="q" placeholder="输入问题，回车发送…（真实调用会有 2~5 秒延迟，对比原型感受真实 RAG）" onkeydown="if(event.key==='Enter')send()" autofocus>
+    <button id="sendBtn" onclick="send()">➤</button>
+  </div>
+</div>
+
+<!-- ═══ 右侧面板 ═══ -->
+<div class="mem-panel">
+  <div class="mem-tabs main-tabs">
+    <div class="mem-tab on" onclick="switchMainTab('memory',this)">🧠 记忆<span class="cnt" id="cntTurn"></span></div>
+    <div class="mem-tab" onclick="switchMainTab('vector',this)">🧲 向量库</div>
+    <div class="mem-tab" onclick="switchMainTab('eval',this)">🧪 评测</div>
+  </div>
+  <div class="mem-tabs mem-sub" id="memSubTabs">
+    <div class="mem-tab on" onclick="switchMem('buffer',this)">①全量<span class="cnt" id="cntB"></span></div>
+    <div class="mem-tab" onclick="switchMem('window',this)">②窗口<span class="cnt" id="cntW"></span></div>
+    <div class="mem-tab" onclick="switchMem('summary',this)">③摘要<span class="cnt" id="cntS"></span></div>
+    <div class="mem-tab" onclick="switchMem('mix',this)">④混合<span class="cnt" id="cntM"></span></div>
+  </div>
+  <div class="mem-desc" id="memDesc"></div>
+  <div class="mem-body" id="memBody"></div>
+  <div class="mem-foot" id="memFoot">
+    <button onclick="refreshMemory()">🔄 刷新</button>
+    <button onclick="resetMemory()">🗑 清空记忆</button>
+  </div>
+</div>
+
+<!-- ═══ Cost 滑出 ═══ -->
+<div class="cost-backdrop" id="costBackdrop" onclick="toggleCost()"></div>
+<div class="cost-overlay" id="costPanel">
+  <div class="ch"><h3>📊 LLM 调用追踪 · 真实 token_usage（2.8 + 2.9）</h3><button onclick="toggleCost()">✕</button></div>
+  <div class="cb" id="costBody"></div>
+</div>
+
+<!-- ═══ 后端接口滑出 ═══ -->
+<div class="cost-backdrop" id="apiBackdrop" onclick="toggleApi()"></div>
+<div class="cost-overlay" id="apiPanel">
+  <div class="ch"><h3>🔌 后端接口与连接状态</h3><button onclick="toggleApi()">✕</button></div>
+  <div class="cb" id="apiBody"></div>
+</div>
+
+<script>
+/* ═══════════ 全局状态（记忆/检索数据全部来自后端） ═══════════ */
+var WINDOW_K=6, SUMMARY_N=3, TOPK=4;
+var MEM={all:[],summaries:[],turn:0};   // 后端同步过来的记忆快照
+var KB=[], EMB_DIM=0;                    // /api/chunks
+var lastDelta='', lastRetrieve=null, freshTurn=0;
+var BUSY=false;
+
+function el(id){return document.getElementById(id)}
+function setQ(v){el('q').value=v;el('q').focus()}
+function scrollBottom(){var a=el('chatArea');a.scrollTop=a.scrollHeight}
+function esc(s){return String(s).replace(/</g,'&lt;')}
+var CB=null;
+function addMsg(role,html){
+  var d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML='<div class="bubble">'+html+'</div>';
+  el('chatArea').appendChild(d);CB=d.querySelector('.bubble');scrollBottom();
+  var w=el('welcomePanel');if(w)w.remove();
+}
+/* 简易 markdown：**加粗** 与换行 */
+function md(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+
+/* ═══════════ 初始化：健康检查 + 拉分块 ═══════════ */
+var HEALTH=null;
+el('originText').textContent=location.host+' 🔌';
+fetch('/api/health').then(function(r){return r.json()}).then(function(h){
+  HEALTH=h;
+  var dot=el('statusDot');
+  if(h.llm&&h.embedding){
+    dot.classList.add('ok');
+    el('statusText').textContent='真实模式 · DeepSeek + text-embedding-v3（'+h.dim+'维）· '+h.chunks+' 条分块';
+  }else{
+    el('statusText').textContent='⚠️ '+(h.llm?'':'缺 DEEPSEEK_API_KEY ')+(h.embedding?'':('Embedding 未就绪：'+h.embedding_err));
+  }
+}).catch(function(){
+  el('statusDot').style.background='#ff4d4f';
+  el('statusText').innerHTML='<span style="color:#ff4d4f">❌ 无法连接后端！请确认：① 地址是 http://localhost:8082/ ② 已执行 python3 app_full.py</span>';
+});
+fetch('/api/chunks').then(function(r){return r.json()}).then(function(d){KB=d.chunks;EMB_DIM=d.dim;if(MAIN_TAB==='vector')renderPanel()});
+fetch('/api/config').then(function(r){return r.json()}).then(function(c){TOPK=c.top_k;el('topkVal').textContent=TOPK;el('topkSlider').value=TOPK});
+function setTopK(v){
+  fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({top_k:+v})})
+    .then(function(r){return r.json()}).then(function(c){
+      TOPK=c.top_k;el('topkVal').textContent=TOPK;el('topkSlider').value=TOPK;
+      if(MAIN_TAB==='vector')renderPanel();
+    });
+}
+refreshMemory();refreshCostBadge();
+
+/* ═══════════ SSE POST 流解析 ═══════════ */
+function ssePost(url,body,onEvent,onEnd){
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(resp){
+    var reader=resp.body.getReader(),dec=new TextDecoder(),buf='';
+    function pump(){
+      return reader.read().then(function(r){
+        if(r.done){if(onEnd)onEnd();return}
+        buf+=dec.decode(r.value,{stream:true});
+        var lines=buf.split('\n\n');buf=lines.pop();
+        lines.forEach(function(l){
+          l=l.trim();
+          if(l.indexOf('data: ')===0){try{onEvent(JSON.parse(l.slice(6)))}catch(e){}}
+        });
+        return pump();
+      });
+    }
+    return pump();
+  }).catch(function(e){onEvent({type:'error',msg:'连接失败：'+e});if(onEnd)onEnd()});
+}
+
+/* ═══════════ 发送路由 ═══════════ */
+function send(){
+  if(BUSY)return;
+  var q=el('q').value.trim();if(!q)return;el('q').value='';
+  addMsg('user',esc(q));
+  BUSY=true;el('sendBtn').disabled=true;
+  var fin=function(){BUSY=false;el('sendBtn').disabled=false};
+  if(/^\/sql/.test(q)||/统计|多少台|数量/.test(q))runSQL(q.replace(/^\/sql\s*/,''),fin);
+  else if(/^\/sim/.test(q))runSim(q.replace(/^\/sim\s*/,''),fin);
+  else runRAG(q.replace(/^\/rag\s*/,''),fin);
+}
+
+function scard(s,rank){
+  var pct=Math.round(s.score*100),c=pct>=60?'#52c41a':pct>=40?'#1677ff':'#fa8c16';
+  return '<div class="src"><b>📋 '+esc(s.src)+'</b> · '+esc(s.ch)+' · '+s.id+'<br>'
+    +esc(s.text)+'…'
+    +'<div class="simbar"><span style="font-size:10px;color:#888">Top'+rank+' 相关度</span>'
+    +'<div class="track"><div class="fill" style="width:'+Math.max(pct,4)+'%;background:'+c+'"></div></div>'
+    +'<span style="font-size:10px;font-weight:600;color:'+c+'">'+pct+'%</span>'
+    +'<span style="font-size:9px;color:#aaa">cos:'+s.score.toFixed(3)+'</span></div></div>';
+}
+
+/* ─── /rag：真实检索 + DeepSeek 流式（2.1+2.5+2.9） ─── */
+function runRAG(q,fin){
+  addMsg('assistant','<span style="color:#aaa;font-size:11px">⏳ 向量化 query → FAISS 检索中…</span>');
+  var raw='',bubble=CB,started=false,t0=Date.now();
+  ssePost('/api/chat',{question:q},function(ev){
+    if(ev.type==='sources'){
+      var h=ev.cached?'<span class="badge badge-cache">⚡ 服务端缓存命中（2.9）· 0 Token</span><br>'
+                     :'<span class="badge badge-rag">🔍 真实 RAG（FAISS + text-embedding-v3'+(ev.elapsed_retrieve?' · 检索 '+ev.elapsed_retrieve+'s':'')+'）</span><br>';
+      if(el('showSources').checked&&ev.sources.length){
+        h+='<b>检索 '+KB.length+' 条分块 → Top'+ev.sources.length+'：</b><br>';
+        ev.sources.forEach(function(s,i){h+=scard(s,i+1)});
+      }
+      h+='<div style="border-top:1px dashed #eee;margin:6px 0"></div><span class="ans"></span><span class="cursor"></span>';
+      bubble.innerHTML=h;
+      lastRetrieve={q:q,res:ev.sources};
+      started=true;scrollBottom();
+    }else if(ev.type==='content'){
+      raw+=ev.content;
+      var ans=bubble.querySelector('.ans');if(ans)ans.innerHTML=md(raw);
+      scrollBottom();
+    }else if(ev.type==='done'){
+      var cur=bubble.querySelector('.cursor');if(cur)cur.remove();
+      var tail='<div style="margin-top:6px"><span class="badge badge-tk">🪙 '+(ev.cached?'0（缓存）':('输入 '+ev.usage.pt+' + 输出 '+ev.usage.ct))+' tokens · '+ev.elapsed+'s'+(ev.rejected?' · 已拒答':'')+'</span></div>';
+      bubble.insertAdjacentHTML('beforeend',tail);
+      applyServerState(ev);scrollBottom();
+    }else if(ev.type==='error'){
+      bubble.innerHTML='<span style="color:#ff4d4f">❌ '+esc(ev.msg)+'</span>';
+    }
+  },fin);
+}
+
+/* ─── /sim：真实向量余弦拆解（2.3） ─── */
+function runSim(q,fin){
+  if(!q){addMsg('assistant','用法：<b>/sim 你的问题</b>，真实向量化后展示与每条分块的余弦相似度');fin();return}
+  addMsg('assistant','<span style="color:#aaa;font-size:11px">⏳ 调用 text-embedding-v3 向量化中…</span>');
+  var bubble=CB;
+  fetch('/api/sim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})})
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.error){bubble.innerHTML='<span style="color:#ff4d4f">❌ '+esc(d.error)+'</span>';fin();return}
+    var h='<span class="badge badge-sim">📐 真实余弦相似度（2.3）· '+d.elapsed+'s</span><br>'
+     +'<b>Query 真实向量化</b>：「'+esc(q.slice(0,24))+'」→ <b>'+d.dim+' 维</b>稠密向量<br>'
+     +'<span style="font-size:10px;color:#888;font-family:monospace">['+d.qvec_head.join(', ')+', …]</span><br>';
+    d.rows.forEach(function(r,i){
+      h+='<div class="src" style="border-left-color:#52c41a"><b>Top'+(i+1)+' · '+r.id+'</b>（'+esc(r.src)+' · '+esc(r.ch)+'）<br>'
+       +'cos(q⃗, d⃗) = <b>'+r.score.toFixed(4)+'</b>（两个 '+d.dim+' 维向量的夹角余弦）</div>';
+    });
+    h+='<div style="font-size:10px;color:#888;margin-top:4px">💡 与前端原型的字符二元组不同——这是 DashScope 真实语义向量：同义改写（"温度过高"vs"高温"）也能对上</div>';
+    bubble.innerHTML=h;
+    lastRetrieve={q:q,res:d.rows.map(function(r){return{id:r.id,score:r.score}})};
+    if(MAIN_TAB==='vector')renderPanel();
+    scrollBottom();fin();
+  }).catch(function(e){bubble.innerHTML='❌ '+esc(e);fin()});
+}
+
+/* ─── /sql：LLM 真生成 SQL → 真执行（2.11） ─── */
+function runSQL(q,fin){
+  addMsg('assistant','<span style="color:#aaa;font-size:11px">⏳ LLM 生成 SQL → SQLite 执行 → LLM 总结（两次真实调用）…</span>');
+  var bubble=CB;
+  fetch('/api/sql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})})
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.error){bubble.innerHTML='<span style="color:#ff4d4f">❌ '+esc(d.error)+(d.sql?'<div class="sqlcode">'+esc(d.sql)+'</div>':'')+'</span>';fin();return}
+    var h='<span class="badge badge-sql">🗄️ Text-to-SQL（2.11）· '+d.elapsed+'s</span><br>'
+     +'<b>① DeepSeek 生成 SQL</b>（只读白名单校验通过 ✅）<div class="sqlcode">'+esc(d.sql)+'</div>'
+     +'<b>② SQLite 真实执行</b>（devices 表 50 行）<table class="rtable"><tr>'+d.cols.map(function(c){return'<th>'+esc(c)+'</th>'}).join('')+'</tr>'
+     +d.rows.map(function(r){return'<tr>'+r.map(function(v){return'<td>'+esc(v)+'</td>'}).join('')+'</tr>'}).join('')+'</table>'
+     +'<b>③ LLM 总结</b>：'+md(d.summary)
+     +'<div style="margin-top:6px"><span class="badge badge-tk">🪙 '+d.usage.input_tokens+'+'+d.usage.output_tokens+' tokens（两次调用合计）</span></div>';
+    bubble.innerHTML=h;
+    applyServerState(d);scrollBottom();fin();
+  }).catch(function(e){bubble.innerHTML='❌ '+esc(e);fin()});
+}
+
+/* ═══════════ 服务端状态同步 ═══════════ */
+function applyServerState(ev){
+  if(ev.memory)MEM=ev.memory;
+  if(ev.delta){
+    freshTurn=ev.delta.turn;
+    lastDelta='<b>🔔 第 '+ev.delta.turn+' 轮记忆变化（服务端真实状态）</b><br>'+ev.delta.deltas.join('<br>');
+    setTimeout(function(){freshTurn=0;renderPanel()},2000);
+  }
+  renderPanel();refreshCostBadge();
+  if(MAIN_TAB==='vector')renderPanel();
+}
+function refreshMemory(){fetch('/api/memory').then(function(r){return r.json()}).then(function(m){MEM=m;renderPanel()})}
+function resetMemory(){fetch('/api/memory/reset',{method:'POST'}).then(function(){lastDelta='';refreshMemory()})}
+function refreshCostBadge(){
+  fetch('/api/cost').then(function(r){return r.json()}).then(function(d){
+    if(!d.total.n)return;
+    el('costBadge').textContent='💰 '+d.total.n+'次 '+d.total.tk+'tokens ~$'+d.total.cost.toFixed(4);
+  });
+}
+
+/* ═══════════ 右侧面板渲染（数据 = 服务端 MEM 快照） ═══════════ */
+var MAIN_TAB='memory',MEM_TAB='buffer';
+var MEM_DESCS={
+ buffer:'📦 <b>①全量 ConversationBufferMemory</b>：保留所有历史，永不截断。信息最全但 Token 线性增长——短对话适用。',
+ window:'🪟 <b>②窗口 ConversationBufferWindowMemory</b>：只留最近 K='+WINDOW_K+' 条，旧消息直接丢弃（划线标红=已移出）。Token 恒定，但早期信息丢失。',
+ summary:'📝 <b>③摘要 ConversationSummaryMemory</b>：每攒满 '+SUMMARY_N+' 轮，<b>真实调用 LLM</b> 压缩为一段摘要（可在💰面板看到这次调用）。',
+ mix:'⭐ <b>④混合 ConversationSummaryBufferMemory（推荐）</b>：早期→摘要保大局，近期→原文保细节。<b>本页回答的 Prompt 真实拼入了这份记忆</b>——试试追问"刚才第一个问题是什么"。'
+};
+function switchMainTab(tab,elBtn){
+  MAIN_TAB=tab;
+  document.querySelectorAll('.main-tabs .mem-tab').forEach(function(t){t.classList.remove('on')});
+  elBtn.classList.add('on');
+  el('memSubTabs').style.display=tab==='memory'?'flex':'none';
+  el('memFoot').style.display=tab==='memory'?'flex':'none';
+  renderPanel();
+}
+function switchMem(tab,elBtn){
+  MEM_TAB=tab;
+  document.querySelectorAll('.mem-sub .mem-tab').forEach(function(t){t.classList.remove('on')});
+  elBtn.classList.add('on');renderPanel();
+}
+function msgItem(m,dropped){
+  var fresh=m.turn===freshTurn;
+  return '<div class="it '+(m.role==='user'?'U':'A')+(fresh?' new':'')+(dropped?' dropped':'')+'">'
+   +'<b>'+(m.role==='user'?'👤':'🤖')+'</b> '+esc(m.content.slice(0,90))+'</div>';
+}
+function renderPanel(){
+  el('cntTurn').textContent=MEM.turn?MEM.turn+'轮':'';
+  el('cntB').textContent=MEM.all.length;
+  el('cntW').textContent=Math.min(MEM.all.length,WINDOW_K)+'/'+WINDOW_K;
+  el('cntS').textContent=MEM.summaries.length;
+  el('cntM').textContent=MEM.summaries.length+'+'+Math.min(MEM.all.length,WINDOW_K);
+  var body=el('memBody'),h='';
+  if(MAIN_TAB==='memory'){
+    el('memDesc').innerHTML=MEM_DESCS[MEM_TAB];
+    if(lastDelta)h+='<div class="delta">'+lastDelta+'</div>';
+    if(!MEM.all.length){body.innerHTML=h+'<div class="empty">开始对话后，这里逐轮展示 4 种记忆的变化（服务端真实维护）<br>建议连续问 4 轮以上，看窗口截断与 LLM 摘要生成</div>';return}
+    var win=MEM.all.slice(-WINDOW_K),droppedList=MEM.all.slice(0,-WINDOW_K);
+    var lt;
+    function turnHead(m){if(m.turn!==lt){lt=m.turn;return '<div style="font-size:10px;color:#1677ff;font-weight:600;margin:5px 0 2px">第 '+m.turn+' 轮</div>'}return ''}
+    if(MEM_TAB==='buffer'){
+      h+='<div class="sec"><div class="tt">① 全量 · 共 '+MEM.all.length+' 条 · Token 随轮数线性↑</div></div>';lt=0;
+      MEM.all.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }else if(MEM_TAB==='window'){
+      h+='<div class="sec"><div class="tt">② 窗口 K='+WINDOW_K+' · 窗口内 '+win.length+' 条 · 已移出 '+droppedList.length+' 条</div></div>';
+      if(droppedList.length){h+='<div style="font-size:10px;color:#ff4d4f;margin-bottom:2px">▼ 已移出窗口（模型看不到了）</div>';lt=0;droppedList.slice(-4).forEach(function(m){h+=msgItem(m,true)})}
+      h+='<div style="font-size:10px;color:#52c41a;margin:4px 0 2px">▼ 窗口内（进入 Prompt）</div>';lt=0;
+      win.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }else if(MEM_TAB==='summary'){
+      var buf=MEM.turn%SUMMARY_N,pct=Math.round(buf/SUMMARY_N*100);
+      h+='<div class="sec"><div class="tt">③ 摘要 · 每 '+SUMMARY_N+' 轮真 LLM 压缩 · 已生成 '+MEM.summaries.length+' 段</div></div>';
+      h+='<div style="font-size:10px;color:#888">⏳ 缓冲 '+buf+'/'+SUMMARY_N+' 轮</div>'
+       +'<div style="background:#eee;border-radius:8px;height:5px;overflow:hidden;margin:4px 0 8px"><div style="background:#1677ff;height:100%;width:'+pct+'%"></div></div>';
+      if(MEM.summaries.length)MEM.summaries.forEach(function(s,i){h+='<div class="it" style="border-left-color:#fa8c16">📝 #'+(i+1)+' <b>'+s.range+'</b> '+esc(s.text)+'</div>'});
+      else h+='<div class="empty">再问 '+(SUMMARY_N-buf)+' 轮后由 LLM 生成第一段摘要</div>';
+    }else{
+      h+='<div class="sec"><div class="tt">④ 混合 ⭐ · '+MEM.summaries.length+' 段摘要 + 最近 '+win.length+' 条原文</div></div>';
+      h+='<div style="padding:6px;background:#f6ffed;border-radius:4px;font-size:10px;color:#389e0d;margin-bottom:6px">下面两部分已真实拼入每次回答的 Prompt</div>';
+      h+='<div style="font-size:10px;font-weight:600;color:#fa8c16;margin-bottom:2px">📋 历史摘要（大局观）</div>';
+      if(MEM.summaries.length)MEM.summaries.forEach(function(s,i){h+='<div class="it" style="border-left-color:#fa8c16">📝 #'+(i+1)+' '+esc(s.text.slice(0,70))+'…</div>'});
+      else h+='<div class="empty" style="padding:6px">暂无摘要</div>';
+      h+='<div style="font-size:10px;font-weight:600;color:#1677ff;margin:6px 0 2px">💬 近期原文（细节）</div>';lt=0;
+      win.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }
+  }else if(MAIN_TAB==='vector'){
+    el('memDesc').innerHTML='🧲 <b>向量库（2.1 FAISS + 2.2 DashScope）</b>：'+(KB.length||'…')+' 条分块 × '+(EMB_DIM||'…')+' 维真实向量，启动时建 IndexFlatIP 索引。下方高亮 = 最近一次检索命中。';
+    if(lastRetrieve){
+      h+='<div class="sec"><div class="tt">🔍 最近检索：「'+esc(lastRetrieve.q.slice(0,22))+'」</div></div>';
+      h+='<div style="font-size:10px;color:#888;line-height:1.6;margin:2px 0 6px">↑ 你<b>最近一次提问</b>的命中结果：已与<b>全库 '+KB.length+' 条 chunk</b> 逐一算余弦相似度，按分数取 <b>Top '+lastRetrieve.res.length+'</b> 送入 LLM，其余 '+(KB.length-lastRetrieve.res.length)+' 条被淘汰。<span style="color:#1677ff">蓝色高亮 chunk</span> = 被检索命中、<b>真实拼进 LLM Prompt</b> 的分块；cos = 问题向量与分块向量的余弦相似度，越高越相关。Top-K 可在左下角滑块调整（当前 '+TOPK+'）。</div>';
+      lastRetrieve.res.forEach(function(r,i){
+        h+='<div class="chunk hit"><b>Top'+(i+1)+' · '+r.id+'</b> cos='+r.score.toFixed(3)+'（'+Math.round(r.score*100)+'%）'+(r.text?'<br>'+esc(r.text)+'…':'')+'</div>';
+      });
+      h+='<hr style="border:none;border-top:1px solid #f0f0f0;margin:8px 0">';
+    }else{
+      h+='<div style="font-size:10px;color:#888;line-height:1.6;margin:2px 0 6px">💡 还没提过问。在中间聊天框问一个问题后，这里会显示该问题的检索命中结果（哪些分块被送进 LLM）。</div>';
+    }
+    h+='<div class="sec"><div class="tt">📚 全部分块（'+KB.length+' 条）</div></div>';
+    var docCount={};KB.forEach(function(c){docCount[c.src]=1});docCount=Object.keys(docCount).length;
+    h+='<div style="font-size:10px;color:#888;line-height:1.6;margin:2px 0 6px">↑ 向量库的<b>全部底账</b>：data/knowledge/ 下 '+docCount+' 篇文档按 ## 标题切块，启动时已全部向量化存入 FAISS（含考勤/报销/食堂等无关内容，用于验证检索区分度）。<span style="color:#1677ff">蓝色</span> = 最近一次检索命中，灰色 = 未命中（同一篇文档也只命中相关的块，不是整文送入）。</div>';
+    var hitIds=lastRetrieve?lastRetrieve.res.map(function(r){return r.id}):[];
+    KB.forEach(function(c){
+      h+='<div class="chunk'+(hitIds.indexOf(c.id)>=0?' hit':'')+'"><b>'+c.id+'</b> '+esc(c.src)+' · '+esc(c.ch)+'<br>'+esc(c.text.slice(0,48))+'…</div>';
+    });
+  }else{
+    el('memDesc').innerHTML='🧪 <b>RAG 评测（2.10）</b>：7 条用例走真实向量检索，统计 Top1 命中率 + 拒答正确率（阈值 cos≥0.50）。';
+    h+=renderEval();
+  }
+  body.innerHTML=h;
+}
+
+/* ─── 评测（2.10）：调后端真跑 ─── */
+var EVAL_DATA=null,EVAL_RUNNING=false;
+function renderEval(){
+  var h='<button onclick="runEval()" style="width:100%;padding:7px;border:none;border-radius:5px;background:#1677ff;color:#fff;cursor:pointer;font-size:12px;margin-bottom:8px">'+(EVAL_RUNNING?'⏳ 真实检索中…':'▶ 运行评测（7 条用例 · 真实向量检索）')+'</button>';
+  if(!EVAL_DATA)return h+'<div class="empty">评测集：6 条应命中 + 1 条应拒答<br>每条用例真实调用 Embedding + FAISS</div>';
+  h+='<div class="delta" style="background:#f6ffed;border-color:#b7eb8f;color:#389e0d"><b>命中率 '+EVAL_DATA.hit+'/'+EVAL_DATA.total+'（'+Math.round(EVAL_DATA.hit/EVAL_DATA.total*100)+'%）</b> · 耗时 '+EVAL_DATA.elapsed+'s · 阈值 cos≥'+EVAL_DATA.threshold+'</div>';
+  EVAL_DATA.rows.forEach(function(r){
+    h+='<div class="it" style="border-left-color:'+(r.pass?'#52c41a':'#ff4d4f')+'">'
+     +(r.pass?'✅':'❌')+' '+esc(r.q.slice(0,20))+'<br><span style="color:#aaa">期望 '+esc(r.expect)+' → 实际 '+esc(r.actual)+'（cos '+r.score+'）</span></div>';
+  });
+  h+='<div style="font-size:10px;color:#888;margin-top:6px">💡 完整版评测还包括答案忠实度（LLM-as-Judge）——见实验 2.10</div>';
+  return h;
+}
+function runEval(){
+  if(EVAL_RUNNING)return;
+  EVAL_RUNNING=true;renderPanel();
+  fetch('/api/eval',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    EVAL_DATA=d;EVAL_RUNNING=false;renderPanel();
+  }).catch(function(){EVAL_RUNNING=false;renderPanel()});
+}
+
+/* ═══════════ Cost 面板（2.8 + 2.9，真实数据） ═══════════ */
+function toggleCost(){
+  var p=el('costPanel'),b=el('costBackdrop');
+  if(p.classList.contains('open')){p.classList.remove('open');b.classList.remove('show');return}
+  renderCost();p.classList.add('open');b.classList.add('show');
+}
+function renderCost(){
+  var body=el('costBody');
+  fetch('/api/cost').then(function(r){return r.json()}).then(function(d){
+    if(!d.calls.length){body.innerHTML='<div style="text-align:center;color:#ccc;padding:40px">暂无调用 · 先在中间问几个问题</div>';return}
+    var KIND={chat:'RAG回答',summary:'记忆摘要',sql:'Text-to-SQL'};
+    var h='<div class="cost-sum">'
+     +'<div class="st"><div class="v">'+d.total.n+'</div><div class="l">调用次数</div></div>'
+     +'<div class="st"><div class="v">'+d.total.tk+'</div><div class="l">总 Token（API 真实返回）</div></div>'
+     +'<div class="st"><div class="v" style="color:#eb2f96">'+d.total.cached+'</div><div class="l">缓存命中（省 Token）</div></div>'
+     +'<div class="st"><div class="v">$'+d.total.cost.toFixed(4)+'</div><div class="l">费用（DeepSeek 刊例价）</div></div></div>';
+    h+='<h4 style="font-size:12px;margin-bottom:6px">📋 调用明细（粉色 = 2.9 缓存命中；注意"记忆摘要"也是真实 LLM 调用）</h4>'
+     +'<table class="cost-table"><tr><th>时间</th><th>类型</th><th>问题</th><th>耗时</th><th>输入tk</th><th>输出tk</th><th>费用</th></tr>';
+    d.calls.slice().reverse().forEach(function(c){
+      h+='<tr'+(c.cached?' class="cached"':'')+'><td>'+c.time+'</td><td>'+(KIND[c.kind]||c.kind)+'</td><td>'+esc(c.q)+'</td><td>'+c.elapsed+'s</td><td>'+c.pt+'</td><td>'+c.ct+'</td><td>'+(c.cached?'⚡$0':'$'+c.cost.toFixed(5))+'</td></tr>';
+    });
+    h+='</table>';
+    h+='<div style="font-size:10px;color:#888;line-height:1.7">💡 对比前端原型：这里的 Token 数来自 API 响应的 <code>usage_metadata</code>，耗时是真实网络+推理延迟。缓存命中行耗时 ≈0s、0 Token——这就是 2.9 LLM-Caching 的价值。</div>';
+    body.innerHTML=h;
+  });
+}
+
+/* ═══════════ 🔌 后端接口面板：接口清单 + 实时探活 ═══════════ */
+var API_LIST=[
+  {m:'GET', p:'/api/health',  d:'健康检查（LLM/Embedding 配置状态）', probe:true},
+  {m:'GET', p:'/api/chunks',  d:'知识库分块列表（启动时已建 FAISS 索引）', probe:true},
+  {m:'GET', p:'/api/memory',  d:'服务端记忆快照（全量/摘要/轮次）', probe:true},
+  {m:'GET', p:'/api/cost',    d:'真实 token_usage 成本明细（2.8）', probe:true},
+  {m:'GET', p:'/api/config',  d:'运行时调参：Top-K 滑块（POST 修改即时生效）', probe:true},
+  {m:'POST',p:'/api/chat',    d:'RAG 问答：真检索 + DeepSeek 流式 SSE（2.1/2.5/2.7/2.9）'},
+  {m:'POST',p:'/api/sim',     d:'相似度拆解：query 真向量化 + 余弦计算（2.3）'},
+  {m:'POST',p:'/api/sql',     d:'Text-to-SQL：LLM 生成 + SQLite 执行（2.11）'},
+  {m:'POST',p:'/api/eval',    d:'RAG 评测：7 条用例真跑检索（2.10）'},
+  {m:'POST',p:'/api/memory/reset', d:'清空服务端记忆'}
+];
+function toggleApi(){
+  var p=el('apiPanel'),b=el('apiBackdrop');
+  if(p.classList.contains('open')){p.classList.remove('open');b.classList.remove('show');return}
+  renderApi();p.classList.add('open');b.classList.add('show');
+}
+function renderApi(){
+  var body=el('apiBody');
+  var ok=HEALTH&&HEALTH.llm&&HEALTH.embedding;
+  var h='<div class="cost-sum">'
+   +'<div class="st"><div class="v" style="font-size:13px;color:'+(ok?'#52c41a':'#ff4d4f')+'">'+(ok?'✅ 已连接':'❌ 异常')+'</div><div class="l">连接状态</div></div>'
+   +'<div class="st"><div class="v" style="font-size:13px">'+location.host+'</div><div class="l">当前访问地址（应为 localhost:8082）</div></div>'
+   +'<div class="st"><div class="v" style="font-size:13px">'+(HEALTH?(HEALTH.llm?'✅':'❌'):'…')+' DeepSeek</div><div class="l">LLM（DEEPSEEK_API_KEY）</div></div>'
+   +'<div class="st"><div class="v" style="font-size:13px">'+(HEALTH?(HEALTH.embedding?'✅ '+HEALTH.dim+'维':'❌'):'…')+'</div><div class="l">Embedding（DashScope v3）</div></div></div>';
+  h+='<h4 style="font-size:12px;margin-bottom:6px">🚀 启动方式</h4>'
+   +'<div class="sqlcode" style="font-size:10px">cd sample-4days/day2\npython3 app_full.py   # 等 "✅ FAISS 索引就绪" 后访问 ↓\n→ http://localhost:8082/</div>';
+  h+='<h4 style="font-size:12px;margin:10px 0 6px">📋 接口清单（GET 接口实时探活中…）</h4>'
+   +'<table class="cost-table"><tr><th>方法</th><th>路径</th><th>用途</th><th>状态</th></tr>';
+  API_LIST.forEach(function(a,i){
+    h+='<tr><td><b style="color:'+(a.m==='GET'?'#1677ff':'#fa8c16')+'">'+a.m+'</b></td><td style="font-family:monospace">'+a.p+'</td><td>'+a.d+'</td>'
+     +'<td id="apiSt'+i+'">'+(a.probe?'⏳':(ok?'<span style="color:#52c41a">就绪</span>':'<span style="color:#ff4d4f">依赖异常</span>'))+'</td></tr>';
+  });
+  h+='</table><div style="font-size:10px;color:#888;line-height:1.7">💡 POST 接口不主动探活（会产生真实 LLM 调用/修改记忆），状态按 LLM+Embedding 就绪情况推断。<br>另外两个相关服务：day1 → :8081；day2 旧简化版 → :8200（与本页无关）。</div>';
+  body.innerHTML=h;
+  // GET 接口逐个真实探活，显示状态码 + 耗时
+  API_LIST.forEach(function(a,i){
+    if(!a.probe)return;
+    var t0=Date.now();
+    fetch(a.p).then(function(r){
+      el('apiSt'+i).innerHTML='<span style="color:'+(r.ok?'#52c41a':'#ff4d4f')+'">'+r.status+' · '+(Date.now()-t0)+'ms</span>';
+    }).catch(function(){
+      el('apiSt'+i).innerHTML='<span style="color:#ff4d4f">❌ 不通</span>';
+    });
+  });
+}
+
+/* ═══════════ 欢迎页 ═══════════ */
+function clearChat(){
+  el('chatArea').innerHTML='<div class="welcome" id="welcomePanel">'
+   +'<h1>📚 Day2 — 知识库 + 记忆系统 <span style="font-size:12px;color:#52c41a">完整真实版</span></h1>'
+   +'<p>FAISS 真向量检索 · DeepSeek 真流式回答 · 4 种记忆策略（摘要真 LLM 压缩）· 真实 Token 计费</p>'
+   +'<div class="tab-desc" style="max-width:480px">'
+   +'<b>与原型的区别</b>：提问后先看到「向量化+检索」的真实延迟，再看到 DeepSeek 逐 token 流式输出；'
+   +'右侧记忆是<b>服务端真实状态</b>，④混合记忆真实拼入 Prompt；💰面板的 Token 是 API 返回的真实用量。<br>'
+   +'<span class="tip">💡 建议动作：问 3 轮触发真 LLM 摘要 → 追问"刚才第一个问题是什么"验证记忆生效 → 重复提问看缓存 → 跑评测</span></div>'
+   +'<div class="quick">'
+   +'<div class="quick-q" onclick="setQ(\'光模块收光功率多少算异常？\')">🔍 光模块功率异常标准？</div>'
+   +'<div class="quick-q" onclick="setQ(\'P0 告警的处理时限是什么？\')">🔍 P0 告警处理时限？</div>'
+   +'<div class="quick-q" onclick="setQ(\'AAU 多久巡检一次？\')">🔍 AAU 巡检周期？</div>'
+   +'<div class="quick-q" onclick="setQ(\'刚才我问的第一个问题是什么？\')">🧠 测记忆：刚才问了啥？</div>'
+   +'<div class="quick-q" onclick="setQ(\'/sim 光模块温度过高\')">📐 /sim 真向量拆解</div>'
+   +'<div class="quick-q" onclick="setQ(\'/sql 统计各厂商故障设备数量\')">🗄️ /sql 真生成+真执行</div>'
+   +'</div></div>';
+}
+clearChat();renderPanel();
+</script>
+</body>
+</html>

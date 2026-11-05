@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多智能体状态共享机制 — 电力设备故障诊断</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .subtitle { color: #6b7280; margin-bottom: 32px; }
+
+  .legend { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .legend-dot.read { background: #e5e7eb; border: 2px solid #9ca3af; }
+  .legend-dot.write { background: #1a3a5c; }
+
+  /* State table */
+  .state-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .state-table th { background: #1a3a5c; color: #fff; font-weight: 500; font-size: 13px; padding: 10px 14px; text-align: left; }
+  .state-table td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  .state-table tr:last-child td { border-bottom: none; }
+  .cell-read { background: #f3f4f6; }
+  .cell-write { background: #e8f0f8; font-weight: 600; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .tag-read { background: #e5e7eb; color: #6b7280; }
+  .tag-write { background: #1a3a5c; color: #fff; }
+
+  /* Flow diagram */
+  .flow-container { display: flex; gap: 16px; align-items: stretch; margin-bottom: 40px; overflow-x: auto; }
+  .agent-card { background: #fff; border-radius: 8px; padding: 20px; min-width: 200px; flex: 1; box-shadow: 0 1px 3px rgba(0,0,0,.06); border-top: 3px solid #1a3a5c; }
+  .agent-card.supervisor { border-top-color: #374151; }
+  .agent-name { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .field-list { list-style: none; }
+  .field-list li { font-size: 12px; padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+  .field-list .arrow-in { color: #9ca3af; }
+  .field-list .arrow-out { color: #1a3a5c; font-weight: 600; }
+  .arrow-sep { text-align: center; font-size: 20px; color: #d1d5db; display: flex; align-items: center; }
+
+  /* Sequence diagram */
+  .seq-container { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 40px; }
+  .seq-step { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f0f0f0; align-items: flex-start; }
+  .seq-step:last-child { border-bottom: none; }
+  .seq-num { width: 28px; height: 28px; background: #1a3a5c; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .seq-num.decision { background: #374151; }
+  .seq-desc { flex: 1; }
+  .seq-desc h4 { font-size: 14px; margin-bottom: 4px; }
+  .seq-desc p { font-size: 12px; color: #6b7280; line-height: 1.6; }
+
+  /* Code block */
+  .code-block { background: #f3f4f6; border-radius: 6px; padding: 16px; font-family: "SF Mono", Monaco, monospace; font-size: 12px; line-height: 1.8; overflow-x: auto; margin-bottom: 32px; white-space: pre; }
+  .code-block .kw { color: #1a3a5c; }
+  .code-block .field { color: #059669; }
+  .code-block .comment { color: #9ca3af; }
+
+  h2 { font-size: 17px; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+  h3 { font-size: 14px; margin-bottom: 12px; color: #374151; }
+</style>
+</head>
+<body>
+
+<h1>多智能体状态共享机制</h1>
+<p class="subtitle">LangGraph StateGraph 实现 — 电力设备故障诊断场景</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot read"></span> 读取（read）</div>
+  <div class="legend-item"><span class="legend-dot write"></span> 写入（write）</div>
+</div>
+
+<!-- ============ 状态字段表 ============ -->
+<h2>1. 共享状态定义</h2>
+<p style="font-size:13px;color:#6b7280;margin-bottom:12px">MultiAgentState（TypedDict）— 所有 Agent 共享同一份状态字典</p>
+
+<table class="state-table">
+  <thead>
+    <tr><th>字段</th><th>类型</th><th>写入方</th><th>读取方</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>device_id</code></td><td>str</td>
+      <td><span class="tag tag-write">初始输入</span></td>
+      <td><span class="tag tag-read">Diagnosis, Execute</span></td>
+      <td>故障设备编号</td>
+    </tr>
+    <tr>
+      <td><code>symptom</code></td><td>str</td>
+      <td><span class="tag tag-write">初始输入</span></td>
+      <td><span class="tag tag-read">Diagnosis</span></td>
+      <td>故障现象描述</td>
+    </tr>
+    <tr>
+      <td class="cell-write"><code>diagnosis_result</code></td><td>str</td>
+      <td><span class="tag tag-write">Diagnosis Agent</span></td>
+      <td><span class="tag tag-read">Supervisor, Solution, Execute</span></td>
+      <td>故障诊断结论</td>
+    </tr>
+    <tr>
+      <td class="cell-write"><code>solution_plan</code></td><td>str</td>
+      <td><span class="tag tag-write">Solution Agent</span></td>
+      <td><span class="tag tag-read">Supervisor, Execute</span></td>
+      <td>维修处置方案</td>
+    </tr>
+    <tr>
+      <td class="cell-write"><code>execution_record</code></td><td>str</td>
+      <td><span class="tag tag-write">Execute Agent</span></td>
+      <td><span class="tag tag-read">Supervisor</span></td>
+      <td>巡检记录</td>
+    </tr>
+    <tr>
+      <td class="cell-write"><code>next_action</code></td><td>str</td>
+      <td><span class="tag tag-write">Supervisor</span></td>
+      <td><span class="tag tag-read">路由函数</span></td>
+      <td>下一节点名称</td>
+    </tr>
+    <tr>
+      <td class="cell-write"><code>task_history</code></td><td>list</td>
+      <td><span class="tag tag-write">每个 Agent 追加</span></td>
+      <td><span class="tag tag-read">汇总节点</span></td>
+      <td>已执行的任务序列</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============ State 是什么 ============ -->
+<h2>2. State 是什么？由谁设置？</h2>
+<p style="font-size:13px;color:#6b7280;margin-bottom:12px">State 不是 LangChain 内置的，是<b>你定义的 Python TypedDict</b>。StateGraph 用它作为共享数据结构的"蓝图"，每个节点读写同一个字典。</p>
+
+<pre class="code-block">
+# State 是你自己定义的，不是 LangChain 预设的
+class MultiAgentState(TypedDict):
+    diagnosis_result: Optional[str]    # 你定义
+    solution_plan: Optional[str]       # 你定义
+    execution_record: Optional[str]    # 你定义
+    next_action: str                   # 你定义
+    task_history: list                 # 你定义
+
+# 创建 StateGraph 时传入这个 TypedDict
+wf = StateGraph(MultiAgentState)       # LangGraph 用这个结构管理状态
+
+# 每个节点返回部分字段，LangGraph 自动合并
+</pre>
+
+<p style="font-size:13px;color:#6b7280;">
+<b>一句话</b>：State 是你自己用 TypedDict 定义的 Python 字典结构。StateGraph 负责在每个节点返回后，把返回的字段合并到同一个字典里。节点的代码就是普通的"读 dict 字段 → 返回 dict 字段"——没有黑魔法。
+</p>
+
+<!-- ============ 核心机制 ============ -->
+<h2>3. 核心机制：节点返回部分状态，LangGraph 自动合并</h2>
+
+<pre class="code-block">
+# Diagnosis Agent — 只返回自己改的字段
+def diagnosis_node(state: MultiAgentState) -> dict:
+    # 读取 state["device_id"]、state["symptom"]
+    diagnosis = _chat(client, prompt, system_prompt)
+    return {
+        "diagnosis_result": diagnosis,        # 只写这个
+        "task_history": state["task_history"] + ["diagnosis"]
+    }
+    # LangGraph 自动把这两个字段合并回全局 state
+    # device_id、symptom 等未修改的字段保持不变
+
+# Solution Agent — 读取前一步的结果
+def solution_node(state: MultiAgentState) -> dict:
+    # 读取 state["diagnosis_result"] ← Diagnosis 之前写入的
+    solution = _chat(client, state["diagnosis_result"], system_prompt)
+    return {
+        "solution_plan": solution,              # 新增字段
+        "task_history": state["task_history"] + ["solution"]
+    }
+    # 合并后 state 同时包含 diagnosis_result + solution_plan
+</pre>
+
+<!-- ============ Agent 读写矩阵 ============ -->
+<h2>4. Agent 读写矩阵</h2>
+
+<div class="flow-container">
+  <div class="agent-card supervisor">
+    <div class="agent-name">Supervisor</div>
+    <ul class="field-list">
+      <li style="color:#9ca3af;font-size:11px">── 只读不写 ──</li>
+      <li><span class="arrow-in">↳</span> diagnosis_result</li>
+      <li><span class="arrow-in">↳</span> solution_plan</li>
+      <li><span class="arrow-in">↳</span> execution_record</li>
+      <li style="color:#1a3a5c;font-size:11px;margin-top:8px">── 写入 ──</li>
+      <li><span class="arrow-out">↳</span> next_action</li>
+    </ul>
+  </div>
+  <div class="arrow-sep">→</div>
+  <div class="agent-card">
+    <div class="agent-name">Diagnosis Agent</div>
+    <ul class="field-list">
+      <li style="color:#9ca3af;font-size:11px">── 读取 ──</li>
+      <li><span class="arrow-in">↳</span> device_id</li>
+      <li><span class="arrow-in">↳</span> symptom</li>
+      <li style="color:#1a3a5c;font-size:11px;margin-top:8px">── 写入 ──</li>
+      <li><span class="arrow-out">↳</span> diagnosis_result</li>
+      <li><span class="arrow-out">↳</span> task_history</li>
+    </ul>
+  </div>
+  <div class="arrow-sep">→</div>
+  <div class="agent-card">
+    <div class="agent-name">Solution Agent</div>
+    <ul class="field-list">
+      <li style="color:#9ca3af;font-size:11px">── 读取 ──</li>
+      <li><span class="arrow-in">↳</span> diagnosis_result</li>
+      <li style="color:#1a3a5c;font-size:11px;margin-top:8px">── 写入 ──</li>
+      <li><span class="arrow-out">↳</span> solution_plan</li>
+      <li><span class="arrow-out">↳</span> task_history</li>
+    </ul>
+  </div>
+  <div class="arrow-sep">→</div>
+  <div class="agent-card">
+    <div class="agent-name">Execute Agent</div>
+    <ul class="field-list">
+      <li style="color:#9ca3af;font-size:11px">── 读取 ──</li>
+      <li><span class="arrow-in">↳</span> device_id</li>
+      <li><span class="arrow-in">↳</span> diagnosis_result</li>
+      <li><span class="arrow-in">↳</span> solution_plan</li>
+      <li style="color:#1a3a5c;font-size:11px;margin-top:8px">── 写入 ──</li>
+      <li><span class="arrow-out">↳</span> execution_record</li>
+      <li><span class="arrow-out">↳</span> task_history</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 时序流程 ============ -->
+<h2>5. 完整时序流程</h2>
+
+<div class="seq-container">
+  <div class="seq-step">
+    <div class="seq-num decision">1</div>
+    <div class="seq-desc"><h4>Supervisor 检查状态</h4><p>读取 diagnosis_result → None。决策：路由到 Diagnosis Agent</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num">2</div>
+    <div class="seq-desc"><h4>Diagnosis Agent 执行</h4><p>读取 device_id="EP-D-002", symptom="合闸后无法分闸" → 调用 LLM 诊断 → 写入 diagnosis_result="分闸线圈电阻异常，判断为线圈绝缘老化..." → 追加 task_history</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num decision">3</div>
+    <div class="seq-desc"><h4>Supervisor 再次检查</h4><p>读取 diagnosis_result → 有值。读取 solution_plan → None。决策：路由到 Solution Agent</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num">4</div>
+    <div class="seq-desc"><h4>Solution Agent 执行</h4><p>读取 diagnosis_result（第 2 步写入的）→ 调用 LLM 生成方案 → 写入 solution_plan="立即降负荷 → 隔离故障设备 → 测量线圈电阻..."</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num decision">5</div>
+    <div class="seq-desc"><h4>Supervisor 再次检查</h4><p>diagnosis_result 有值, solution_plan 有值, execution_record → None。决策：路由到 Execute Agent</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num">6</div>
+    <div class="seq-desc"><h4>Execute Agent 执行</h4><p>读取 diagnosis_result + solution_plan（第 2、4 步写入的）→ 生成巡检记录 → 写入 execution_record</p></div>
+  </div>
+  <div class="seq-step">
+    <div class="seq-num decision">7</div>
+    <div class="seq-desc"><h4>Supervisor 最终检查</h4><p>三个字段全部有值 → 决策：FINISH → 路由到汇总节点，输出完整报告</p></div>
+  </div>
+</div>
+
+<!-- ============ 五种共享状态方式对比 ============ -->
+<h2>6. 多智能体共享状态的五种方式</h2>
+
+<table class="state-table">
+  <thead>
+    <tr><th style="width:12%">方式</th><th style="width:28%">原理</th><th style="width:18%">适用场景</th><th style="width:22%">本实验中对应的例子</th><th style="width:20%">优点 / 局限</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>① StateGraph 共享 State</strong></td>
+      <td>所有 Agent 共享同一个 TypedDict。每个节点读全量状态、返回部分字段。LangGraph 自动将返回字段合并到全局 state，下游节点直接从同一个字典读取上游写入的字段</td>
+      <td>多 Agent 按固定流程顺序协作</td>
+      <td>Diagnosis 写 diagnosis_result → Solution 读 → Execute 读（见 §3 读写矩阵）</td>
+      <td>✅ 直观，字段级可追溯<br>⚠️ 流程固化，不够灵活</td>
+    </tr>
+    <tr>
+      <td><strong>② 多个 Agent 读同一个 Agent 的输出</strong></td>
+      <td>Agent A（Diagnosis）写 diagnosis_result → Agent B（Solution）读 → Agent C（Execute）也读。同一个字段，多个下游 Agent 各自消费</td>
+      <td>一个诊断结论 → 方案 Agent 用来出方案，执行 Agent 用来记录巡检</td>
+      <td><b>是谁写了被多个人读？</b>Diagnosis Agent 写了 diagnosis_result。读它的有两个：Solution Agent 用它出方案，Execute Agent 用它写巡检记录。<br><b>是谁同时读了两个人的？</b>Execute Agent：同时读 Diagnosis 的 diagnosis_result <b>和</b> Solution 的 solution_plan</td>
+      <td>✅ 上游一次写入，下游多方复用<br>⚠️ 下游耦合到字段名</td>
+    </tr>
+    <tr>
+      <td><strong>③ Supervisor 路由调度</strong></td>
+      <td>中央调度 Agent 读取所有状态字段，根据填充情况决定调用哪个 Agent。每个 Agent 返回后，Supervisor 重新评估状态，决定下一步路由</td>
+      <td>条件分支、审批流程、需要人工介入的场景</td>
+      <td>Supervisor 检查 diagnosis_result/solution_plan/execution_record → 决定路由到哪个 Agent 或 FINISH（见 §4 时序流程）</td>
+      <td>✅ 灵活的条件路由<br>⚠️ Supervisor 成为单点</td>
+    </tr>
+    <tr>
+      <td><strong>④ Tool Call 消息传递</strong></td>
+      <td>Agent 调用 Tool → Tool 返回值注入到对话消息列表（messages）→ LLM 读取消息中的工具结果，决定下一步。状态不是存在字典里，而是存在对话历史中</td>
+      <td>LLM 自主决策下一步，适合探索型任务</td>
+      <td>01-agent-basic 的 ReAct 循环：LLM 调用 search_equipment → 工具结果追加到 messages → LLM 根据结果回答</td>
+      <td>✅ Agent 间低耦合<br>⚠️ 消息列表膨胀</td>
+    </tr>
+    <tr>
+      <td><strong>⑤ 外部存储 / MCP</strong></td>
+      <td>Agent 通过 MCP 工具读写外部系统（JSON 文件、SQLite、Redis）。数据持久化到外部，不同 Agent 甚至不同会话都可以读写</td>
+      <td>跨会话持久化、多服务协作、生产环境</td>
+      <td>Sample 2 后端 devices.json — 多个 API 端点（等同于多个 Agent）共享同一份数据文件</td>
+      <td>✅ 跨会话、支持大容量<br>⚠️ 需要外部服务</td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>

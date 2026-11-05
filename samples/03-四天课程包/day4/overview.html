@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day4 — SDD 工程化交付</title>
+<style>:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--border:#e5e7eb;--primary:#2563eb;--primary-light:#eff6ff;--amber:#d97706;--amber-bg:#fffbeb;--green:#059669;--green-bg:#ecfdf5}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:32px;line-height:1.7}.container{max-width:900px;margin:0 auto}h1{font-size:28px;margin-bottom:4px}h1 span{font-weight:400;color:var(--text2);font-size:16px}.subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--border)}h2{font-size:20px;margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}h3{font-size:15px;margin-bottom:8px}.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}.tag-core{background:var(--primary-light);color:var(--primary)}.tag-opt{background:var(--amber-bg);color:var(--amber)}pre{background:#f3f4f6;padding:12px 16px;border-radius:6px;font-size:12px;overflow-x:auto;line-height:1.5}code{font-family:'SF Mono','Fira Code',monospace;font-size:12px}table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}th{background:#f8fafc;font-weight:600;color:var(--text2);font-size:11px}.arch-row{display:flex;gap:14px;margin:16px 0}.arch-box{flex:1;border-radius:8px;padding:14px;text-align:center;font-size:12px;background:var(--primary-light);border:1px solid var(--primary)}.arch-box strong{display:block;font-size:14px;margin-bottom:4px}
+</style></head><body><div class="container">
+<h1>Day4 — SDD 工程化交付 <span>| 从 Demo 到可交付产品</span></h1>
+<p class="subtitle">8 个实验 · 核心路径 5 个 · 产出：Spec 文档 + 测试套件 + Skills 包</p>
+<h2>学什么</h2>
+<div class="arch-row">
+<div class="arch-box"><strong>SDD 规范驱动</strong>先用自然语言写验收标准，AI 按标准写代码</div>
+<div class="arch-box"><strong>测试验证</strong>pytest + Prompt A/B 回归</div>
+<div class="arch-box"><strong>Skills 打包</strong>把 Agent 变成开箱即用的模板</div>
+</div>
+<h2>8 个实验</h2>
+<table><tr><th>#</th><th>实验</th><th>类型</th><th>产出</th></tr>
+<tr><td>4.1</td><td>SDD + Spec 撰写</td><td><span class="tag tag-core">核心</span></td><td>10 条验收标准 + 接口契约</td></tr>
+<tr><td>4.2</td><td>单元测试 + E2E</td><td><span class="tag tag-core">核心</span></td><td>pytest + 对照 Spec 验证</td></tr>
+<tr><td>4.3</td><td>Prompt A/B 回归</td><td><span class="tag tag-core">核心</span></td><td>12 条用例 × 双版本对比</td></tr>
+<tr><td>4.4</td><td>云端部署 ECS</td><td><span class="tag tag-opt">选做</span></td><td>deploy.sh + 公网访问</td></tr>
+<tr><td>4.5</td><td>Locust 压力测试</td><td><span class="tag tag-opt">选做</span></td><td>100 并发 QPS/延迟</td></tr>
+<tr><td>4.6</td><td>Skills 模板打包</td><td><span class="tag tag-core">核心</span></td><td>完整目录 + README 开箱即用</td></tr>
+<tr><td>4.7</td><td>对接真实系统</td><td><span class="tag tag-core">核心</span></td><td>AI Coding Adapter Demo</td></tr></table>
+<h2>Day4 独立包结构</h2>
+<pre><code>sample-4days/day4/
+├── spec.md               10 条验收标准 + 接口契约
+├── test_agent.py         pytest 测试用例（对照 Spec）
+├── prompt_test.py        Prompt A/B 对比（12 条 × 双版本）
+├── skills/5g-ops-agent/  Skills 模板（开箱即用）
+│   ├── README.md
+│   ├── agent.py
+│   └── tools.py
+└── overview.html          介绍页</code></pre>
+<h2>快速开始</h2>
+<pre><code>pytest test_agent.py -v     # 跑测试
+python prompt_test.py       # Prompt 对比</code></pre>
+<h2>学员要能回答</h2>
+<div class="card">
+<p>1. 不用 SDD 直接让 AI 写代码有什么问题？</p>
+<p>2. 怎么验证 AI 写的代码是对的？</p>
+<p>3. Skills 打包给别人用，需要哪些文件？</p>
+</div>
+</div></body></html>

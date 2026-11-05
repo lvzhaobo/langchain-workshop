@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day3 — 多 Agent 协作与生产部署</title>
+<style>:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--border:#e5e7eb;--primary:#2563eb;--primary-light:#eff6ff;--purple:#7c3aed;--purple-bg:#f5f3ff;--danger:#dc2626;--danger-light:#fef2f2;--green:#059669;--green-bg:#ecfdf5;--amber:#d97706;--amber-bg:#fffbeb}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:32px;line-height:1.7}.container{max-width:900px;margin:0 auto}h1{font-size:28px;margin-bottom:4px}h1 span{font-weight:400;color:var(--text2);font-size:16px}.subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--border)}h2{font-size:20px;margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}h3{font-size:15px;margin-bottom:8px}.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}.tag-core{background:var(--primary-light);color:var(--primary)}.tag-opt{background:var(--amber-bg);color:var(--amber)}pre{background:#f3f4f6;padding:12px 16px;border-radius:6px;font-size:12px;overflow-x:auto;line-height:1.5}code{font-family:'SF Mono','Fira Code',monospace;font-size:12px}table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}th{background:#f8fafc;font-weight:600;color:var(--text2);font-size:11px}.arch-row{display:flex;gap:14px;margin:16px 0}.arch-box{flex:1;border-radius:8px;padding:14px;text-align:center;font-size:12px}.arch-box strong{display:block;font-size:14px;margin-bottom:4px}.arch-sup{background:var(--primary-light);border:1px solid var(--primary)}.arch-hitl{background:var(--danger-light);border:1px solid var(--danger)}.arch-stream{background:var(--green-bg);border:1px solid var(--green)}
+</style></head><body><div class="container">
+<h1>Day3 — 多 Agent 协作与生产部署 <span>| 从单 Agent 到多 Agent</span></h1>
+<p class="subtitle">8 个实验 · 核心路径 6 个 · 产出：Supervisor + HITL + Stream 完整 Demo</p>
+<h2>学什么</h2>
+<div class="arch-row">
+<div class="arch-box arch-sup"><strong>Supervisor 模式</strong>中央调度 + N 个专业 Worker</div>
+<div class="arch-box arch-hitl"><strong>HITL 人工审批</strong>高风险操作前暂停等人</div>
+<div class="arch-box arch-stream"><strong>Stream 流式</strong>7 种 stream_mode</div>
+</div>
+<h2>8 个实验</h2>
+<table><tr><th>#</th><th>实验</th><th>类型</th><th>产出</th></tr>
+<tr><td>3.1</td><td>意图识别 + 路由</td><td><span class="tag tag-core">核心</span></td><td>四通道路由 + 8 条自测</td></tr>
+<tr><td>3.2</td><td>LangGraph 多 Agent 流水线</td><td><span class="tag tag-core">核心</span></td><td>Supervisor + Serial + Conditional 三种模式</td></tr>
+<tr><td>3.3</td><td>进阶协作模式</td><td><span class="tag tag-core">核心</span></td><td>Map-Reduce / Loop / Mesh</td></tr>
+<tr><td>3.4</td><td>HITL 人工审批</td><td><span class="tag tag-core">核心</span></td><td>interrupt + Command(resume) + 三通道审批</td></tr>
+<tr><td>3.5</td><td>安全护栏</td><td><span class="tag tag-core">核心</span></td><td>注入检测 + 白名单 + 输出审核</td></tr>
+<tr><td>3.6</td><td>可观测 Trace</td><td><span class="tag tag-core">核心</span></td><td>LocalTracer + Span 柱状图</td></tr>
+<tr><td>3.7</td><td>Streaming 流式输出</td><td><span class="tag tag-opt">选做</span></td><td>SSE 五种事件 + 前端渲染</td></tr>
+<tr><td>3.8</td><td>企微Bot/浏览器插件</td><td><span class="tag tag-opt">选做</span></td><td>Webhook + curl/企微/插件</td></tr></table>
+<h2>Day3 独立包架构</h2>
+<pre><code>sample-4days/day3/
+├── app.py                  Flask 入口（端口 8301）
+├── agents/
+│   ├── supervisor_agent.py Supervisor + 3 Worker
+│   └── hitl_agent.py       HITL 审批（interrupt + resume）
+└── templates/index.html    页面：Supervisor + HITL + Checkpoint</code></pre>
+<h2>快速启动</h2>
+<pre><code>cp .env.example .env   # 填 DEEPSEEK_API_KEY
+pip install -r requirements.txt
+python app.py          # → http://localhost:8301</code></pre>
+<h2>学员要能回答</h2>
+<div class="card">
+<p>1. Supervisor 怎么知道派给哪个 Worker？怎么知道任务完成了？</p>
+<p>2. HITL 暂停后怎么恢复？State 丢不丢？</p>
+<p>3. add_conditional_edges 和 Command 有什么区别？</p>
+</div>
+</div></body></html>

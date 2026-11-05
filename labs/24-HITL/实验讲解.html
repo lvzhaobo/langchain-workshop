@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验 24 · HITL 人工审批 — interrupt · Command(resume) · 三通道审批</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+  --pink:#db2777;--pink-bg:#fdf2f8;--blue:#2563eb;--blue-bg:#eff6ff;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--orange:#ea580c;--orange-bg:#fff7ed;
+  --green:#16a34a;--green-bg:#f0fdf4;--cyan:#0891b2;--cyan-bg:#ecfeff;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --dark:#0f172a;--dark2:#1e293b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 8px 24px rgba(0,0,0,.09);
+  --mono:'SF Mono','Fira Code',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px 70px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .chip{display:inline-block;font-size:12px;font-weight:700;color:var(--red);background:var(--red-bg);border:1px solid #fecaca;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.hero h1{font-size:38px;font-weight:900;margin:18px 0 12px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,#dc2626,#db2777 55%,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:15px;color:var(--text2);max-width:720px;margin:0 auto}
+.hero .stats{display:flex;justify-content:center;gap:36px;margin-top:26px;flex-wrap:wrap}
+.hero .stat b{font-size:22px;font-weight:900;display:block}
+.hero .stat span{font-size:11px;color:var(--text3);letter-spacing:1px}
+.quicknav{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 12px}
+.qn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);box-shadow:var(--shadow);transition:.2s;display:flex;gap:10px;align-items:center}
+.qn:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--c)}
+.qn .ic{width:36px;height:36px;border-radius:10px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.qn b{font-size:12.5px;display:block}
+.qn span{font-size:10.5px;color:var(--text3)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-top:26px;overflow:hidden}
+.sec-head{padding:26px 34px 0;display:flex;align-items:center;gap:13px}
+.sec-head .ic{width:46px;height:46px;border-radius:12px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.sec-head h2{font-size:21px;font-weight:900}
+.sec-head .sub{font-size:11.5px;color:var(--text3);font-family:var(--mono)}
+.sec-body{padding:18px 34px 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px}
+.sec-body.single{grid-template-columns:1fr}
+.p-block{margin-top:12px}
+.p-block:first-child{margin-top:0}
+.p-block h4{font-size:12px;font-weight:800;color:var(--c);letter-spacing:1.5px;margin-bottom:6px}
+.p-block p,.p-block li{font-size:13px;color:var(--text2)}
+.p-block b{color:var(--text)}
+.p-block code{font-family:var(--mono);font-size:11.5px;background:var(--bg);padding:1px 7px;border-radius:5px;color:var(--c)}
+.dot-list{list-style:none}
+.dot-list li{padding:3px 0 3px 20px;position:relative}
+.dot-list li::before{content:'—';position:absolute;left:2px;color:var(--c);font-size:11px;font-weight:900}
+.codebox{background:var(--dark);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.codebox+.codebox{margin-top:12px}
+.codebox .cb-hd{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--dark2);font-size:10.5px;color:#94a3b8;font-family:var(--mono)}
+.codebox .cb-hd .d{width:8px;height:8px;border-radius:50%}
+.codebox pre{padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#e2e8f0;overflow-x:auto}
+.c-k{color:#c084fc}.c-s{color:#86efac}.c-f{color:#7dd3fc}.c-c{color:#64748b}.c-n{color:#fbbf24}
+.lab-chip{display:inline-block;font-size:10px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:9px;margin:2px 3px 0 0}
+/* 图示画布 */
+.gcanvas{background:linear-gradient(145deg,var(--cb),#fff 130%);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-row{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.g-node{background:#fff;border:2px solid var(--c);border-radius:12px;padding:8px 15px;font-size:12px;font-weight:800;color:var(--c);text-align:center;box-shadow:var(--shadow)}
+.g-node small{display:block;font-weight:400;font-size:9.5px;color:var(--text3)}
+.g-node.alt{border-color:var(--orange);color:var(--orange)}
+.g-node.ok{border-color:var(--green);color:var(--green)}
+.g-node.stop{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.g-node.dim{border-style:dashed;border-color:var(--text3);color:var(--text2)}
+.g-arr{color:var(--text3);font-weight:900;font-size:15px}
+.g-tag{font-size:10px;font-weight:800;background:var(--cb);color:var(--c);padding:2px 10px;border-radius:10px;border:1px dashed var(--c);font-family:var(--mono)}
+/* 演进时间轴 */
+.evo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px}
+.evo-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative}
+.evo-card.cur{border-color:var(--red);background:var(--red-bg)}
+.evo-card .no{font-size:10px;font-weight:900;font-family:var(--mono);color:var(--text3);letter-spacing:1px}
+.evo-card.cur .no{color:var(--red)}
+.evo-card b{font-size:13.5px;display:block;margin:2px 0 4px}
+.evo-card p{font-size:11px;color:var(--text2);line-height:1.55}
+.evo-card .how{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+/* 三通道卡 */
+.ch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+.ch-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:var(--bg)}
+.ch-card .tag{font-size:10px;font-weight:900;font-family:var(--mono);letter-spacing:1px;padding:2px 9px;border-radius:8px;display:inline-block}
+.ch-card b{font-size:14px;display:block;margin:8px 0 5px}
+.ch-card p{font-size:11.5px;color:var(--text2);line-height:1.6}
+.ch-card .who{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:8px;padding-top:7px;border-top:1px dashed var(--border)}
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tbl th{background:#f8fafc;text-align:left;padding:9px 14px;font-size:11px;color:var(--text3);letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:var(--text2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text)}
+.tbl code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:4px}
+.pick{font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px;white-space:nowrap}
+/* 步骤路线 */
+.route{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.rt{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.rt .no{width:26px;height:26px;border-radius:8px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.rt b{font-size:12px;display:block}
+.rt span{font-size:10.5px;color:var(--text3)}
+/* 检查清单 */
+.check-list{list-style:none;margin-top:6px}
+.check-list li{padding:5px 0 5px 26px;position:relative;font-size:13px;color:var(--text2)}
+.check-list li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:900;font-size:13px}
+/* 警示条 */
+.warn{background:var(--red-bg);border:1px solid #fecaca;border-left:4px solid var(--red);border-radius:10px;padding:12px 16px;margin-top:14px}
+.warn b{font-size:12.5px;color:#991b1b;display:block;margin-bottom:3px}
+.warn p{font-size:12px;color:#7f1d1d}
+.warn code{font-family:var(--mono);font-size:11px;background:#fff;padding:1px 6px;border-radius:4px;color:#991b1b}
+.cta{margin-top:40px;background:linear-gradient(120deg,#7f1d1d,#831843 55%,#4c1d95);border-radius:18px;padding:30px 36px;color:#fff;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{font-size:20px;font-weight:900}
+.cta p{font-size:12.5px;opacity:.85;margin-top:4px}
+.cta .btns{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);transition:.2s}
+.cta a:hover{background:rgba(255,255,255,.26)}
+.footer{margin-top:44px;text-align:center;font-size:11.5px;color:var(--text3)}
+.footer code{font-family:var(--mono);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:5px}
+@media(max-width:900px){
+  .sec-body{grid-template-columns:1fr}
+  .quicknav{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .evo,.ch-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <span class="chip">LAB 3.4 · HUMAN-IN-THE-LOOP APPROVAL</span>
+    <h1>HITL <span class="grad">人工审批</span></h1>
+    <p>3.2 / 3.3 的流水线全自动跑到底——检测、诊断、决策、处置一条龙。但当处置方案是「重启核心基站」或「批量改 SCTP 配置」，你敢让它自己按下回车吗？本实验在流水线中间插一道闸门：<b>高风险暂停，人点头才继续</b>。</p>
+    <div class="stats">
+      <div class="stat"><b>1 个</b><span>新增 NODE</span></div>
+      <div class="stat"><b>interrupt</b><span>暂停原语</span></div>
+      <div class="stat"><b>3 条</b><span>审批通道</span></div>
+      <div class="stat"><b>high</b><span>唯一触发条件</span></div>
+      <div class="stat"><b>必需</b><span>checkpointer</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 快速导航 ===== -->
+  <div class="quicknav">
+    <a class="qn" href="#evo" style="--c:#0891b2;--cb:#ecfeff"><span class="ic">00</span><span><b>为什么要闸门</b><span>自动化的边界</span></span></a>
+    <a class="qn" href="#irq" style="--c:#dc2626;--cb:#fef2f2"><span class="ic">IRQ</span><span><b>interrupt 机制</b><span>暂停与恢复原理</span></span></a>
+    <a class="qn" href="#point" style="--c:#7c3aed;--cb:#f5f3ff"><span class="ic">PT</span><span><b>审批点放哪</b><span>条件边 + 位置</span></span></a>
+    <a class="qn" href="#chan" style="--c:#ea580c;--cb:#fff7ed"><span class="ic">CH</span><span><b>三条审批通道</b><span>终端 · Web · 飞书</span></span></a>
+    <a class="qn" href="#vs" style="--c:#2563eb;--cb:#eff6ff"><span class="ic">VS</span><span><b>选型与对照</b><span>通道 · sample-8</span></span></a>
+    <a class="qn" href="#run" style="--c:#16a34a;--cb:#f0fdf4"><span class="ic">RUN</span><span><b>动手跑</b><span>步骤 · 标准 · 排坑</span></span></a>
+  </div>
+
+  <!-- ===== 00 为什么要闸门 ===== -->
+  <div class="section" id="evo" style="--c:#0891b2;--cb:#ecfeff">
+    <div class="sec-head"><span class="ic">00</span><div><h2>动手前先想清楚：Agent 的能力边界不是技术问题，是责任问题</h2><span class="sub">3.2 串起来 · 3.3 灵活起来 · 3.4 装上闸门</span></div></div>
+    <div class="sec-body single">
+      <div class="evo">
+        <div class="evo-card">
+          <span class="no">LAB 3.2 · 怎么走</span>
+          <b>LangGraph 流水线</b>
+          <p>检测→诊断→决策→处置全自动。Serial / Supervisor / Conditional 三种编排，共享 State。</p>
+          <span class="how">StateGraph + conditional_edges</span>
+        </div>
+        <div class="evo-card">
+          <span class="no">LAB 3.3 · 还能怎么走</span>
+          <b>进阶协作模式</b>
+          <p>Map-Reduce 并行、Loop 回退重来、Mesh 去中心。编排更灵活，但仍是<b>全自动</b>。</p>
+          <span class="how">Send API / 回退边 / 全互联边</span>
+        </div>
+        <div class="evo-card cur">
+          <span class="no">LAB 3.4 · 该不该走</span>
+          <b>HITL 人工审批</b>
+          <p>在 executor 前插入审批闸门：<b>risk=high 暂停</b>，等人 approve/reject 才继续。</p>
+          <span class="how">interrupt() + Command(resume=...)</span>
+        </div>
+        <div class="evo-card">
+          <span class="no">LAB 3.5 · 能不能走</span>
+          <b>安全护栏</b>
+          <p>HITL 是<b>人</b>把关，护栏是<b>规则</b>把关：Prompt 注入检测、工具白名单、输出审核。</p>
+          <span class="how">前置校验 + 白名单 + 输出过滤</span>
+        </div>
+      </div>
+      <div class="p-block" style="margin-top:16px">
+        <h4>为什么 3.3 之后必须来一课 HITL</h4>
+        <ul class="dot-list">
+          <li>3.2/3.3 的 executor 输出的是<b>处置方案文本</b>——一旦接上真实的设备操作 API，Agent 的每一次幻觉都会变成一次生产事故</li>
+          <li>LLM 的诊断置信度再高也不是 100%：3.3 的 Loop 模式用 <code>MAX_LOOPS</code> 兜底时，会<b>强制放行低置信度结论</b>——这正是最需要人看一眼的时刻</li>
+          <li>合规要求：运营商变更管理规范里，高风险操作必须有<b>可追溯的人工授权记录</b>——技术上就是 State 里那个 <code>approval_status</code> 字段</li>
+        </ul>
+      </div>
+      <div class="p-block">
+        <h4>本实验的核心哲学</h4>
+        <p><b>不是「让人审批一切」，而是「让人只审批值得审批的」。</b>本实验只在 <code>risk_level == "high"</code> 时暂停——medium/low 直接执行。审批点设计得太宽，人会疲劳并变成无脑点「通过」，闸门就形同虚设；设计得太窄，等于没装。<b>风险分级是 HITL 能否落地的前提</b>，这也是 3.2 的 <code>risk_router</code> 在本实验里被复用的原因。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== IRQ interrupt 机制 ===== -->
+  <div class="section" id="irq" style="--c:#dc2626;--cb:#fef2f2">
+    <div class="sec-head"><span class="ic">IRQ</span><div><h2>知识点一：interrupt() 不是异常，是「存档 + 把球抛回调用方」</h2><span class="sub">langgraph.types.interrupt · Command(resume=...) · MemorySaver</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>三件事同时发生</h4>
+          <p>当节点内调用 <code>interrupt(payload)</code>，LangGraph 会：① 把当前 State 序列化写入 <b>checkpointer</b>；② 把 <code>payload</code> 原样抛回给调用方（在 <code>get_state().tasks[0].interrupts</code> 里能取到）；③ <b>停止推进</b>，<code>get_state().next</code> 指向被暂停的节点名。</p>
+        </div>
+        <div class="p-block">
+          <h4>三个必备条件，少一个就跑不通</h4>
+          <ul class="dot-list">
+            <li><b>必须编译时传 checkpointer</b>：<code>graph.compile(checkpointer=MemorySaver())</code>——没有存档处，暂停后的状态无处安放</li>
+            <li><b>必须传 thread_id</b>：<code>config={"configurable":{"thread_id":"..."}}</code>——恢复时必须用<b>同一个</b> config，否则找不到那份存档</li>
+            <li><b>必须从 langgraph.types 导入</b>：<code>from langgraph.types import interrupt, Command</code>——它不是内置函数（本实验代码此前漏了这行，见排坑区）</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>恢复语义：<b>节点整体重跑</b>，不是从 interrupt 那一行继续</h4>
+          <p>这是最容易误解的一点。<code>Command(resume=...)</code> 恢复时，LangGraph <b>从头重新执行整个节点函数</b>，只是执行到 <code>interrupt()</code> 那一行时直接返回 resume 传入的值、不再暂停。所以 <code>interrupt()</code> <b>之前</b>的所有代码都会跑第二遍。</p>
+        </div>
+        <div class="warn">
+          <b>实测坑：本实验的飞书通知会发两次</b>
+          <p><code>human_approval_node</code> 在 <code>interrupt()</code> 之前生成 <code>approval_id</code>、写入 <code>_pending</code>、调 <code>_notify_feishu()</code>。resume 后节点重跑，这三件事又做一遍——<b>飞书收到两张卡片</b>，且第二次的 <code>approval_id</code> 是新 uuid，导致 <code>_pending</code> 里残留一条永远不会被消费的孤儿记录。修法：把副作用挪到 <code>interrupt()</code> 之后，或用 State 里已存在的 <code>approval_id</code> 做幂等判断。这也是「进阶挑战」的好素材。</p>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;hitl_workflow.py · 暂停</div>
+<pre><span class="c-c"># 关键：interrupt 和 Command 都来自 langgraph.types</span>
+<span class="c-k">from</span> langgraph.types <span class="c-k">import</span> Command, interrupt
+
+<span class="c-k">def</span> <span class="c-f">human_approval_node</span>(state: HITLState):
+    risk = state.get(<span class="c-s">"risk_level"</span>, <span class="c-s">"medium"</span>)
+
+    <span class="c-c"># 不到 high 不打扰人——审批疲劳是 HITL 头号杀手</span>
+    <span class="c-k">if</span> risk != <span class="c-s">"high"</span>:
+        <span class="c-k">return</span> {**state, <span class="c-s">"approval_status"</span>: <span class="c-s">"auto_approved"</span>}
+
+    approval_id = str(uuid.uuid4())[:<span class="c-n">8</span>]
+    <span class="c-c"># 注意：这段在 resume 后会重复执行一次</span>
+    <span class="c-k">with</span> _lock:
+        _pending[approval_id] = {<span class="c-s">"event"</span>: threading.Event(), ...}
+    _notify_feishu(approval_id, state)
+
+    <span class="c-c"># ═══ 图在这里停住 ═══</span>
+    result = <span class="c-f">interrupt</span>({
+        <span class="c-s">"approval_id"</span>: approval_id,
+        <span class="c-s">"device_id"</span>: state.get(<span class="c-s">"device_id"</span>, <span class="c-s">""</span>),
+        <span class="c-s">"risk_level"</span>: risk,
+        <span class="c-s">"summary"</span>: state.get(<span class="c-s">"decide_result"</span>, <span class="c-s">""</span>)[:<span class="c-n">300</span>],
+    })
+
+    <span class="c-c"># ↓ 只有 Command(resume=...) 之后才会走到这里</span>
+    approved = result.get(<span class="c-s">"approved"</span>, <span class="c-k">False</span>)
+    <span class="c-k">return</span> {**state,
+        <span class="c-s">"approval_status"</span>: <span class="c-s">"approved"</span> <span class="c-k">if</span> approved <span class="c-k">else</span> <span class="c-s">"rejected"</span>}</pre>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;调用方 · 检查与恢复</div>
+<pre>app = graph.<span class="c-f">compile</span>(checkpointer=<span class="c-f">MemorySaver</span>())  <span class="c-c"># 必需</span>
+config = {<span class="c-s">"configurable"</span>: {<span class="c-s">"thread_id"</span>: <span class="c-s">"term-a1b2"</span>}}
+
+<span class="c-c"># 1. 跑到 interrupt 处自然停下（不抛异常）</span>
+<span class="c-k">for</span> ev <span class="c-k">in</span> app.stream(initial, config): ...
+
+<span class="c-c"># 2. 检查是否停在审批点</span>
+st = app.get_state(config)
+st.next                      <span class="c-c"># ('human_approval',)</span>
+st.tasks[<span class="c-n">0</span>].interrupts[<span class="c-n">0</span>].value  <span class="c-c"># 传给 interrupt 的那个 dict</span>
+
+<span class="c-c"># 3. 人做决定后恢复——config 必须是同一个</span>
+<span class="c-k">for</span> ev <span class="c-k">in</span> app.stream(
+        <span class="c-f">Command</span>(resume={<span class="c-s">"approved"</span>: <span class="c-k">True</span>}), config): ...
+
+app.get_state(config).values[<span class="c-s">"approval_status"</span>]  <span class="c-c"># 'approved'</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PT 审批点放哪 ===== -->
+  <div class="section" id="point" style="--c:#7c3aed;--cb:#f5f3ff">
+    <div class="sec-head"><span class="ic">PT</span><div><h2>知识点二：审批点插在「已经知道要做什么、但还没做」的位置</h2><span class="sub">decider → risk_router → human_approval → executor</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>位置的讲究</h4>
+          <p>审批点放在 <b>decider 之后、executor 之前</b>。太早（比如 detector 后）人手上没有诊断结论，无从判断；太晚（executor 后）操作已经下发，审批变成事后追认。<b>「方案已成型、动作未发生」是唯一正确的介入时机。</b></p>
+        </div>
+        <div class="p-block">
+          <h4>和 3.2 的差别只有一处：多一个岔口</h4>
+          <p>3.2 的 <code>risk_router</code> 把 high/medium/low 分流到<b>三个不同的 executor</b>；3.4 的 <code>risk_router</code> 把 high 分流到 <b>human_approval</b>，其余直连 <code>executor</code>。整张图只多了一个节点、改了一条条件边——<b>Agent 节点完全没动</b>，这是 LangGraph 编排与实现解耦的价值。</p>
+        </div>
+        <div class="p-block">
+          <h4>驳回不等于报错，是一条正常业务分支</h4>
+          <p><code>human_approval</code> 无论通过还是驳回，都<b>照常走到</b> <code>executor</code>——由 executor 自己判断 <code>approval_status</code>：驳回则输出「方案已取消」而不调 LLM 生成方案。这样做的好处是<b>流程有唯一出口</b>，日志、埋点、State 终态都统一，不用为驳回单开一条通往 END 的边。</p>
+        </div>
+        <div class="p-block">
+          <h4>双重把关：节点内还有一道 risk 判断</h4>
+          <p>注意 <code>human_approval_node</code> 开头又检查了一次 <code>risk != "high"</code> 并返回 <code>auto_approved</code>。条件边已经拦过一次，这里是<b>防御性冗余</b>——万一有人改图时把 medium 也连进来，节点自己不会误暂停。<code>auto_approved</code> 和 <code>approved</code> 是两个不同的值，审计时能区分「人批的」和「系统放的」。</p>
+        </div>
+      </div>
+      <div>
+        <div class="gcanvas">
+          <div class="g-row"><span class="g-tag">detector → diagnoser → decider</span></div>
+          <div class="g-row">
+            <div class="g-node dim">detector<small>拉设备+告警</small></div>
+            <span class="g-arr">→</span>
+            <div class="g-node dim">diagnoser<small>根因+置信度</small></div>
+            <span class="g-arr">→</span>
+            <div class="g-node">decider<small>risk_level</small></div>
+          </div>
+          <div class="g-row"><span class="g-arr">↓</span></div>
+          <div class="g-row"><span class="g-tag">risk_router 条件边</span></div>
+          <div class="g-row">
+            <div class="g-node stop">human_approval<small>interrupt() 暂停</small></div>
+            <div class="g-node ok" style="border-style:dashed">medium / low<small>不暂停，直连</small></div>
+          </div>
+          <div class="g-row">
+            <span class="g-tag" style="--c:#dc2626;--cb:#fef2f2">risk == high</span>
+            <span class="g-tag" style="--c:#16a34a;--cb:#f0fdf4">其余</span>
+          </div>
+          <div class="g-row"><span class="g-arr">↓ Command(resume) ↓</span></div>
+          <div class="g-row">
+            <div class="g-node alt">executor<small>approval_status 决定做不做</small></div>
+          </div>
+          <div class="g-row"><span class="g-arr">↓</span><div class="g-node dim">END</div></div>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;hitl_workflow.py · 建图</div>
+<pre><span class="c-k">def</span> <span class="c-f">risk_router</span>(state) -> Literal[<span class="c-s">"human_approval"</span>, <span class="c-s">"executor"</span>]:
+    <span class="c-k">if</span> state.get(<span class="c-s">"risk_level"</span>) == <span class="c-s">"high"</span>:
+        <span class="c-k">return</span> <span class="c-s">"human_approval"</span>
+    <span class="c-k">return</span> <span class="c-s">"executor"</span>
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"decider"</span>, risk_router, {
+    <span class="c-s">"human_approval"</span>: <span class="c-s">"human_approval"</span>,
+    <span class="c-s">"executor"</span>:       <span class="c-s">"executor"</span>,
+})
+<span class="c-c"># 审批完（无论通过/驳回）都进 executor —— 唯一出口</span>
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"human_approval"</span>, <span class="c-s">"executor"</span>)
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"executor"</span>, END)
+
+<span class="c-k">return</span> graph.<span class="c-f">compile</span>(checkpointer=<span class="c-f">MemorySaver</span>())
+
+<span class="c-c"># executor 自己判断做不做</span>
+<span class="c-k">def</span> <span class="c-f">executor_node</span>(state):
+    <span class="c-k">if</span> state.get(<span class="c-s">"approval_status"</span>) == <span class="c-s">"rejected"</span>:
+        <span class="c-k">return</span> {**state, <span class="c-s">"execute_result"</span>: <span class="c-s">"审批驳回，方案已取消"</span>}
+    <span class="c-k">return</span> {**state, <span class="c-s">"execute_result"</span>: _ask(<span class="c-s">"生成处置方案..."</span>)}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CH 三条通道 ===== -->
+  <div class="section" id="chan" style="--c:#ea580c;--cb:#fff7ed">
+    <div class="sec-head"><span class="ic">CH</span><div><h2>知识点三：同一个 interrupt，三条恢复通道 —— 换的是「人怎么点头」</h2><span class="sub">terminal input · Flask Web · 飞书卡片 URL</span></div></div>
+    <div class="sec-body single">
+      <div class="ch-grid">
+        <div class="ch-card" style="border-color:#bbf7d0">
+          <span class="tag" style="background:#f0fdf4;color:#16a34a">CHANNEL 1 · 终端</span>
+          <b>input() 阻塞等待</b>
+          <p>零依赖，最适合先理解机制。stream 停下 → <code>get_state()</code> 确认 <code>next</code> 非空 → 打印审批信息 → <code>input("y/n")</code> → <code>Command(resume=...)</code>。整个过程<b>单线程同步</b>，没有任何并发问题。</p>
+          <span class="who">学员必做 · python hitl_workflow.py</span>
+        </div>
+        <div class="ch-card" style="border-color:#bfdbfe">
+          <span class="tag" style="background:#eff6ff;color:#2563eb">CHANNEL 2 · Web</span>
+          <b>Flask + Event 跨线程</b>
+          <p>审批服务独立进程跑在 <code>:8100</code>。<code>_pending</code> 全局字典 + <code>threading.Lock</code> 做线程间通信，每项挂一个 <code>threading.Event</code>：Web 端 POST 到 <code>/hitl/approve</code> → 写 <code>result</code> → <code>event.set()</code> 唤醒等待方。</p>
+          <span class="who">学员必做 · --server</span>
+        </div>
+        <div class="ch-card" style="border-color:#fecaca">
+          <span class="tag" style="background:#fef2f2;color:#dc2626">CHANNEL 3 · 飞书</span>
+          <b>卡片按钮走 URL，不走回调</b>
+          <p>卡片两个按钮是 <b>URL 链接</b>，直接打开 <code>:8100/approve/&lt;id&gt;</code> 页面。为什么不用卡片回调？回调要求飞书服务器能 POST 到<b>公网可达</b>的地址，本地开发环境收不到。URL 模式零公网依赖。</p>
+          <span class="who">讲师演示 · 需 feishu-server.py</span>
+        </div>
+      </div>
+      <div class="p-block" style="margin-top:18px">
+        <h4>Web 通道的关键设计：为什么要 Event 而不是轮询 State</h4>
+        <p>Agent 流水线和 Flask 服务在<b>不同线程/进程</b>。LangGraph 的 <code>interrupt</code> 只把球抛给了「调用 stream 的那一方」，Flask 并不知道有人在等。<code>_pending[approval_id]</code> 这个共享字典就是两边的<b>约会点</b>：流水线侧写入并等 <code>event.wait()</code>，Web 侧按 <code>approval_id</code> 找到它、填结果、<code>event.set()</code>。<code>approval_id</code>（uuid 前 8 位）是关联两侧的唯一凭证——它同时出现在 interrupt payload、飞书卡片 URL 和 Web 页面表单里。</p>
+      </div>
+      <div class="p-block">
+        <h4>三条通道共享同一份 State，所以可以混用</h4>
+        <ul class="dot-list">
+          <li>终端已经在等 <code>input()</code> 时，你仍然可以打开浏览器点通过——两条通道抢答，谁先到算谁的</li>
+          <li>审批结果最终都收敛为同一个形状：<code>{"approved": bool, "comment": str}</code>，作为 <code>Command(resume=...)</code> 的入参</li>
+          <li>节点内做了兼容：resume 值不是 dict 时按字符串处理（<code>"y"/"yes"/"true"</code> 视为通过），方便调试时直接传字符串</li>
+        </ul>
+      </div>
+      <div class="codebox">
+        <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;hitl_workflow.py · Web 通道的跨线程握手</div>
+<pre><span class="c-c"># ═══ 流水线侧：写入约会点 ═══</span>
+event = threading.<span class="c-f">Event</span>()
+<span class="c-k">with</span> _lock:
+    _pending[approval_id] = {<span class="c-s">"device_id"</span>: ..., <span class="c-s">"risk_level"</span>: risk,
+                             <span class="c-s">"summary"</span>: ..., <span class="c-s">"event"</span>: event, <span class="c-s">"result"</span>: <span class="c-k">None</span>}
+
+<span class="c-c"># ═══ Flask 侧：找到约会点，填结果，唤醒 ═══</span>
+<span class="c-n">@app.route</span>(<span class="c-s">"/hitl/approve"</span>, methods=[<span class="c-s">"POST"</span>])
+<span class="c-k">def</span> <span class="c-f">hitl_approve</span>():
+    aid = request.get_json().get(<span class="c-s">"approval_id"</span>, <span class="c-s">""</span>)
+    <span class="c-k">with</span> _lock:
+        info = _pending.get(aid)
+    <span class="c-k">if</span> <span class="c-k">not</span> info:
+        <span class="c-k">return</span> jsonify({<span class="c-s">"error"</span>: <span class="c-s">"审批项不存在或已处理"</span>}), <span class="c-n">404</span>
+    info[<span class="c-s">"result"</span>] = {<span class="c-s">"approved"</span>: <span class="c-k">True</span>}
+    info[<span class="c-s">"event"</span>].<span class="c-f">set</span>()          <span class="c-c"># ← 唤醒等待方</span>
+    <span class="c-k">return</span> jsonify({<span class="c-s">"status"</span>: <span class="c-s">"ok"</span>})
+
+<span class="c-c"># ═══ 飞书侧：卡片按钮用 url 字段，不是 value 回调 ═══</span>
+{<span class="c-s">"tag"</span>: <span class="c-s">"button"</span>, <span class="c-s">"text"</span>: {...}, <span class="c-s">"type"</span>: <span class="c-s">"primary"</span>,
+ <span class="c-s">"url"</span>: <span class="c-s">f"http://localhost:8100/approve/{approval_id}"</span>}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VS 选型对照 ===== -->
+  <div class="section" id="vs" style="--c:#2563eb;--cb:#eff6ff">
+    <div class="sec-head"><span class="ic">VS</span><div><h2>选型与对照：三条通道怎么选，和 knowledge-samples/sample-8 什么关系</h2><span class="sub">通道能力矩阵 · 例题与应用题</span></div></div>
+    <div class="sec-body single">
+      <table class="tbl">
+        <thead><tr><th>审批通道</th><th>依赖</th><th>并发/多人</th><th>审批人在哪</th><th>适用场景</th><th>本课定位</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>终端 input()</b></td>
+            <td><code>langgraph</code> 仅此</td>
+            <td>不支持（单线程阻塞）</td>
+            <td>必须在跑脚本的那台机器前</td>
+            <td>学机制、本地调试、CI 里跳过</td>
+            <td><span class="pick" style="background:#f0fdf4;color:#16a34a">学员必做</span></td>
+          </tr>
+          <tr>
+            <td><b>Web 页面</b></td>
+            <td>+ <code>flask</code></td>
+            <td>支持（Event + Lock）</td>
+            <td>任意浏览器，可远程</td>
+            <td>贴近生产：审批台、工单系统集成</td>
+            <td><span class="pick" style="background:#eff6ff;color:#2563eb">学员必做</span></td>
+          </tr>
+          <tr>
+            <td><b>飞书卡片</b></td>
+            <td>+ <code>feishu-server.py</code></td>
+            <td>支持（最终落到 Web）</td>
+            <td>手机 App 即可，主动推送</td>
+            <td>真实运维：告警找人，而非人盯屏</td>
+            <td><span class="pick" style="background:#fef2f2;color:#dc2626">讲师演示</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="p-block" style="margin-top:20px">
+        <h4>关于 knowledge-samples/sample-8：这不是重复，是「例题 → 应用题」</h4>
+        <p>课程是<b>两层结构</b>：<code>knowledge-samples/</code> 讲机制最小化（例题），<code>labs/</code> 讲场景化落地（应用题）。同一主题出现两次是刻意设计。</p>
+      </div>
+      <table class="tbl">
+        <thead><tr><th>维度</th><th>knowledge-samples/sample-8</th><th>labs/29-HITL（本实验）</th></tr></thead>
+        <tbody>
+          <tr><td><b>代码量</b></td><td>161 行</td><td>492 行（含 Flask 服务 + 审批页 HTML + 飞书卡片）</td></tr>
+          <tr><td><b>目标</b></td><td>看懂 <code>interrupt</code> / <code>Command(resume)</code> 两个 API 怎么配合</td><td>把审批闸门装进真实的 5G 排障流水线，并接通三条人机通道</td></tr>
+          <tr><td><b>State</b></td><td>最小字段：<code>diagnosis</code> / <code>proposed_action</code></td><td>沿用 3.2 的完整 State + <code>risk_level</code> / <code>approval_status</code> / <code>approval_id</code></td></tr>
+          <tr><td><b>触发条件</b></td><td>无条件暂停（每次都停）</td><td>条件边：仅 <code>risk_level == "high"</code> 暂停，其余 <code>auto_approved</code></td></tr>
+          <tr><td><b>审批通道</b></td><td>终端一条</td><td>终端 + Web(Flask :8100) + 飞书卡片</td></tr>
+          <tr><td><b>数据来源</b></td><td>硬编码字符串</td><td>平台 <code>:8000/devices/&lt;id&gt;</code> 真实设备与告警</td></tr>
+          <tr><td><b>建议顺序</b></td><td><b>先做</b>——沿依赖链 sample-7（Checkpoint）→ sample-8</td><td><b>后做</b>——先有 3.2 的流水线，再装闸门</td></tr>
+        </tbody>
+      </table>
+      <div class="p-block" style="margin-top:18px">
+        <h4>其余重叠关系速查（摘自 agent-course/MAPPING.md）</h4>
+        <ul class="dot-list">
+          <li><b>3.1 意图路由</b> ← sample-2（条件分支）、sample-10（Command 动态路由）</li>
+          <li><b>3.2 多 Agent</b> ← sample-11（子图）、sample-12 / 12b（Supervisor）</li>
+          <li><b>3.3 进阶模式</b> ← sample-3（并行 Fan-out/Fan-in）、sample-10</li>
+          <li><b>3.4 HITL</b> ← <b>sample-8</b>（本页对照）；前置机制 sample-7（Checkpoint，interrupt 的存档底座）</li>
+          <li><b>2.7 Memory</b> ← sample-7、sample-13；<b>3.7 流式</b> ← sample-9、sample-6b</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RUN 动手跑 ===== -->
+  <div class="section" id="run" style="--c:#16a34a;--cb:#f0fdf4">
+    <div class="sec-head"><span class="ic">RUN</span><div><h2>动手跑：六步走完三条通道</h2><span class="sub">python hitl_workflow.py [--offline | --server]</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>操作路线</h4>
+          <div class="route">
+            <div class="rt"><span class="no">1</span><div><b>激活课程环境</b><span>cd labs/29-HITL &amp;&amp; source ../../.venv/bin/activate（Python 3.11，勿用系统 3.14）</span></div></div>
+            <div class="rt"><span class="no">2</span><div><b>确认平台在跑</b><span>curl localhost:8000/devices/DEV-0001 —— 不通也能跑，节点会回退到模拟数据</span></div></div>
+            <div class="rt"><span class="no">3</span><div><b>离线演示先看形状</b><span>python hitl_workflow.py --offline —— 不调 LLM，纯打印，30 秒看懂暂停/恢复的节奏</span></div></div>
+            <div class="rt"><span class="no">4</span><div><b>终端通道</b><span>python hitl_workflow.py —— 跑到审批点停下，输入 y / n 观察 executor 的两种输出</span></div></div>
+            <div class="rt"><span class="no">5</span><div><b>Web 通道</b><span>终端1: --server 起 :8100；终端2: 正常跑。浏览器打开 :8100/approve/&lt;approval_id&gt;</span></div></div>
+            <div class="rt"><span class="no">6</span><div><b>验证条件边</b><span>换一个无 P0 告警的设备 ID，确认 risk 非 high 时直接执行、不暂停</span></div></div>
+          </div>
+        </div>
+        <div class="p-block">
+          <h4>完成标准</h4>
+          <ul class="check-list">
+            <li>终端模式：输入 y / n 能分别得到「生成处置方案」和「审批驳回，方案已取消」</li>
+            <li>Web 模式：<code>GET :8100/hitl/pending</code> 能看到待审批项，页面点击后流水线继续</li>
+            <li>只有 <code>risk_level == "high"</code> 触发暂停，medium/low 的 <code>approval_status</code> 是 <code>auto_approved</code></li>
+            <li>能说清 <code>get_state().next</code> 为什么是判断「是否停在审批点」的依据</li>
+            <li>能解释为什么 <code>Command(resume=...)</code> 必须复用同一个 <code>config</code></li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>进阶挑战</h4>
+          <ul class="dot-list">
+            <li><b>审批超时降级</b>：5 分钟无人审批则自动驳回并发催办——注意别用 <code>event.wait()</code> 无超时版</li>
+            <li><b>驳回意见回灌</b>：把审批意见塞回 <code>diagnoser_node</code> 重新诊断，形成 3.3 Loop 模式的人机混合版</li>
+            <li><b>两级审批</b>：P0 需一线 → 二线两道闸门，两个 HITL 节点串联，注意 <code>approval_id</code> 不能撞</li>
+            <li><b>修掉重复通知</b>：让 <code>_notify_feishu</code> 在节点重跑时幂等（见 IRQ 区实测坑）</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="p-block">
+          <h4>坑位速查</h4>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>现象</th><th>根因</th><th>处理</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>ModuleNotFoundError: flask</code></td>
+              <td>3.4 比 3.2/3.3 多一个 Web 服务依赖</td>
+              <td><code>pip install flask</code>（已装入课程 .venv）</td>
+            </tr>
+            <tr>
+              <td><code>NameError: name 'interrupt' is not defined</code></td>
+              <td>源码曾误认为 <code>interrupt</code> 是执行上下文内置函数而未导入</td>
+              <td>已修：<code>from langgraph.types import Command, interrupt</code></td>
+            </tr>
+            <tr>
+              <td>流程直接打印「已完成（无需审批）」，审批点没出现</td>
+              <td><code>run_terminal</code> 的 <code>except Exception: pass</code> 把上面那个 NameError 静默吞了</td>
+              <td>已修：代码类异常（NameError / AttributeError / TypeError / ImportError）重新抛出</td>
+            </tr>
+            <tr>
+              <td><code>interrupt()</code> 后无法恢复</td>
+              <td>编译时没传 checkpointer</td>
+              <td><code>graph.compile(checkpointer=MemorySaver())</code></td>
+            </tr>
+            <tr>
+              <td><code>Command(resume=...)</code> 不生效</td>
+              <td>thread_id 不匹配，找不到那份存档</td>
+              <td>resume 必须复用 interrupt 时的同一个 <code>config</code></td>
+            </tr>
+            <tr>
+              <td><code>:8100</code> Address already in use</td>
+              <td><b>端口撞车</b>：<code>platform-gateway/app.py</code>（Agent 网关）也占 8100</td>
+              <td>两者别同时开；或改 <code>HITL_PORT</code>（注意同步改飞书卡片 URL）</td>
+            </tr>
+            <tr>
+              <td>飞书收到两张审批卡片</td>
+              <td>resume 后节点整体重跑，<code>interrupt()</code> 之前的副作用执行第二遍</td>
+              <td>把副作用挪到 <code>interrupt()</code> 之后，或按 <code>approval_id</code> 做幂等</td>
+            </tr>
+            <tr>
+              <td>风险等级总是 medium，永远不暂停</td>
+              <td><code>risk_level</code> 靠字符串匹配「风险等级：high」从 LLM 输出里抠</td>
+              <td>兜底逻辑是 detect_result 含 <code>P0</code> 即判 high；想稳定复现就挑有 P0 告警的设备</td>
+            </tr>
+            <tr>
+              <td>飞书卡片发送失败</td>
+              <td><code>feishu-server.py</code> 未启动或 open_id 不对</td>
+              <td>确认 <code>:3456/api/status</code>；失败被静默忽略，不影响主流程</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="p-block" style="margin-top:14px">
+          <h4>本实验涉及文件</h4>
+          <span class="lab-chip">hitl_workflow.py · 492 行</span>
+          <span class="lab-chip">实验文档.md</span>
+          <span class="lab-chip">../04-平台搭建/server.py :8000</span>
+          <span class="lab-chip">../../.env AGENT_API_KEY</span>
+          <span class="lab-chip">lab-07/api/feishu-server.py :3456</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CTA ===== -->
+  <div class="cta">
+    <div>
+      <h2>闸门装好了，下一步是让规则先拦一道</h2>
+      <p>HITL 靠人把关，成本高、会疲劳。实验 3.5 安全护栏用规则先过滤：Prompt 注入检测、工具白名单、输出审核——把不该到人手上的请求提前挡掉。</p>
+    </div>
+    <div class="btns">
+      <a href="./实验文档.md">本实验文档</a>
+      <a href="../28-进阶协作模式/实验讲解.html">上一课 · 3.3 进阶协作</a>
+      <a href="../30-安全护栏/实验讲解.html">下一课 · 3.5 安全护栏</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    实验 24 · HITL 人工审批　|　运行环境 <code>agent-course/.venv</code>（Python 3.11）　|　
+    机制例题 <code>knowledge-samples/sample-8</code>　|　交叉引用表 <code>agent-course/MAPPING.md</code>
+  </div>
+
+</div>
+</body>
+</html>

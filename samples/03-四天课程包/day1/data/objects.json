@@ -1,0 +1,1210 @@
+[
+  {
+    "id": "OBJ-0001",
+    "name": "广州市天河区珠江新-基站01",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "深圳市南山区科技园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -28.3,
+      "temperature_c": 31,
+      "cpu_percent": 84,
+      "vswr": 1.3
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0002",
+    "name": "北京市海淀区中关村-基站02",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "深圳市南山区科技园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -23.9,
+      "temperature_c": 28,
+      "cpu_percent": 86,
+      "vswr": 1.5
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0003",
+    "name": "西安市雁塔区高新路-基站03",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirFrame 16",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -20.9,
+      "temperature_c": 33,
+      "cpu_percent": 69,
+      "vswr": 1.7
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0004",
+    "name": "杭州市余杭区未来科-基站04",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "A9611",
+    "site": "北京市海淀区中关村软件园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -25.4,
+      "temperature_c": 39,
+      "cpu_percent": 59,
+      "vswr": 2.2
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0005",
+    "name": "深圳市南山区科技园-基站05",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "BBU5900",
+    "site": "北京市海淀区中关村软件园",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -29.5,
+      "temperature_c": 35,
+      "cpu_percent": 52,
+      "vswr": 2.9
+    },
+    "events": [
+      {
+        "event_id": "EVT-0005-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-24 09:53"
+      },
+      {
+        "event_id": "EVT-0005-2",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-25 19:56"
+      },
+      {
+        "event_id": "EVT-0005-3",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-26 11:36"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0006",
+    "name": "北京市海淀区中关村-基站06",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "IT BBU",
+    "site": "上海市浦东新区张江高科",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -23.6,
+      "temperature_c": 35,
+      "cpu_percent": 35,
+      "vswr": 1.9
+    },
+    "events": [
+      {
+        "event_id": "EVT-0006-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-21 11:22"
+      },
+      {
+        "event_id": "EVT-0006-2",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-21 21:17"
+      },
+      {
+        "event_id": "EVT-0006-3",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-25 21:41"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0007",
+    "name": "西安市雁塔区高新路-基站07",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "Baseband 6630",
+    "site": "杭州市余杭区未来科技城",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -27.4,
+      "temperature_c": 43,
+      "cpu_percent": 65,
+      "vswr": 2.7
+    },
+    "events": [
+      {
+        "event_id": "EVT-0007-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-22 01:14"
+      },
+      {
+        "event_id": "EVT-0007-2",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-26 01:51"
+      },
+      {
+        "event_id": "EVT-0007-3",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-22 12:17"
+      },
+      {
+        "event_id": "EVT-0007-4",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-20 06:58"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0008",
+    "name": "上海市浦东新区张江-基站08",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "南京市江宁区九龙湖",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -23.5,
+      "temperature_c": 51,
+      "cpu_percent": 89,
+      "vswr": 1.9
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0009",
+    "name": "上海市浦东新区张江-基站09",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale BBU",
+    "site": "武汉市洪山区光谷广场",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -28.9,
+      "temperature_c": 29,
+      "cpu_percent": 29,
+      "vswr": 1.4
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0010",
+    "name": "南京市江宁区九龙湖-基站10",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "A9611",
+    "site": "北京市海淀区中关村软件园",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -21.8,
+      "temperature_c": 45,
+      "cpu_percent": 49,
+      "vswr": 2.5
+    },
+    "events": [
+      {
+        "event_id": "EVT-0010-1",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-23 12:38"
+      },
+      {
+        "event_id": "EVT-0010-2",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-23 16:16"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0011",
+    "name": "成都市高新区天府软-基站11",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 3268",
+    "site": "武汉市洪山区光谷广场",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -30.0,
+      "temperature_c": 51,
+      "cpu_percent": 48,
+      "vswr": 2.8
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0012",
+    "name": "北京市海淀区中关村-基站12",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "IT BBU",
+    "site": "广州市天河区珠江新城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -19.9,
+      "temperature_c": 44,
+      "cpu_percent": 92,
+      "vswr": 1.5
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0013",
+    "name": "西安市雁塔区高新路-基站13",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 3268",
+    "site": "北京市海淀区中关村软件园",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -21.2,
+      "temperature_c": 54,
+      "cpu_percent": 23,
+      "vswr": 2.9
+    },
+    "events": [
+      {
+        "event_id": "EVT-0013-1",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-23 00:07"
+      },
+      {
+        "event_id": "EVT-0013-2",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-22 09:15"
+      },
+      {
+        "event_id": "EVT-0013-3",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-20 07:56"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0014",
+    "name": "武汉市洪山区光谷广-基站14",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "IT BBU",
+    "site": "上海市浦东新区张江高科",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -26.8,
+      "temperature_c": 47,
+      "cpu_percent": 69,
+      "vswr": 2.8
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0015",
+    "name": "北京市海淀区中关村-基站15",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "V9200",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -22.9,
+      "temperature_c": 35,
+      "cpu_percent": 90,
+      "vswr": 1.5
+    },
+    "events": [
+      {
+        "event_id": "EVT-0015-1",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-23 16:28"
+      },
+      {
+        "event_id": "EVT-0015-2",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-20 07:14"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0016",
+    "name": "杭州市余杭区未来科-基站16",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "南京市江宁区九龙湖",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -27.1,
+      "temperature_c": 49,
+      "cpu_percent": 77,
+      "vswr": 1.5
+    },
+    "events": [
+      {
+        "event_id": "EVT-0016-1",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-20 01:55"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0017",
+    "name": "杭州市余杭区未来科-基站17",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "V9200",
+    "site": "成都市高新区天府软件园",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -24.4,
+      "temperature_c": 51,
+      "cpu_percent": 21,
+      "vswr": 2.3
+    },
+    "events": [
+      {
+        "event_id": "EVT-0017-1",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-26 15:51"
+      },
+      {
+        "event_id": "EVT-0017-2",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-23 06:06"
+      },
+      {
+        "event_id": "EVT-0017-3",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-20 21:27"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0018",
+    "name": "杭州市余杭区未来科-基站18",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "深圳市南山区科技园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -27.7,
+      "temperature_c": 45,
+      "cpu_percent": 72,
+      "vswr": 1.4
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0019",
+    "name": "深圳市南山区科技园-基站19",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "A9611",
+    "site": "武汉市洪山区光谷广场",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -20.3,
+      "temperature_c": 45,
+      "cpu_percent": 27,
+      "vswr": 1.2
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0020",
+    "name": "北京市朝阳区望京S-基站20",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "成都市高新区天府软件园",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -30.0,
+      "temperature_c": 40,
+      "cpu_percent": 48,
+      "vswr": 2.8
+    },
+    "events": [
+      {
+        "event_id": "EVT-0020-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-23 15:13"
+      },
+      {
+        "event_id": "EVT-0020-2",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-26 12:57"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0021",
+    "name": "南京市江宁区九龙湖-基站21",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale BBU",
+    "site": "武汉市洪山区光谷广场",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -28.1,
+      "temperature_c": 37,
+      "cpu_percent": 42,
+      "vswr": 2.8
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0022",
+    "name": "南京市江宁区九龙湖-基站22",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -18.5,
+      "temperature_c": 30,
+      "cpu_percent": 38,
+      "vswr": 1.2
+    },
+    "events": [
+      {
+        "event_id": "EVT-0022-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-24 15:32"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0023",
+    "name": "西安市雁塔区高新路-基站23",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "BBU5900",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -22.6,
+      "temperature_c": 41,
+      "cpu_percent": 89,
+      "vswr": 2.1
+    },
+    "events": [
+      {
+        "event_id": "EVT-0023-1",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-20 18:15"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0024",
+    "name": "广州市天河区珠江新-基站24",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 6449",
+    "site": "杭州市余杭区未来科技城",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -18.9,
+      "temperature_c": 30,
+      "cpu_percent": 16,
+      "vswr": 1.9
+    },
+    "events": [
+      {
+        "event_id": "EVT-0024-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-21 08:25"
+      },
+      {
+        "event_id": "EVT-0024-2",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-21 21:41"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0025",
+    "name": "深圳市南山区科技园-基站25",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "BBU5900",
+    "site": "广州市天河区珠江新城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -28.4,
+      "temperature_c": 39,
+      "cpu_percent": 23,
+      "vswr": 2.7
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0026",
+    "name": "武汉市洪山区光谷广-基站26",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "Baseband 6630",
+    "site": "广州市天河区珠江新城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -22.7,
+      "temperature_c": 53,
+      "cpu_percent": 82,
+      "vswr": 1.1
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0027",
+    "name": "广州市天河区珠江新-基站27",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "Baseband 6630",
+    "site": "深圳市南山区科技园",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -21.4,
+      "temperature_c": 34,
+      "cpu_percent": 48,
+      "vswr": 2.0
+    },
+    "events": [
+      {
+        "event_id": "EVT-0027-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-20 03:47"
+      },
+      {
+        "event_id": "EVT-0027-2",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-24 04:17"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0028",
+    "name": "上海市浦东新区张江-基站28",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "Baseband 6630",
+    "site": "广州市天河区珠江新城",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -28.1,
+      "temperature_c": 42,
+      "cpu_percent": 85,
+      "vswr": 2.4
+    },
+    "events": [
+      {
+        "event_id": "EVT-0028-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-26 08:02"
+      },
+      {
+        "event_id": "EVT-0028-2",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-20 10:49"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0029",
+    "name": "上海市浦东新区张江-基站29",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "BBU5900",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -20.0,
+      "temperature_c": 46,
+      "cpu_percent": 85,
+      "vswr": 1.4
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0030",
+    "name": "杭州市余杭区未来科-基站30",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "A9611",
+    "site": "杭州市余杭区未来科技城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -27.5,
+      "temperature_c": 35,
+      "cpu_percent": 28,
+      "vswr": 1.7
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0031",
+    "name": "上海市浦东新区张江-基站31",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale BBU",
+    "site": "北京市海淀区中关村软件园",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -25.4,
+      "temperature_c": 29,
+      "cpu_percent": 75,
+      "vswr": 1.5
+    },
+    "events": [
+      {
+        "event_id": "EVT-0031-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-23 00:11"
+      },
+      {
+        "event_id": "EVT-0031-2",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-25 10:50"
+      },
+      {
+        "event_id": "EVT-0031-3",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-23 21:55"
+      },
+      {
+        "event_id": "EVT-0031-4",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-25 07:17"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0032",
+    "name": "深圳市南山区科技园-基站32",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -22.1,
+      "temperature_c": 40,
+      "cpu_percent": 57,
+      "vswr": 1.6
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0033",
+    "name": "广州市天河区珠江新-基站33",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "北京市海淀区中关村软件园",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -22.8,
+      "temperature_c": 39,
+      "cpu_percent": 55,
+      "vswr": 1.9
+    },
+    "events": [
+      {
+        "event_id": "EVT-0033-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-25 17:21"
+      },
+      {
+        "event_id": "EVT-0033-2",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-20 03:56"
+      },
+      {
+        "event_id": "EVT-0033-3",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-22 05:37"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0034",
+    "name": "西安市雁塔区高新路-基站34",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "广州市天河区珠江新城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -29.5,
+      "temperature_c": 41,
+      "cpu_percent": 15,
+      "vswr": 2.0
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0035",
+    "name": "北京市海淀区中关村-基站35",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "IT BBU",
+    "site": "杭州市余杭区未来科技城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -22.5,
+      "temperature_c": 49,
+      "cpu_percent": 30,
+      "vswr": 2.4
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0036",
+    "name": "成都市高新区天府软-基站36",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 6449",
+    "site": "成都市高新区天府软件园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -21.6,
+      "temperature_c": 45,
+      "cpu_percent": 31,
+      "vswr": 1.4
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0037",
+    "name": "南京市江宁区九龙湖-基站37",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "广州市天河区珠江新城",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -26.6,
+      "temperature_c": 41,
+      "cpu_percent": 89,
+      "vswr": 2.2
+    },
+    "events": [
+      {
+        "event_id": "EVT-0037-1",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-24 09:25"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0038",
+    "name": "武汉市洪山区光谷广-基站38",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "Baseband 6630",
+    "site": "深圳市南山区科技园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -23.9,
+      "temperature_c": 53,
+      "cpu_percent": 36,
+      "vswr": 2.3
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0039",
+    "name": "西安市雁塔区高新路-基站39",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 6449",
+    "site": "北京市海淀区中关村软件园",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -20.2,
+      "temperature_c": 52,
+      "cpu_percent": 45,
+      "vswr": 2.3
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0040",
+    "name": "西安市雁塔区高新路-基站40",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "A9611",
+    "site": "武汉市洪山区光谷广场",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -25.0,
+      "temperature_c": 48,
+      "cpu_percent": 88,
+      "vswr": 1.4
+    },
+    "events": [
+      {
+        "event_id": "EVT-0040-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-20 07:30"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0041",
+    "name": "深圳市南山区科技园-基站41",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -19.3,
+      "temperature_c": 52,
+      "cpu_percent": 28,
+      "vswr": 2.5
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0042",
+    "name": "南京市江宁区九龙湖-基站42",
+    "category": "5G基站-射频",
+    "vendor": "中兴",
+    "model": "V9200",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -23.3,
+      "temperature_c": 31,
+      "cpu_percent": 73,
+      "vswr": 1.3
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0043",
+    "name": "上海市浦东新区张江-基站43",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale BBU",
+    "site": "武汉市洪山区光谷广场",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -24.6,
+      "temperature_c": 52,
+      "cpu_percent": 46,
+      "vswr": 2.6
+    },
+    "events": [
+      {
+        "event_id": "EVT-0043-1",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-24 23:57"
+      },
+      {
+        "event_id": "EVT-0043-2",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-24 13:53"
+      },
+      {
+        "event_id": "EVT-0043-3",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-24 14:57"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0044",
+    "name": "南京市江宁区九龙湖-基站44",
+    "category": "5G基站-射频",
+    "vendor": "爱立信",
+    "model": "AIR 3268",
+    "site": "上海市浦东新区张江高科",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -28.2,
+      "temperature_c": 40,
+      "cpu_percent": 34,
+      "vswr": 2.4
+    },
+    "events": [
+      {
+        "event_id": "EVT-0044-1",
+        "level": "P2",
+        "type": "温度过高",
+        "description": "设备温度 52°C，接近上限 55°C",
+        "time": "2026-07-23 02:45"
+      },
+      {
+        "event_id": "EVT-0044-2",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-22 07:17"
+      },
+      {
+        "event_id": "EVT-0044-3",
+        "level": "P1",
+        "type": "驻波比告警",
+        "description": "天线驻波比 2.8，超过 2.5 门限",
+        "time": "2026-07-22 10:57"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0045",
+    "name": "杭州市余杭区未来科-基站45",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "BBU5900",
+    "site": "武汉市洪山区光谷广场",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -25.0,
+      "temperature_c": 34,
+      "cpu_percent": 68,
+      "vswr": 1.8
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0046",
+    "name": "深圳市南山区科技园-基站46",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5313",
+    "site": "深圳市南山区科技园",
+    "status": "fault",
+    "metrics": {
+      "rx_power_dbm": -26.7,
+      "temperature_c": 43,
+      "cpu_percent": 18,
+      "vswr": 1.8
+    },
+    "events": [
+      {
+        "event_id": "EVT-0046-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-22 12:54"
+      },
+      {
+        "event_id": "EVT-0046-2",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-26 13:34"
+      },
+      {
+        "event_id": "EVT-0046-3",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-25 23:34"
+      },
+      {
+        "event_id": "EVT-0046-4",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-26 19:57"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0047",
+    "name": "北京市朝阳区望京S-基站47",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirScale 64T64R",
+    "site": "成都市高新区天府软件园",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -28.4,
+      "temperature_c": 42,
+      "cpu_percent": 38,
+      "vswr": 1.2
+    },
+    "events": [
+      {
+        "event_id": "EVT-0047-1",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-24 00:58"
+      },
+      {
+        "event_id": "EVT-0047-2",
+        "level": "P2",
+        "type": "CPU 占用高",
+        "description": "CPU 持续 5 分钟超过 85%",
+        "time": "2026-07-23 18:36"
+      }
+    ]
+  },
+  {
+    "id": "OBJ-0048",
+    "name": "武汉市洪山区光谷广-基站48",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirFrame 16",
+    "site": "杭州市余杭区未来科技城",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -20.9,
+      "temperature_c": 40,
+      "cpu_percent": 50,
+      "vswr": 2.5
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0049",
+    "name": "北京市海淀区中关村-基站49",
+    "category": "5G基站-射频",
+    "vendor": "诺基亚",
+    "model": "AirFrame 16",
+    "site": "北京市朝阳区望京SOHO",
+    "status": "normal",
+    "metrics": {
+      "rx_power_dbm": -21.0,
+      "temperature_c": 29,
+      "cpu_percent": 59,
+      "vswr": 1.5
+    },
+    "events": []
+  },
+  {
+    "id": "OBJ-0050",
+    "name": "西安市雁塔区高新路-基站50",
+    "category": "5G基站-射频",
+    "vendor": "华为",
+    "model": "AAU5613",
+    "site": "武汉市洪山区光谷广场",
+    "status": "warning",
+    "metrics": {
+      "rx_power_dbm": -21.6,
+      "temperature_c": 52,
+      "cpu_percent": 62,
+      "vswr": 1.4
+    },
+    "events": [
+      {
+        "event_id": "EVT-0050-1",
+        "level": "P0",
+        "type": "光模块故障",
+        "description": "收光功率低于 -30dBm，链路中断",
+        "time": "2026-07-21 00:39"
+      },
+      {
+        "event_id": "EVT-0050-2",
+        "level": "P3",
+        "type": "时钟源切换",
+        "description": "GPS 时钟失锁，切换至地面时钟",
+        "time": "2026-07-21 07:08"
+      },
+      {
+        "event_id": "EVT-0050-3",
+        "level": "P1",
+        "type": "光模块功率异常",
+        "description": "收光功率 -28.5dBm，低于告警门限",
+        "time": "2026-07-23 21:07"
+      }
+    ]
+  }
+]

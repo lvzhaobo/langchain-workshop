@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "description": "RAG 评测数据集——15 条查询覆盖能回答/部分能回答/不能回答三类"
+  },
+  "cases": [
+    {
+      "id": "E001",
+      "query": "AAU5613 SCTP 链路中断怎么排查？",
+      "category": "能回答",
+      "relevant_docs": ["AAU5613-SCTP链路中断排查.md"],
+      "expected_keywords": ["SCTP", "链路", "排查", "检查", "配置"],
+      "expected_answer_summary": "应包含检查 SCTP 端点配置、底层传输链路、链路负载三个步骤"
+    },
+    {
+      "id": "E002",
+      "query": "基站退服 P0 告警的完整排查流程是什么？",
+      "category": "能回答",
+      "relevant_docs": ["基站退服故障排查手册.md"],
+      "expected_keywords": ["退服", "告警", "排查", "恢复", "确认"],
+      "expected_answer_summary": "应包含从告警确认到恢复验证的完整流程"
+    },
+    {
+      "id": "E003",
+      "query": "5G 基站的日常巡检标准作业程序是什么？",
+      "category": "能回答",
+      "relevant_docs": ["5G基站常见告警处理SOP.md"],
+      "expected_keywords": ["巡检", "SOP", "标准", "检查"],
+      "expected_answer_summary": "应包含周期性检查项和操作标准"
+    },
+    {
+      "id": "E004",
+      "query": "SCTP 关联状态为 DOWN 时第一步该做什么？",
+      "category": "能回答",
+      "relevant_docs": ["AAU5613-SCTP链路中断排查.md"],
+      "expected_keywords": ["SCTP", "关联", "DOWN", "检查", "配置"],
+      "expected_answer_summary": "应指向检查 SCTP 端点配置的步骤"
+    },
+    {
+      "id": "E005",
+      "query": "告警处理 SOP 中 P0 告警的响应时间要求是多少？",
+      "category": "能回答",
+      "relevant_docs": ["5G基站常见告警处理SOP.md"],
+      "expected_keywords": ["P0", "告警", "响应", "SOP"],
+      "expected_answer_summary": "应包含 P0 告警的响应时限要求"
+    },
+    {
+      "id": "E006",
+      "query": "传输链路中断的处理流程是什么？",
+      "category": "能回答",
+      "relevant_docs": ["基站退服故障排查手册.md", "AAU5613-SCTP链路中断排查.md"],
+      "expected_keywords": ["传输", "链路", "中断", "SCTP", "检查"],
+      "expected_answer_summary": "多篇文档覆盖，应综合引用"
+    },
+    {
+      "id": "E007",
+      "query": "光模块光功率异常怎么处理？",
+      "category": "部分能回答",
+      "relevant_docs": ["基站退服故障排查手册.md"],
+      "expected_keywords": ["光模块", "光功率", "检查", "异常"],
+      "expected_answer_summary": "光模块内容可能不完整，但应尝试给出排查方向"
+    },
+    {
+      "id": "E008",
+      "query": "设备 CPU 温度过高怎么办？",
+      "category": "部分能回答",
+      "relevant_docs": ["5G基站常见告警处理SOP.md"],
+      "expected_keywords": ["温度", "告警", "处理", "检查"],
+      "expected_answer_summary": "SOP 可能涉及温度告警处理，应参考"
+    },
+    {
+      "id": "E009",
+      "query": "SCTP 拥塞导致链路中断怎么验证？",
+      "category": "部分能回答",
+      "relevant_docs": ["AAU5613-SCTP链路中断排查.md"],
+      "expected_keywords": ["SCTP", "拥塞", "链路", "统计"],
+      "expected_answer_summary": "SCTP 文档涉及链路负载检查，应能部分覆盖"
+    },
+    {
+      "id": "E010",
+      "query": "AAU5613 设备有多少端口？支持哪些频段？",
+      "category": "部分能回答",
+      "relevant_docs": ["AAU5613-SCTP链路中断排查.md"],
+      "expected_keywords": ["AAU5613", "端口", "频段"],
+      "expected_answer_summary": "文档可能只涵盖排障内容，不含设备规格，部分可回答"
+    },
+    {
+      "id": "E011",
+      "query": "爱立信设备的 RRU 天线校准流程是什么？",
+      "category": "不能回答",
+      "relevant_docs": [],
+      "expected_keywords": ["爱立信", "天线", "校准", "无法", "相关信息"],
+      "expected_answer_summary": "知识库无爱立信设备内容，应告知无法回答"
+    },
+    {
+      "id": "E012",
+      "query": "诺基亚 AirScale 基站怎么降级固件？",
+      "category": "不能回答",
+      "relevant_docs": [],
+      "expected_keywords": ["诺基亚", "固件", "无法", "信息"],
+      "expected_answer_summary": "知识库无诺基亚设备内容，应告知"
+    },
+    {
+      "id": "E013",
+      "query": "5G 核心网的 AMF 网元故障怎么处理？",
+      "category": "不能回答",
+      "relevant_docs": [],
+      "expected_keywords": ["核心网", "AMF", "网元", "无法"],
+      "expected_answer_summary": "知识库覆盖基站侧，不含核心网内容"
+    },
+    {
+      "id": "E014",
+      "query": "退服告警恢复后需要做哪些验证？",
+      "category": "能回答",
+      "relevant_docs": ["基站退服故障排查手册.md"],
+      "expected_keywords": ["退服", "恢复", "验证", "确认"],
+      "expected_answer_summary": "退服手册应有恢复验证步骤"
+    },
+    {
+      "id": "E015",
+      "query": "配置文件错误导致的告警有哪些表现特征？",
+      "category": "部分能回答",
+      "relevant_docs": ["基站退服故障排查手册.md"],
+      "expected_keywords": ["配置", "错误", "告警", "特征"],
+      "expected_answer_summary": "可能部分涉及，但需要综合推断"
+    }
+  ]
+}

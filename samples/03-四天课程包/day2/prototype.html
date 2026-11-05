@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day2 — 知识库 + 记忆系统（前端原型 · 无需后端）</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#333;height:100vh;display:flex;overflow:hidden}
+/* ═══ 左侧 ═══ */
+.sidebar{width:225px;background:#fff;border-right:1px solid #e8e8e8;padding:18px 14px;flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar h2{font-size:16px;color:#1677ff}
+.sidebar .sub{font-size:10px;color:#999;margin-bottom:10px}
+.sidebar .cmd{display:flex;align-items:center;padding:7px 8px;margin:2px 0;border-radius:6px;cursor:pointer;font-size:12px;transition:.15s}
+.sidebar .cmd:hover{background:#f0f5ff}
+.cmd .ci{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;margin-right:7px;font-size:13px;flex-shrink:0}
+.ci-r{background:#e6f7ff;color:#1677ff}.ci-s{background:#f6ffed;color:#52c41a}.ci-q{background:#fff7e6;color:#fa8c16}
+.cmd .lab{margin-left:auto;font-size:9px;color:#bbb;flex-shrink:0}
+.sidebar hr{margin:9px 0;border:none;border-top:1px solid #f0f0f0}
+.sidebar label{font-size:11px;display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer}
+.sidebar label .lab{margin-left:auto;font-size:9px;color:#bbb}
+.sidebar button{width:100%;padding:6px;margin:3px 0;border:1px solid #ddd;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;color:#666}
+.sidebar button:hover{border-color:#1677ff;color:#1677ff}
+.hint{font-size:10px;color:#aaa;margin:2px 0 6px 6px;line-height:1.5}
+.map-note{margin-top:auto;font-size:9.5px;color:#aaa;line-height:1.7;border-top:1px solid #f0f0f0;padding-top:8px}
+.map-note b{color:#888}
+/* ═══ 中间 ═══ */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{height:42px;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;padding:0 16px;font-size:11px;color:#888;gap:10px;flex-shrink:0}
+.header .dot{width:6px;height:6px;border-radius:50%;background:#52c41a}
+.header .cost-badge{color:#1677ff;cursor:pointer;margin-left:auto}
+.chat-area{flex:1;overflow-y:auto;padding:16px 20px}
+.welcome{text-align:center;margin:34px auto 0;max-width:520px}
+.welcome h1{font-size:21px;color:#1a1a2e;margin-bottom:4px}
+.welcome p{font-size:12px;color:#888;margin-bottom:14px}
+.tab-desc{background:#fafafa;border:1px solid #f0f0f0;border-radius:6px;padding:8px 10px;margin:8px auto 14px;font-size:10.5px;color:#888;line-height:1.7;text-align:left}
+.tab-desc b{color:#555}.tab-desc .tip{color:#1677ff}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:480px;margin:0 auto}
+.quick-q{background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:11px;text-align:left;transition:.15s}
+.quick-q:hover{border-color:#1677ff}
+.msg{margin-bottom:10px;animation:fadeIn .25s}
+.msg.user{text-align:right}
+.msg.user .bubble{background:#1677ff;color:#fff;display:inline-block;max-width:65%;padding:9px 14px;border-radius:12px 12px 4px 12px;font-size:13px;text-align:left}
+.msg.assistant .bubble{background:#fff;border:1px solid #e8e8e8;max-width:85%;padding:12px 16px;border-radius:4px 12px 12px 12px;font-size:13px;line-height:1.65;display:inline-block;text-align:left}
+.badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;margin:0 4px 4px 0}
+.badge-rag{background:#e6f7ff;color:#1677ff}.badge-sim{background:#f6ffed;color:#52c41a}
+.badge-sql{background:#fff7e6;color:#fa8c16}.badge-cache{background:#fff0f6;color:#eb2f96}
+.src{background:#fafafa;border-left:3px solid #1677ff;padding:6px 10px;margin:4px 0;border-radius:0 5px 5px 0;font-size:11px;line-height:1.55}
+.simbar{display:flex;align-items:center;gap:6px;margin-top:3px}
+.simbar .track{flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden}
+.simbar .fill{height:100%;border-radius:2px}
+.sqlcode{background:#1a1a2e;color:#a8d8a8;border-radius:6px;padding:9px 12px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;margin:6px 0}
+.sqlcode .k{color:#ff79c6}.sqlcode .c{color:#6272a4}
+.rtable{border-collapse:collapse;font-size:11px;margin:4px 0}
+.rtable th{background:#f5f5f5;padding:3px 9px;border:1px solid #eee;font-weight:600;color:#555}
+.rtable td{padding:3px 9px;border:1px solid #f0f0f0;color:#666}
+.cursor{display:inline-block;width:7px;height:14px;background:#52c41a;vertical-align:-2px;animation:blink .8s infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes flash{0%{background:#fffbe6}100%{background:transparent}}
+/* ═══ 输入 ═══ */
+.input-area{padding:10px 16px;background:#fff;border-top:1px solid #e8e8e8;display:flex;gap:8px;flex-shrink:0}
+.input-area input{flex:1;padding:9px 14px;border:1px solid #d9d9d9;border-radius:18px;font-size:13px;outline:none;background:#fafafa}
+.input-area input:focus{border-color:#1677ff;background:#fff}
+.input-area button{width:34px;height:34px;border-radius:50%;border:none;background:#1677ff;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0}
+/* ═══ 右侧面板 ═══ */
+.mem-panel{width:390px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;flex-shrink:0;font-size:11px}
+.mem-tabs{display:flex;border-bottom:1px solid #e8e8e8;flex-wrap:wrap}
+.mem-tab{flex:1;padding:8px 4px;text-align:center;font-size:10.5px;cursor:pointer;color:#888;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.mem-tab:hover{color:#1677ff}.mem-tab.on{color:#1677ff;border-bottom-color:#1677ff;background:#f5f8ff}
+.mem-tab .cnt{font-size:9px;color:#1677ff;margin-left:2px}
+.mem-sub .mem-tab{min-width:25%}
+.mem-desc{background:#fafafa;border-bottom:1px solid #f0f0f0;padding:7px 10px;font-size:10px;color:#888;line-height:1.6}
+.mem-desc b{color:#555}
+.mem-body{flex:1;overflow-y:auto;padding:10px 12px;line-height:1.7}
+.mem-body .sec{margin-bottom:8px}.mem-body .sec .tt{font-weight:600;color:#333;margin-bottom:2px;font-size:11px}
+.mem-body .it{padding:3px 6px;margin:2px 0;border-radius:3px;background:#f9f9f9;border-left:2px solid #e0e0e0;font-size:10px;word-break:break-all}
+.mem-body .it.U{border-left-color:#1677ff}.mem-body .it.A{border-left-color:#52c41a}
+.mem-body .it.new{animation:flash 1.6s}
+.mem-body .it.dropped{opacity:.45;text-decoration:line-through;border-left-color:#ff4d4f}
+.mem-body .empty{color:#ccc;text-align:center;padding:20px;font-size:11px}
+.delta{background:#fffbe6;border:1px solid #ffe58f;border-radius:5px;padding:5px 8px;margin-bottom:8px;font-size:10px;color:#ad6800;line-height:1.6}
+.mem-foot{padding:8px 10px;border-top:1px solid #e8e8e8;display:flex;gap:4px}
+.mem-foot button{flex:1;padding:4px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:10px;color:#666}
+.chunk{background:#f9f9f9;border:1px solid #f0f0f0;border-radius:5px;padding:5px 8px;margin:3px 0;font-size:10px;line-height:1.5}
+.chunk b{color:#555}
+.chunk.hit{background:#e6f7ff;border-color:#91caff}
+/* ═══ Cost 滑出 ═══ */
+.cost-overlay{position:fixed;top:0;right:0;width:430px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.12);z-index:1000;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column}
+.cost-overlay.open{transform:translateX(0)}
+.cost-overlay .ch{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e8e8e8}
+.cost-overlay .ch h3{font-size:15px}.cost-overlay .ch button{background:none;border:none;font-size:20px;cursor:pointer;color:#999}
+.cost-overlay .cb{flex:1;overflow-y:auto;padding:14px 18px}
+.cost-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.cost-sum .st{background:#f5f8ff;padding:10px;border-radius:8px;text-align:center}
+.cost-sum .st .v{font-size:19px;font-weight:700;color:#1677ff}.cost-sum .st .l{font-size:10px;color:#888}
+.cost-table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:14px}
+.cost-table th{background:#f5f5f5;padding:5px 6px;text-align:left;font-weight:600;color:#555}
+.cost-table td{padding:4px 6px;border-bottom:1px solid #f0f0f0;color:#666}
+.cost-table tr.cached td{color:#eb2f96}
+.cost-code{background:#1a1a2e;color:#a8d8a8;border-radius:8px;padding:12px;font-family:monospace;font-size:10px;line-height:1.7;white-space:pre;overflow-x:auto}
+.cost-code .k{color:#ff79c6}.cost-code .f{color:#50fa7b}.cost-code .c{color:#6272a4}
+.cost-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:999;display:none}
+.cost-backdrop.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- ═══ 左侧 ═══ -->
+<div class="sidebar">
+  <h2>📚 Day2 知识库+记忆</h2>
+  <div class="sub">5G 基站运维 · 12 条知识分块 · 前端原型（模拟数据）</div>
+  <div class="hint">本页为纯前端 Sample：向量检索用<b>真实余弦相似度</b>（字符二元组词袋）现场计算，LLM 回答为预置模拟</div>
+  <hr>
+  <div class="cmd" onclick="setQ('/rag ')"><div class="ci ci-r">🔍</div><div>/rag 知识检索</div><span class="lab">2.1·2.5</span></div>
+  <div class="hint">向量化检索 12 条知识分块 → 相关度排序 → 模拟 LLM 回答 + 溯源</div>
+  <div class="cmd" onclick="setQ('/sim ')"><div class="ci ci-s">📐</div><div>/sim 相似度拆解</div><span class="lab">2.3</span></div>
+  <div class="hint">展示 query 与每条分块的余弦相似度计算过程（共同词项/点积/模长）</div>
+  <div class="cmd" onclick="setQ('/sql 统计各厂商故障设备数量')"><div class="ci ci-q">🗄️</div><div>/sql Text-to-SQL</div><span class="lab">2.11</span></div>
+  <div class="hint">自然语言 → 生成 SQL → 查询模拟设备表 → 返回结果表格</div>
+  <hr>
+  <label><input type="checkbox" id="showSources" checked> 显示检索溯源<span class="lab">2.1</span></label>
+  <label><input type="checkbox" id="cacheToggle" checked> LLM 缓存<span class="lab">2.9</span></label>
+  <div class="hint">重复提问命中缓存：0 Token · 秒回（看💰面板对比）</div>
+  <button onclick="clearChat()">🧹 清空对话</button>
+  <button onclick="toggleCost()">💰 查看成本（2.8 Callbacks）</button>
+  <button onclick="switchMainTab('eval',document.querySelectorAll('.main-tabs .mem-tab')[2])">🧪 运行 RAG 评测（2.10）</button>
+  <div class="map-note">
+    <b>实验对照</b><br>
+    2.1 FAISS向量库 → 检索溯源卡片<br>
+    2.3 余弦相似度 → /sim 拆解<br>
+    2.5 RAG-Agent → 检索+回答链路<br>
+    2.7 Memory → 右侧①~④记忆策略<br>
+    2.8 Callbacks → 💰成本面板<br>
+    2.9 LLM-Caching → 缓存命中<br>
+    2.10 RAG评测 → 🧪评测 Tab<br>
+    2.11 Text-to-SQL → /sql 通道<br>
+    <span style="color:#ccc">2.2 阿里云向量库 / 2.6 Dify-RAG：云端与低代码替代实现，接真实后端时替换</span>
+  </div>
+</div>
+
+<!-- ═══ 中间 ═══ -->
+<div class="main">
+  <div class="header"><div class="dot"></div>原型模式 · 无需后端 · 双击即开
+    <span class="cost-badge" id="costBadge" onclick="toggleCost()">💰</span></div>
+  <div class="chat-area" id="chatArea"></div>
+  <div class="input-area">
+    <input type="text" id="q" placeholder="输入问题，回车发送…（试试连续问几轮，观察右侧记忆变化）" onkeydown="if(event.key==='Enter')send()" autofocus>
+    <button onclick="send()">➤</button>
+  </div>
+</div>
+
+<!-- ═══ 右侧面板 ═══ -->
+<div class="mem-panel">
+  <div class="mem-tabs main-tabs">
+    <div class="mem-tab on" onclick="switchMainTab('memory',this)">🧠 记忆<span class="cnt" id="cntTurn"></span></div>
+    <div class="mem-tab" onclick="switchMainTab('vector',this)">🧲 向量库</div>
+    <div class="mem-tab" onclick="switchMainTab('eval',this)">🧪 评测</div>
+  </div>
+  <div class="mem-tabs mem-sub" id="memSubTabs">
+    <div class="mem-tab on" onclick="switchMem('buffer',this)">①全量<span class="cnt" id="cntB"></span></div>
+    <div class="mem-tab" onclick="switchMem('window',this)">②窗口<span class="cnt" id="cntW"></span></div>
+    <div class="mem-tab" onclick="switchMem('summary',this)">③摘要<span class="cnt" id="cntS"></span></div>
+    <div class="mem-tab" onclick="switchMem('mix',this)">④混合<span class="cnt" id="cntM"></span></div>
+  </div>
+  <div class="mem-desc" id="memDesc"></div>
+  <div class="mem-body" id="memBody"></div>
+  <div class="mem-foot" id="memFoot">
+    <button onclick="renderPanel()">🔄 刷新</button>
+    <button onclick="resetMemory()">🗑 清空记忆</button>
+  </div>
+</div>
+
+<!-- ═══ Cost 滑出 ═══ -->
+<div class="cost-backdrop" id="costBackdrop" onclick="toggleCost()"></div>
+<div class="cost-overlay" id="costPanel">
+  <div class="ch"><h3>📊 LLM 调用追踪 · Callbacks（2.8）+ 缓存（2.9）</h3><button onclick="toggleCost()">✕</button></div>
+  <div class="cb" id="costBody"></div>
+</div>
+
+<script>
+/* ═══════════ 知识库（对应 day2/data/knowledge 3 篇文档 → 12 条分块） ═══════════ */
+var KB=[
+ {id:'C01',src:'01-故障排查.md',ch:'§1 光模块',text:'光模块接收功率正常范围 -25 ~ -8 dBm。低于 -28dBm 判定为功率异常，排查顺序：① 清洁光纤接头 ② 检查光纤弯折 ③ 更换光模块 ④ 检查对端发射功率。'},
+ {id:'C02',src:'01-故障排查.md',ch:'§1 光模块',text:'光模块温度超过 70°C 触发高温告警，常见原因：机柜风扇故障、防尘网堵塞、环境温度过高。处理：先查风扇转速，再查防尘网。'},
+ {id:'C03',src:'01-故障排查.md',ch:'§2 端口链路',text:'端口链路 Down 排查：① 检查网线/光纤物理连接 ② 查看端口协商速率 ③ ping 对端网关 ④ 检查 VLAN 配置。SCTP 链路中断优先查传输侧。'},
+ {id:'C04',src:'01-故障排查.md',ch:'§3 AAU',text:'AAU 驻波比（VSWR）正常值应小于 1.5，超过 2.0 触发驻波告警，需检查馈线接头是否进水、松动，天线是否损坏。'},
+ {id:'C05',src:'01-故障排查.md',ch:'§3 AAU',text:'AAU 退服（脱管）排查：① 检查 BBU-AAU 光纤 ② 检查 AAU 供电 ③ 查询 CPRI 链路状态 ④ 远程复位，复位无效则现场更换。'},
+ {id:'C06',src:'02-告警等级.md',ch:'§1 等级定义',text:'P0 紧急告警：基站整站退服、影响业务，SLA 要求 30 分钟内响应、2 小时内恢复。P1 严重告警：单小区退服，SLA 1 小时响应、4 小时恢复。'},
+ {id:'C07',src:'02-告警等级.md',ch:'§1 等级定义',text:'P2 一般告警：性能劣化如高温、驻波，SLA 4 小时响应、24 小时处理。P3 提示告警：不影响业务，纳入周巡检处理即可。'},
+ {id:'C08',src:'02-告警等级.md',ch:'§2 升级规则',text:'告警升级规则：P2 告警 24 小时未处理自动升级 P1；同站点 3 条以上 P2 并发时按 P1 处置；节假日保障期全等级提级响应。'},
+ {id:'C09',src:'03-维护规范.md',ch:'§1 巡检周期',text:'AAU 巡检周期为每季度巡检一次，检查项：驻波比、光功率、外观、接地电阻。BBU 巡检周期为每半年巡检一次，检查风扇、单板告警灯、软件版本。'},
+ {id:'C10',src:'03-维护规范.md',ch:'§2 变更窗口',text:'基站软件升级和配置变更必须在夜间维护窗口（00:00-06:00）执行，变更前备份配置，变更后观察 30 分钟 KPI 无劣化方可离场。'},
+ {id:'C11',src:'03-维护规范.md',ch:'§3 备件',text:'常用备件（光模块、风扇、电源模块）库存应满足在网量的 5%。P0 故障备件 4 小时内到站，偏远站点允许 8 小时。'},
+ {id:'C12',src:'03-维护规范.md',ch:'§3 备件',text:'更换光模块必须使用同厂商同速率型号，混用会导致协商失败。更换后记录 SN 入资管系统，旧件 7 天内返修入库。'}
+];
+
+/* ═══════════ 预置回答（模拟 LLM，按最佳分块路由） ═══════════ */
+var ANSWERS={
+ C01:'根据知识库，光模块接收功率的正常范围是 <b>-25 ~ -8 dBm</b>，低于 -28dBm 即判定功率异常。建议按以下顺序排查：\n① 清洁光纤接头（最常见原因）\n② 检查光纤是否弯折过度\n③ 更换光模块\n④ 检查对端发射功率\n\n若更换光模块，注意须使用同厂商同速率型号（见维护规范 §3）。',
+ C02:'光模块温度超过 <b>70°C</b> 会触发高温告警。常见原因依次为：机柜风扇故障 → 防尘网堵塞 → 环境温度过高。建议先检查风扇转速，再检查防尘网清洁状态。该告警属于 P2 级，SLA 要求 4 小时内响应。',
+ C03:'端口链路 Down 的标准排查步骤：\n① 检查网线/光纤物理连接\n② 查看端口协商速率是否匹配\n③ ping 对端网关验证连通性\n④ 检查 VLAN 配置\n\n若是 SCTP 链路中断，应优先排查传输侧。',
+ C04:'AAU 驻波比（VSWR）正常值应 <b>小于 1.5</b>，超过 2.0 会触发驻波告警。需要检查：馈线接头是否进水或松动、天线是否物理损坏。驻波告警属于 P2 性能劣化类告警。',
+ C05:'AAU 退服（脱管）的排查顺序：\n① 检查 BBU-AAU 之间光纤\n② 检查 AAU 供电\n③ 查询 CPRI 链路状态\n④ 远程复位\n\n复位无效则需现场更换。若整站退服属 P0 紧急告警，须 30 分钟内响应。',
+ C06:'<b>P0 紧急告警</b>（整站退服）：30 分钟内响应，2 小时内恢复。\n<b>P1 严重告警</b>（单小区退服）：1 小时响应，4 小时恢复。\n注意升级规则：P2 超 24 小时未处理会自动升级为 P1。',
+ C07:'<b>P2 一般告警</b>（高温、驻波等性能劣化）：4 小时响应、24 小时处理。\n<b>P3 提示告警</b>：不影响业务，纳入周巡检处理即可。',
+ C08:'告警升级规则有三条：\n① P2 告警 24 小时未处理 → 自动升级 P1\n② 同站点 3 条以上 P2 并发 → 按 P1 处置\n③ 节假日保障期 → 全等级提级响应。',
+ C09:'巡检周期规定：<b>AAU 每季度巡检一次</b>（查驻波比、光功率、外观、接地电阻）；<b>BBU 每半年巡检一次</b>（查风扇、单板告警灯、软件版本）。',
+ C10:'基站软件升级和配置变更必须在<b>夜间维护窗口（00:00-06:00）</b>执行。要求：变更前备份配置，变更后观察 30 分钟 KPI 无劣化方可离场。',
+ C11:'备件库存要求：光模块、风扇、电源模块等常用备件库存 ≥ 在网量的 <b>5%</b>。P0 故障备件 4 小时内到站（偏远站点 8 小时）。',
+ C12:'更换光模块的规范：必须使用<b>同厂商同速率型号</b>，混用会导致协商失败。更换后 SN 入资管系统，旧件 7 天内返修入库。'
+};
+var NO_HIT='知识库中没有与该问题足够相关的内容（最高相关度低于阈值 35%）。建议：① 换更具体的问法（如"光模块功率异常怎么排查"）② 或补充知识文档到 data/knowledge/ 后重建索引。';
+
+/* ═══════════ 模拟设备表（2.11 Text-to-SQL 用） ═══════════ */
+var DEVICES=[
+ {vendor:'华为',status:'fault',n:3},{vendor:'华为',status:'warning',n:5},{vendor:'华为',status:'normal',n:14},
+ {vendor:'中兴',status:'fault',n:2},{vendor:'中兴',status:'warning',n:4},{vendor:'中兴',status:'normal',n:9},
+ {vendor:'诺基亚',status:'fault',n:1},{vendor:'诺基亚',status:'warning',n:2},{vendor:'诺基亚',status:'normal',n:10}
+];
+
+/* ═══════════ 真实余弦相似度（字符二元组词袋，2.1 / 2.3 教学点） ═══════════ */
+function grams(s){
+  s=s.replace(/[\s，。、：；？！()（）【】\/\-·§①②③④⑤~<>b]/g,'');
+  var g={};for(var i=0;i<s.length-1;i++){var k=s.substr(i,2);g[k]=(g[k]||0)+1}
+  return g;
+}
+function cosine(a,b){
+  var dot=0,na=0,nb=0,k,common=[];
+  for(k in a){na+=a[k]*a[k];if(b[k]){dot+=a[k]*b[k];common.push(k)}}
+  for(k in b){nb+=b[k]*b[k]}
+  if(!na||!nb)return{score:0,common:[]};
+  return{score:dot/(Math.sqrt(na)*Math.sqrt(nb)),common:common,dot:dot,na:Math.sqrt(na),nb:Math.sqrt(nb)};
+}
+function retrieve(q,topK){
+  var qg=grams(q);
+  var res=KB.map(function(c){var r=cosine(qg,grams(c.text));return{chunk:c,score:r.score,detail:r}});
+  res.sort(function(a,b){return b.score-a.score});
+  return res.slice(0,topK||4);
+}
+
+/* ═══════════ 记忆系统（2.7 · 四种策略） ═══════════ */
+var MEM={all:[],summaries:[],turn:0};
+var WINDOW_K=6, SUMMARY_N=3;
+var lastDelta='';
+function pushTurn(uq,ans,intent){
+  MEM.turn++;
+  MEM.all.push({turn:MEM.turn,role:'user',content:uq,fresh:true});
+  MEM.all.push({turn:MEM.turn,role:'assistant',content:ans.replace(/<[^>]+>/g,'').replace(/\n/g,' '),fresh:true,intent:intent});
+  var deltas=['①全量 +2 条（累计 '+MEM.all.length+'）'];
+  var over=MEM.all.length-WINDOW_K;
+  if(over>0)deltas.push('②窗口 移出 '+Math.min(2,over)+' 条旧消息（只留最近 '+WINDOW_K+' 条）');
+  else deltas.push('②窗口 +2 条（'+MEM.all.length+'/'+WINDOW_K+' 未满）');
+  if(MEM.turn%SUMMARY_N===0){
+    var s=MEM.turn-SUMMARY_N+1,intents=[],i;
+    for(i=MEM.all.length-SUMMARY_N*2;i<MEM.all.length;i++){if(MEM.all[i]&&MEM.all[i].role==='user')intents.push(MEM.all[i].content.slice(0,18))}
+    MEM.summaries.push({range:'第'+s+'~'+MEM.turn+'轮',text:'用户依次询问了：'+intents.join('；')+'。均已基于知识库给出排查步骤/规范值回答。',fresh:true});
+    deltas.push('③摘要 <b>+1 段</b>（每 '+SUMMARY_N+' 轮 LLM 压缩一次）');
+  }else{
+    deltas.push('③摘要 缓冲 '+(MEM.turn%SUMMARY_N)+'/'+SUMMARY_N+' 轮');
+  }
+  deltas.push('④混合 = '+MEM.summaries.length+' 段摘要 + 最近 '+Math.min(MEM.all.length,WINDOW_K)+' 条原文');
+  lastDelta='<b>🔔 第 '+MEM.turn+' 轮记忆变化</b><br>'+deltas.join('<br>');
+  renderPanel();
+  setTimeout(function(){MEM.all.forEach(function(m){m.fresh=false});MEM.summaries.forEach(function(s){s.fresh=false})},1800);
+}
+function resetMemory(){MEM={all:[],summaries:[],turn:0};lastDelta='';renderPanel()}
+
+/* ═══════════ 成本 / 缓存（2.8 / 2.9） ═══════════ */
+var COST={calls:[]};var CACHE={};
+function trackCall(q,ans,cached){
+  var pt=cached?0:Math.round((q.length+400)*1.6),ct=cached?0:Math.round(ans.length*1.4);
+  COST.calls.push({time:new Date().toLocaleTimeString('zh-CN',{hour12:false}),q:q.slice(0,16),
+    elapsed:cached?0.01:(1.5+Math.random()*2).toFixed(1),pt:pt,ct:ct,cost:(pt*0.0000002+ct*0.0000008),cached:!!cached});
+  var t=COST.calls.reduce(function(a,c){return{n:a.n+1,tk:a.tk+c.pt+c.ct,cost:a.cost+c.cost}},{n:0,tk:0,cost:0});
+  document.getElementById('costBadge').textContent='💰 '+t.n+'次 '+t.tk+'tokens ~$'+t.cost.toFixed(4);
+}
+
+/* ═══════════ 聊天 ═══════════ */
+var CB=null,BUSY=false;
+function el(id){return document.getElementById(id)}
+function setQ(v){el('q').value=v;el('q').focus()}
+function scrollBottom(){var a=el('chatArea');a.scrollTop=a.scrollHeight}
+function addMsg(role,html){
+  var d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML='<div class="bubble">'+html+'</div>';
+  el('chatArea').appendChild(d);CB=d.querySelector('.bubble');scrollBottom();
+  var w=el('welcomePanel');if(w)w.remove();
+}
+function typewriter(html,done){
+  // 按字符流式渲染（保留 <b> 与换行），模拟 SSE 打字机
+  var cur=document.createElement('span');cur.className='cursor';CB.appendChild(cur);
+  var tokens=html.split(/(<[^>]+>|\n)/).filter(Boolean),ti=0,ci=0;
+  function step(){
+    if(ti>=tokens.length){cur.remove();if(done)done();return}
+    var t=tokens[ti];
+    if(t[0]==='<'){cur.insertAdjacentHTML('beforebegin',t);ti++;}
+    else if(t==='\n'){cur.insertAdjacentHTML('beforebegin','<br>');ti++;}
+    else{
+      var n=Math.min(ci+2,t.length);
+      cur.insertAdjacentHTML('beforebegin',t.slice(ci,n).replace(/</g,'&lt;'));ci=n;
+      if(ci>=t.length){ti++;ci=0}
+    }
+    scrollBottom();setTimeout(step,18);
+  }
+  step();
+}
+function scard(r,rank){
+  var pct=Math.round(r.score*100),c=pct>=50?'#52c41a':pct>=35?'#1677ff':'#fa8c16';
+  return '<div class="src"><b>📋 '+r.chunk.src+'</b> · '+r.chunk.ch+' · '+r.chunk.id+'<br>'
+    +r.chunk.text.slice(0,72)+'…'
+    +'<div class="simbar"><span style="font-size:10px;color:#888">Top'+rank+' 相关度</span>'
+    +'<div class="track"><div class="fill" style="width:'+Math.max(pct,4)+'%;background:'+c+'"></div></div>'
+    +'<span style="font-size:10px;font-weight:600;color:'+c+'">'+pct+'%</span>'
+    +'<span style="font-size:9px;color:#aaa">cos:'+r.score.toFixed(3)+'</span></div></div>';
+}
+
+function send(){
+  if(BUSY)return;
+  var q=el('q').value.trim();if(!q)return;el('q').value='';
+  addMsg('user',q.replace(/</g,'&lt;'));
+  BUSY=true;
+  if(/^\/sql/.test(q)||/统计|多少台|数量/.test(q))runSQL(q);
+  else if(/^\/sim/.test(q))runSim(q.replace(/^\/sim\s*/,''));
+  else runRAG(q.replace(/^\/rag\s*/,''));
+}
+
+/* ─── /rag：检索 + 模拟回答（2.1 + 2.5 + 2.9） ─── */
+var lastRetrieve=null;
+function runRAG(q){
+  var cacheOn=el('cacheToggle').checked;
+  if(cacheOn&&CACHE[q]){                       // 2.9 缓存命中
+    addMsg('assistant','<span class="badge badge-cache">⚡ 缓存命中 · 0 Token · 0.01s</span><br>'+CACHE[q]);
+    trackCall(q,CACHE[q],true);pushTurn(q,CACHE[q],'rag');BUSY=false;return;
+  }
+  var res=retrieve(q,4);lastRetrieve={q:q,res:res};
+  var best=res[0];
+  var h='<span class="badge badge-rag">🔍 RAG 检索（2.1 FAISS + 2.5 RAG-Agent）</span><br>';
+  if(el('showSources').checked){
+    h+='<b>检索 12 条分块 → Top4：</b><br>';
+    res.forEach(function(r,i){h+=scard(r,i+1)});
+  }
+  addMsg('assistant',h);
+  var ans=best.score>=0.06?ANSWERS[best.chunk.id]:NO_HIT;   // 阈值：字符二元组的合理下限
+  setTimeout(function(){
+    CB.insertAdjacentHTML('beforeend','<div style="border-top:1px dashed #eee;margin:6px 0"></div>');
+    typewriter(ans,function(){
+      CACHE[q]=ans;trackCall(q,ans,false);pushTurn(q,ans,'rag');
+      if(MAIN_TAB==='vector')renderPanel();
+      BUSY=false;
+    });
+  },400);
+}
+
+/* ─── /sim：余弦相似度拆解（2.3） ─── */
+function runSim(q){
+  if(!q){addMsg('assistant','用法：<b>/sim 你的问题</b>，展示与知识库每条分块的余弦相似度计算');BUSY=false;return}
+  var res=retrieve(q,3);lastRetrieve={q:q,res:res};
+  var h='<span class="badge badge-sim">📐 余弦相似度拆解（2.3）</span><br>'
+   +'<b>Query 向量化</b>：「'+q.slice(0,24)+'」→ 字符二元组词袋（真实 Embedding 中是 1024 维稠密向量）<br>';
+  res.forEach(function(r,i){
+    var d=r.detail;
+    h+='<div class="src" style="border-left-color:#52c41a"><b>Top'+(i+1)+' · '+r.chunk.id+'</b>（'+r.chunk.src+'）<br>'
+     +'共同词项：'+(d.common.slice(0,8).join('、')||'无')+(d.common.length>8?' …共'+d.common.length+'个':'')+'<br>'
+     +'cos = dot / (|q|·|d|) = '+(d.dot||0)+' / ('+(d.na||0).toFixed(1)+' × '+(d.nb||0).toFixed(1)+') = <b>'+r.score.toFixed(4)+'</b></div>';
+  });
+  h+='<div style="font-size:10px;color:#888;margin-top:4px">💡 真实系统中：DashScope text-embedding-v3 / FAISS IndexFlatL2，原理相同——把"语义接近"变成"向量夹角小"</div>';
+  addMsg('assistant',h);
+  trackCall('/sim '+q,'（本地计算，不调 LLM）',true);
+  pushTurn('/sim '+q,'展示了与 '+res.map(function(r){return r.chunk.id}).join('/')+' 的余弦相似度计算过程','sim');
+  BUSY=false;
+}
+
+/* ─── /sql：Text-to-SQL（2.11） ─── */
+function runSQL(q){
+  var qq=q.replace(/^\/sql\s*/,'');
+  var byVendor=/厂商/.test(qq)||!/状态/.test(qq);
+  var sql,rows,cols;
+  if(byVendor){
+    sql='<span class="k">SELECT</span> vendor, <span class="k">COUNT</span>(*) <span class="k">AS</span> fault_count\n<span class="k">FROM</span> devices\n<span class="k">WHERE</span> status = <span style="color:#f1fa8c">\'fault\'</span>\n<span class="k">GROUP BY</span> vendor\n<span class="k">ORDER BY</span> fault_count <span class="k">DESC</span>;';
+    cols=['vendor','fault_count'];
+    rows=DEVICES.filter(function(d){return d.status==='fault'}).map(function(d){return[d.vendor,d.n]});
+  }else{
+    sql='<span class="k">SELECT</span> status, <span class="k">SUM</span>(n) <span class="k">AS</span> cnt\n<span class="k">FROM</span> devices\n<span class="k">GROUP BY</span> status;';
+    cols=['status','cnt'];
+    var agg={};DEVICES.forEach(function(d){agg[d.status]=(agg[d.status]||0)+d.n});
+    rows=Object.keys(agg).map(function(k){return[k,agg[k]]});
+  }
+  var h='<span class="badge badge-sql">🗄️ Text-to-SQL（2.11）</span><br>'
+   +'<b>① LLM 生成 SQL</b>（只读白名单校验通过 ✅）<div class="sqlcode">'+sql+'</div>'
+   +'<b>② 执行结果</b><table class="rtable"><tr>'+cols.map(function(c){return'<th>'+c+'</th>'}).join('')+'</tr>'
+   +rows.map(function(r){return'<tr>'+r.map(function(v){return'<td>'+v+'</td>'}).join('')+'</tr>'}).join('')+'</table>'
+   +'<b>③ LLM 总结</b>：'+(byVendor?'华为故障设备最多（3 台），建议优先安排华为侧备件与工单。':'当前网络整体健康：正常 33 台、告警 11 台、故障 6 台。');
+  addMsg('assistant',h);
+  var plain='生成 SQL 并返回 '+rows.length+' 行统计结果';
+  trackCall(qq,plain,false);pushTurn(qq,plain,'sql');
+  BUSY=false;
+}
+
+/* ═══════════ 右侧面板渲染 ═══════════ */
+var MAIN_TAB='memory',MEM_TAB='buffer';
+var MEM_DESCS={
+ buffer:'📦 <b>①全量 ConversationBufferMemory</b>：保留所有历史，永不截断。信息最全但 Token 线性增长——短对话适用。',
+ window:'🪟 <b>②窗口 ConversationBufferWindowMemory</b>：只留最近 K='+WINDOW_K+' 条，旧消息直接丢弃（划线标红=已移出）。Token 恒定，但早期信息丢失。',
+ summary:'📝 <b>③摘要 ConversationSummaryMemory</b>：每攒满 '+SUMMARY_N+' 轮，LLM 压缩为一段摘要。不丢信息但有压缩损耗。',
+ mix:'⭐ <b>④混合 ConversationSummaryBufferMemory（推荐）</b>：早期→摘要保大局，近期→原文保细节。LangChain 生产推荐策略。'
+};
+function switchMainTab(tab,elBtn){
+  MAIN_TAB=tab;
+  document.querySelectorAll('.main-tabs .mem-tab').forEach(function(t){t.classList.remove('on')});
+  elBtn.classList.add('on');
+  el('memSubTabs').style.display=tab==='memory'?'flex':'none';
+  el('memFoot').style.display=tab==='memory'?'flex':'none';
+  renderPanel();
+}
+function switchMem(tab,elBtn){
+  MEM_TAB=tab;
+  document.querySelectorAll('.mem-sub .mem-tab').forEach(function(t){t.classList.remove('on')});
+  elBtn.classList.add('on');renderPanel();
+}
+function msgItem(m,dropped){
+  return '<div class="it '+(m.role==='user'?'U':'A')+(m.fresh?' new':'')+(dropped?' dropped':'')+'">'
+   +'<b>'+(m.role==='user'?'👤':'🤖')+'</b> '+m.content.slice(0,90).replace(/</g,'&lt;')+'</div>';
+}
+function renderPanel(){
+  el('cntTurn').textContent=MEM.turn?MEM.turn+'轮':'';
+  el('cntB').textContent=MEM.all.length;
+  el('cntW').textContent=Math.min(MEM.all.length,WINDOW_K)+'/'+WINDOW_K;
+  el('cntS').textContent=MEM.summaries.length;
+  el('cntM').textContent=MEM.summaries.length+'+'+Math.min(MEM.all.length,WINDOW_K);
+  var body=el('memBody'),h='';
+  if(MAIN_TAB==='memory'){
+    el('memDesc').innerHTML=MEM_DESCS[MEM_TAB];
+    if(lastDelta)h+='<div class="delta">'+lastDelta+'</div>';
+    if(!MEM.all.length){body.innerHTML=h+'<div class="empty">开始对话后，这里逐轮展示 4 种记忆的变化<br>建议连续问 4 轮以上，看窗口截断与摘要生成</div>';return}
+    var win=MEM.all.slice(-WINDOW_K),droppedList=MEM.all.slice(0,-WINDOW_K);
+    var lt;
+    function turnHead(m){if(m.turn!==lt){lt=m.turn;return '<div style="font-size:10px;color:#1677ff;font-weight:600;margin:5px 0 2px">第 '+m.turn+' 轮</div>'}return ''}
+    if(MEM_TAB==='buffer'){
+      h+='<div class="sec"><div class="tt">① 全量 · 共 '+MEM.all.length+' 条 · Token 随轮数线性↑</div></div>';lt=0;
+      MEM.all.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }else if(MEM_TAB==='window'){
+      h+='<div class="sec"><div class="tt">② 窗口 K='+WINDOW_K+' · 窗口内 '+win.length+' 条 · 已移出 '+droppedList.length+' 条</div></div>';
+      if(droppedList.length){h+='<div style="font-size:10px;color:#ff4d4f;margin-bottom:2px">▼ 已移出窗口（模型看不到了）</div>';lt=0;droppedList.slice(-4).forEach(function(m){h+=msgItem(m,true)})}
+      h+='<div style="font-size:10px;color:#52c41a;margin:4px 0 2px">▼ 窗口内（进入 Prompt）</div>';lt=0;
+      win.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }else if(MEM_TAB==='summary'){
+      var buf=MEM.turn%SUMMARY_N,pct=Math.round(buf/SUMMARY_N*100);
+      h+='<div class="sec"><div class="tt">③ 摘要 · 每 '+SUMMARY_N+' 轮压缩 · 已生成 '+MEM.summaries.length+' 段</div></div>';
+      h+='<div style="font-size:10px;color:#888">⏳ 缓冲 '+buf+'/'+SUMMARY_N+' 轮</div>'
+       +'<div style="background:#eee;border-radius:8px;height:5px;overflow:hidden;margin:4px 0 8px"><div style="background:#1677ff;height:100%;width:'+pct+'%"></div></div>';
+      if(MEM.summaries.length)MEM.summaries.forEach(function(s,i){h+='<div class="it'+(s.fresh?' new':'')+'" style="border-left-color:#fa8c16">📝 #'+(i+1)+' <b>'+s.range+'</b> '+s.text+'</div>'});
+      else h+='<div class="empty">再问 '+(SUMMARY_N-buf)+' 轮后生成第一段摘要</div>';
+    }else{
+      h+='<div class="sec"><div class="tt">④ 混合 ⭐ · '+MEM.summaries.length+' 段摘要 + 最近 '+win.length+' 条原文</div></div>';
+      h+='<div style="padding:6px;background:#f6ffed;border-radius:4px;font-size:10px;color:#389e0d;margin-bottom:6px">进入 Prompt 的内容 = 下面两部分拼接</div>';
+      h+='<div style="font-size:10px;font-weight:600;color:#fa8c16;margin-bottom:2px">📋 历史摘要（大局观）</div>';
+      if(MEM.summaries.length)MEM.summaries.forEach(function(s,i){h+='<div class="it'+(s.fresh?' new':'')+'" style="border-left-color:#fa8c16">📝 #'+(i+1)+' '+s.text.slice(0,70)+'…</div>'});
+      else h+='<div class="empty" style="padding:6px">暂无摘要</div>';
+      h+='<div style="font-size:10px;font-weight:600;color:#1677ff;margin:6px 0 2px">💬 近期原文（细节）</div>';lt=0;
+      win.forEach(function(m){h+=turnHead(m)+msgItem(m)});
+    }
+  }else if(MAIN_TAB==='vector'){
+    el('memDesc').innerHTML='🧲 <b>向量库（2.1 FAISS）</b>：3 篇文档 → 切分 12 条分块 → 向量化入库。下方高亮 = 最近一次检索命中的分块。<span style="color:#1677ff">2.2 阿里云 DashVector / 2.6 Dify 知识库为同一原理的云端与低代码实现。</span>';
+    if(lastRetrieve){
+      h+='<div class="sec"><div class="tt">🔍 最近检索：「'+lastRetrieve.q.slice(0,22)+'」</div></div>';
+      lastRetrieve.res.forEach(function(r,i){
+        var pct=Math.round(r.score*100);
+        h+='<div class="chunk hit"><b>Top'+(i+1)+' · '+r.chunk.id+'</b> cos='+r.score.toFixed(3)+'（'+pct+'%）<br>'+r.chunk.text.slice(0,55)+'…</div>';
+      });
+      h+='<hr style="border:none;border-top:1px solid #f0f0f0;margin:8px 0">';
+    }
+    h+='<div class="sec"><div class="tt">📚 全部分块（12 条）</div></div>';
+    var hitIds=lastRetrieve?lastRetrieve.res.map(function(r){return r.chunk.id}):[];
+    KB.forEach(function(c){
+      h+='<div class="chunk'+(hitIds.indexOf(c.id)>=0?' hit':'')+'"><b>'+c.id+'</b> '+c.src+' '+c.ch+'<br>'+c.text.slice(0,48)+'…</div>';
+    });
+  }else{
+    el('memDesc').innerHTML='🧪 <b>RAG 评测（2.10）</b>：用固定评测集跑检索命中率 + 答案忠实度。点击「运行评测」查看逐条结果（本原型现场真实计算检索命中）。';
+    h+=renderEval();
+  }
+  body.innerHTML=h;
+}
+
+/* ─── 评测（2.10）：现场真实跑检索命中 ─── */
+var EVAL_CASES=[
+ {q:'光模块功率异常怎么排查',expect:'C01'},
+ {q:'光模块高温告警什么原因',expect:'C02'},
+ {q:'P0 告警的 SLA 要求',expect:'C06'},
+ {q:'驻波比多少算正常',expect:'C04'},
+ {q:'AAU 多久巡检一次',expect:'C09'},
+ {q:'软件升级要在什么时间做',expect:'C10'},
+ {q:'今天天气怎么样',expect:null}
+];
+var EVAL_DONE=false,EVAL_ROWS=[];
+function renderEval(){
+  var h='<button onclick="runEval()" style="width:100%;padding:7px;border:none;border-radius:5px;background:#1677ff;color:#fff;cursor:pointer;font-size:12px;margin-bottom:8px">▶ 运行评测（'+EVAL_CASES.length+' 条用例）</button>';
+  if(!EVAL_DONE)return h+'<div class="empty">评测集：6 条应命中 + 1 条应拒答<br>指标：检索命中率（Top1 是否为期望分块）</div>';
+  var hit=EVAL_ROWS.filter(function(r){return r.pass}).length;
+  h+='<div class="delta" style="background:#f6ffed;border-color:#b7eb8f;color:#389e0d"><b>命中率 '+hit+'/'+EVAL_ROWS.length+'（'+Math.round(hit/EVAL_ROWS.length*100)+'%）</b> · 阈值 cos≥0.06 判定拒答</div>';
+  EVAL_ROWS.forEach(function(r){
+    h+='<div class="it" style="border-left-color:'+(r.pass?'#52c41a':'#ff4d4f')+'">'
+     +(r.pass?'✅':'❌')+' '+r.q.slice(0,20)+'<br><span style="color:#aaa">期望 '+(r.expect||'拒答')+' → 实际 '+r.actual+'（cos '+r.score+'）</span></div>';
+  });
+  h+='<div style="font-size:10px;color:#888;margin-top:6px">💡 完整版评测还包括：答案忠实度（LLM-as-Judge 判断回答是否忠于检索内容）、拒答正确率——见实验 2.10 evaluate_rag.py</div>';
+  return h;
+}
+function runEval(){
+  EVAL_ROWS=EVAL_CASES.map(function(c){
+    var r=retrieve(c.q,1)[0];
+    var rejected=r.score<0.06;
+    var actual=rejected?'拒答':r.chunk.id;
+    var pass=c.expect?actual===c.expect:rejected;
+    return{q:c.q,expect:c.expect,actual:actual,score:r.score.toFixed(3),pass:pass};
+  });
+  EVAL_DONE=true;renderPanel();
+}
+
+/* ═══════════ Cost 面板（2.8 + 2.9） ═══════════ */
+function toggleCost(){
+  var p=el('costPanel'),b=el('costBackdrop');
+  if(p.classList.contains('open')){p.classList.remove('open');b.classList.remove('show');return}
+  renderCost();p.classList.add('open');b.classList.add('show');
+}
+function renderCost(){
+  var body=el('costBody');
+  if(!COST.calls.length){body.innerHTML='<div style="text-align:center;color:#ccc;padding:40px">暂无调用 · 先在中间问几个问题</div>';return}
+  var t=COST.calls.reduce(function(a,c){return{n:a.n+1,tk:a.tk+c.pt+c.ct,cost:a.cost+c.cost,cached:a.cached+(c.cached?1:0)}},{n:0,tk:0,cost:0,cached:0});
+  var h='<div class="cost-sum">'
+   +'<div class="st"><div class="v">'+t.n+'</div><div class="l">调用次数</div></div>'
+   +'<div class="st"><div class="v">'+t.tk+'</div><div class="l">总 Token</div></div>'
+   +'<div class="st"><div class="v" style="color:#eb2f96">'+t.cached+'</div><div class="l">缓存命中（省 Token）</div></div>'
+   +'<div class="st"><div class="v">$'+t.cost.toFixed(4)+'</div><div class="l">预估费用</div></div></div>';
+  h+='<h4 style="font-size:12px;margin-bottom:6px">📋 调用明细（粉色 = 2.9 缓存命中）</h4>'
+   +'<table class="cost-table"><tr><th>时间</th><th>问题</th><th>耗时</th><th>输入tk</th><th>输出tk</th><th>费用</th></tr>';
+  COST.calls.slice().reverse().slice(0,12).forEach(function(c){
+    h+='<tr'+(c.cached?' class="cached"':'')+'><td>'+c.time+'</td><td>'+c.q+'</td><td>'+c.elapsed+'s</td><td>'+c.pt+'</td><td>'+c.ct+'</td><td>'+(c.cached?'⚡$0':'$'+c.cost.toFixed(4))+'</td></tr>';
+  });
+  h+='</table>';
+  h+='<h4 style="font-size:12px;margin-bottom:6px">🔧 实现原理（接真实后端时）</h4><div class="cost-code">'
+   +'<span class="c"># 2.8 Callbacks：一行接入成本追踪</span>\n'
+   +'<span class="k">class</span> <span class="f">CostTracker</span>(BaseCallbackHandler):\n'
+   +'    <span class="k">def</span> <span class="f">on_llm_end</span>(self, response, **kw):\n'
+   +'        usage = response.llm_output[<span style="color:#f1fa8c">"token_usage"</span>]\n'
+   +'        self.calls.append({...})\n'
+   +'llm.callbacks = [CostTracker()]\n\n'
+   +'<span class="c"># 2.9 缓存：两行开启</span>\n'
+   +'<span class="k">from</span> langchain.cache <span class="k">import</span> SQLiteCache\n'
+   +'set_llm_cache(SQLiteCache(<span style="color:#f1fa8c">".cache.db"</span>))\n'
+   +'<span class="c"># 相同 prompt 第二次调用 → 直接回缓存，0 Token</span></div>';
+  body.innerHTML=h;
+}
+
+/* ═══════════ 欢迎页 ═══════════ */
+function clearChat(){
+  el('chatArea').innerHTML='<div class="welcome" id="welcomePanel">'
+   +'<h1>📚 Day2 — 知识库 + 记忆系统</h1>'
+   +'<p>RAG 向量检索 · 4 种记忆策略 · 缓存 · 成本追踪 · Text-to-SQL（前端原型）</p>'
+   +'<div class="tab-desc" style="max-width:480px">'
+   +'<b>怎么玩</b>：直接提问 → 系统现场计算<b>余弦相似度</b>检索 12 条知识分块 → 模拟 LLM 流式回答。'
+   +'每问一轮，右侧面板实时展示 <b>4 种记忆策略</b>的变化（新增高亮 / 移出划线 / 摘要进度条）。<br>'
+   +'<span class="tip">💡 建议动作：连续问 4 个问题看窗口截断 → 重复问同一问题看缓存命中 → 切到🧪跑评测</span></div>'
+   +'<div class="quick">'
+   +'<div class="quick-q" onclick="setQ(\'光模块功率异常怎么排查？\')">🔍 光模块功率异常排查？</div>'
+   +'<div class="quick-q" onclick="setQ(\'P0 告警的 SLA 是什么要求？\')">🔍 P0 告警 SLA？</div>'
+   +'<div class="quick-q" onclick="setQ(\'驻波比多少算正常？\')">🔍 驻波比正常值？</div>'
+   +'<div class="quick-q" onclick="setQ(\'AAU 多久巡检一次？\')">🔍 AAU 巡检周期？</div>'
+   +'<div class="quick-q" onclick="setQ(\'/sim 光模块温度过高\')">📐 /sim 相似度拆解</div>'
+   +'<div class="quick-q" onclick="setQ(\'/sql 统计各厂商故障设备数量\')">🗄️ /sql 统计故障设备</div>'
+   +'</div></div>';
+}
+clearChat();renderPanel();
+</script>
+</body>
+</html>

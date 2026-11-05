@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day3 — 多 Agent 协作</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--text3:#9ca3af;--border:#e5e7eb;--primary:#2563eb;--primary-light:#eff6ff;--danger:#dc2626;--danger-light:#fef2f2;--green:#059669;--green-bg:#ecfdf5}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}
+h1{font-size:20px;margin-bottom:4px}h1 span{font-weight:400;color:var(--text3);font-size:14px}
+.subtitle{color:var(--text2);font-size:12px;margin-bottom:20px}
+.layout{display:flex;gap:16px;max-width:1100px}
+.main{flex:1;min-width:0}.side{width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.card h3{font-size:13px;margin-bottom:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}
+.tag-sup{background:var(--primary-light);color:var(--primary)}.tag-hitl{background:var(--danger-light);color:var(--danger)}
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#fff}
+.btn-primary{background:var(--primary)}.btn-danger{background:var(--danger)}.btn-green{background:var(--green)}
+.result-area{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;min-height:60px;max-height:350px;overflow-y:auto;font-size:13px;white-space:pre-wrap}
+.input-row{display:flex;gap:8px;margin-bottom:8px}
+.input-row input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
+.session-list{font-size:12px;line-height:1.8;max-height:200px;overflow-y:auto}
+</style>
+</head>
+<body>
+<h1>Day3 — 多 Agent 协作 <span>| Supervisor + HITL + Stream + Checkpoint</span></h1>
+<p class="subtitle">对应实验 3.1 路由 · 3.2 流水线 · 3.4 HITL · 3.7 Stream</p>
+
+<div class="layout">
+<div class="main">
+  <!-- Supervisor -->
+  <div class="card" style="margin-bottom:14px">
+    <h3><span class="tag tag-sup">3.2 Supervisor</span>多 Agent 调度</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:8px">真数据：detection 读 Day1 对象 · diagnosis 搜 Day2 知识库 · disposal 生成工单（P0 → 需人工审批）</p>
+    <div class="input-row">
+      <input id="supInput" value="OBJ-0006 业务中断，全面排查" onkeydown="if(event.key==='Enter')runSupervisor()">
+      <button class="btn btn-primary" onclick="runSupervisor()">Supervisor 排查</button>
+    </div>
+    <div class="result-area" id="supResult">等待执行…</div>
+  </div>
+
+  <!-- HITL -->
+  <div class="card">
+    <h3><span class="tag tag-hitl">3.4 HITL</span>人工审批</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Agent 诊断（读 Day1 真实对象数据）→ interrupt() 暂停 → 人批准/拒绝 → 继续执行或升级</p>
+    <div style="display:flex;gap:8px">
+      <input id="hitlDevice" value="OBJ-0006" style="width:110px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none">
+      <button class="btn btn-danger" onclick="startHITL()">开始排查（触发审批）</button>
+      <span id="hitlStatus" style="font-size:12px;color:var(--text2);display:flex;align-items:center">等待启动…</span>
+    </div>
+    <div id="hitlActions" style="display:none;margin-top:8px;display:flex;gap:8px">
+      <button class="btn btn-green" onclick="decideHITL(true)">批准执行</button>
+      <button class="btn btn-danger" onclick="decideHITL(false)">拒绝，升级处理</button>
+    </div>
+    <div class="result-area" id="hitlResult" style="margin-top:8px">等待执行…</div>
+  </div>
+</div>
+
+<div class="side">
+  <!-- Sessions -->
+  <div class="card">
+    <h3><span class="tag tag-sup">3.6 Checkpoint</span>会话列表 <button onclick="loadSessions()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">刷新</button></h3>
+    <div class="session-list" id="sessionList"><span style="color:var(--text3)">加载中…</span></div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="card" style="background:var(--primary-light)">
+    <h3>Supervisor 调度流程</h3>
+    <pre style="font-size:11px;line-height:1.8;color:var(--text2);background:none;padding:0">Supervisor
+  ├→ detection（检测告警）
+  ├→ diagnosis（根因分析）
+  └→ disposal（创建工单）
+       ↓
+  回到 Supervisor → FINISH</pre>
+  </div>
+</div>
+</div>
+
+<script>
+var currentHitlTid = null;
+
+async function runSupervisor(){
+  var q=document.getElementById('supInput').value.trim();if(!q)return;
+  var out=document.getElementById('supResult');out.textContent='';
+  var resp=await fetch('/agent/supervisor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+  var reader=resp.body.getReader();var decoder=new TextDecoder();
+  while(true){var r=await reader.read();if(r.done)break;
+    for(var line of decoder.decode(r.value).split('\n')){
+      if(!line.startsWith('data: '))continue;var p=line.slice(6);if(p==='[DONE]')continue;
+      try{out.textContent+=JSON.parse(p).content}catch(e){}
+    }
+  }
+  loadSessions();
+}
+
+async function startHITL(){
+  var dev=document.getElementById('hitlDevice').value.trim()||'OBJ-0006';
+  var resp=await fetch('/agent/hitl/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_name:dev})});
+  var d=await resp.json();
+  currentHitlTid=d.thread_id;
+  document.getElementById('hitlStatus').textContent='等待审批：'+d.action;
+  document.getElementById('hitlActions').style.display='flex';
+  document.getElementById('hitlResult').textContent='Agent 已暂停，等待审批…'+(d.diagnosis?'\n诊断依据：'+d.diagnosis:'');
+}
+
+async function decideHITL(approved){
+  if(!currentHitlTid)return;
+  var resp=await fetch('/agent/hitl/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thread_id:currentHitlTid,approved:approved})});
+  var d=await resp.json();
+  document.getElementById('hitlStatus').textContent='已完成：'+(approved?'批准执行':'拒绝升级');
+  document.getElementById('hitlActions').style.display='none';
+  document.getElementById('hitlResult').textContent=(d.results||[]).join('\n');
+  loadSessions();
+}
+
+async function loadSessions(){
+  var r=await fetch('/sessions');var d=await r.json();
+  document.getElementById('sessionList').innerHTML=d.sessions.map(function(s){return '<div>'+s.thread_id+' ('+s.checkpoints+' 快照)</div>';}).join('')||'暂无会话';
+}
+loadSessions();
+</script>
+</body>
+</html>

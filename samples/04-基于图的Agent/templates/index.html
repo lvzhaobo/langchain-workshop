@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph 图编排 — DAG 可视化</title>
+<style>
+  /* ============================================================
+     Light / Dark 主题变量
+     ============================================================ */
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --card-hover: #1e2130;
+    --border: #2a2d3a;
+    --text: #e1e4eb;
+    --text-secondary: #9ca3af;
+    --blue: #3b82f6;
+    --blue-bg: #1e3a5f;
+    --green: #22c55e;
+    --green-bg: #1d4d2d;
+    --yellow: #eab308;
+    --yellow-bg: #5c3a1e;
+    --purple: #a855f7;
+    --purple-bg: #3b1f6e;
+    --red: #ef4444;
+    --radius: 12px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    --final-gradient-1: #1a1d27;
+    --final-gradient-2: #1e2233;
+    --btn-disabled-bg: #374151;
+    --btn-disabled-text: #6b7280;
+    --example-tag-bg: #1a1d27;
+    --example-tag-text: #9ca3af;
+    --error-bg: #3b1219;
+    --error-text: #fca5a5;
+    --spinner-border: #2a2d3a;
+    --toggle-bg: #2a2d3a;
+
+    /* Canvas DAG 颜色 */
+    --dag-node-fill: #1a1d27;
+    --dag-node-stroke: #2a2d3a;
+    --dag-node-text: #e1e4eb;
+    --dag-node-sub: #9ca3af;
+    --dag-edge: #3a3d4a;
+    --dag-arrow: #4a4d5a;
+    --dag-active-stroke: #22c55e;
+    --dag-active-glow: rgba(34,197,94,0.35);
+    --dag-done-stroke: #3b82f6;
+    --dag-done-glow: rgba(59,130,246,0.2);
+    --dag-start-fill: #1d4d2d;
+    --dag-end-fill: #1e3a5f;
+    --dag-planner-fill: #1e3a5f;
+    --dag-writer-fill: #1d4d2d;
+    --dag-polisher-fill: #5c3a1e;
+    --dag-grid: rgba(255,255,255,0.03);
+  }
+
+  [data-theme="light"] {
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --card-hover: #f8fafc;
+    --border: #e2e8f0;
+    --text: #2c3e50;
+    --text-secondary: #5a6c7d;
+    --blue: #3b82f6;
+    --blue-bg: #dbeafe;
+    --green: #10b981;
+    --green-bg: #dcfce7;
+    --yellow: #d97706;
+    --yellow-bg: #fef3c7;
+    --purple: #7c3aed;
+    --purple-bg: #ede9fe;
+    --red: #ef4444;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    --final-gradient-1: #f0f9ff;
+    --final-gradient-2: #faf5ff;
+    --btn-disabled-bg: #e2e8f0;
+    --btn-disabled-text: #94a3b8;
+    --example-tag-bg: #f1f5f9;
+    --example-tag-text: #64748b;
+    --error-bg: #fef2f2;
+    --error-text: #dc2626;
+    --spinner-border: #e2e8f0;
+    --toggle-bg: #e2e8f0;
+
+    /* Canvas DAG 颜色 */
+    --dag-node-fill: #ffffff;
+    --dag-node-stroke: #e2e8f0;
+    --dag-node-text: #2c3e50;
+    --dag-node-sub: #5a6c7d;
+    --dag-edge: #cbd5e1;
+    --dag-arrow: #94a3b8;
+    --dag-active-stroke: #10b981;
+    --dag-active-glow: rgba(16,185,129,0.25);
+    --dag-done-stroke: #3b82f6;
+    --dag-done-glow: rgba(59,130,246,0.12);
+    --dag-start-fill: #dcfce7;
+    --dag-end-fill: #dbeafe;
+    --dag-planner-fill: #dbeafe;
+    --dag-writer-fill: #dcfce7;
+    --dag-polisher-fill: #fef3c7;
+    --dag-grid: rgba(0,0,0,0.03);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* ====== 顶部导航 ====== */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .header .left-area { display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 1.25rem; font-weight: 600; }
+  .header .badge {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 500;
+  }
+  .badge-bailian { background: #1d4ed8; color: #93c5fd; }
+  .badge-openai  { background: #166534; color: #86efac; }
+  .badge-mock    { background: #713f12; color: #fde68a; }
+
+  /* ====== 主题切换按钮 ====== */
+  .theme-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--toggle-bg); border: 1px solid var(--border);
+    border-radius: 24px; padding: 4px; cursor: pointer;
+    transition: all 0.3s ease; position: relative;
+    width: 56px; height: 30px;
+  }
+  .theme-toggle .thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue); position: absolute;
+    top: 3px; left: 4px; transition: transform 0.3s ease;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  [data-theme="light"] .theme-toggle .thumb { transform: translateX(26px); }
+  .theme-toggle .icons {
+    display: flex; justify-content: space-between;
+    width: 100%; padding: 0 5px; font-size: 13px; pointer-events: none;
+  }
+
+  /* ====== 主布局 ====== */
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ====== Canvas DAG 区域 ====== */
+  .graph-section { margin-bottom: 24px; }
+  .graph-section .section-label {
+    font-size: 0.85rem; color: var(--text-secondary);
+    margin-bottom: 12px; font-weight: 500;
+  }
+  .canvas-wrapper {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  #dag-canvas { display: block; width: 100%; height: auto; cursor: default; }
+
+  /* 图例 */
+  .dag-legend {
+    display: flex; gap: 20px; margin-top: 10px; font-size: 0.75rem;
+    color: var(--text-secondary); justify-content: center; flex-wrap: wrap;
+  }
+  .dag-legend span { display: flex; align-items: center; gap: 6px; }
+  .dag-legend .dot {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+  }
+  .legend-idle { background: var(--dag-node-stroke); }
+  .legend-active { background: var(--dag-active-stroke); }
+  .legend-done { background: var(--dag-done-stroke); }
+
+  /* ====== 输入区域 ====== */
+  .input-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-top: 24px;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .input-row { display: flex; gap: 12px; }
+  .input-row input {
+    flex: 1; padding: 12px 16px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 1rem; outline: none;
+    transition: border-color 0.2s, background 0.3s ease, color 0.3s ease;
+  }
+  .input-row input:focus { border-color: var(--blue); }
+  .btn {
+    padding: 12px 24px; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-primary:disabled {
+    background: var(--btn-disabled-bg); color: var(--btn-disabled-text);
+    cursor: not-allowed;
+  }
+  .examples { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .examples > span:first-child { font-size: 0.85rem; color: var(--text-secondary); }
+  .example-tag {
+    padding: 4px 12px; background: var(--example-tag-bg);
+    border: 1px solid var(--border); border-radius: 16px;
+    font-size: 0.8rem; color: var(--example-tag-text);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .example-tag:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* ====== 进度条 ====== */
+  .progress-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 20px; padding: 12px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; font-size: 0.85rem;
+    color: var(--text-secondary);
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .progress-bar .step-indicators { display: flex; gap: 6px; margin-left: auto; }
+  .progress-bar .step-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border); transition: all 0.3s ease;
+  }
+  .progress-bar .step-dot.done { background: var(--blue); }
+  .progress-bar .step-dot.current {
+    background: var(--green);
+    animation: pulse-dot 0.8s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+  }
+
+  /* ====== 结果卡片 ====== */
+  .results { margin-top: 24px; }
+  .results h3 {
+    font-size: 1rem; margin-bottom: 16px;
+    color: var(--text-secondary); display: flex; align-items: center; gap: 8px;
+  }
+  .node-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 16px; overflow: hidden;
+    animation: slideIn 0.5s ease;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .node-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.2s ease, border-color 0.3s ease;
+  }
+  .node-card-header:hover { background: var(--card-hover); }
+  .node-card-header .left { display: flex; align-items: center; gap: 10px; }
+  .node-card-header .icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .icon-planner  { background: var(--blue-bg); }
+  .icon-writer   { background: var(--green-bg); }
+  .icon-polisher { background: var(--yellow-bg); }
+  .node-card-body {
+    padding: 20px; font-size: 0.92rem; line-height: 1.7;
+    white-space: pre-wrap; max-height: 400px; overflow-y: auto;
+    display: none; color: var(--text); transition: color 0.3s ease;
+  }
+  .node-card-body.open { display: block; }
+  .meta { font-size: 0.78rem; color: var(--text-secondary); }
+
+  /* 最终输出 */
+  .final-output {
+    background: linear-gradient(135deg, var(--final-gradient-1) 0%, var(--final-gradient-2) 100%);
+    border: 2px solid var(--purple); border-radius: var(--radius);
+    padding: 24px; margin-top: 24px; animation: slideIn 0.5s ease;
+    transition: background 0.3s ease;
+  }
+  .final-output h3 { color: var(--purple); margin-bottom: 12px; font-size: 1rem; }
+  .final-output .content {
+    font-size: 0.95rem; line-height: 1.8; white-space: pre-wrap; color: var(--text);
+  }
+
+  /* 节点状态标签 */
+  .node-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 12px;
+    font-size: 0.72rem; font-weight: 600;
+  }
+  .node-status.running {
+    background: var(--green-bg); color: var(--green);
+  }
+  .node-status.running .mini-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); animation: pulse-dot 0.6s ease-in-out infinite;
+  }
+  .node-status.done { background: var(--blue-bg); color: var(--blue); }
+
+  .node-card-placeholder {
+    background: var(--card); border: 1px dashed var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-secondary); font-size: 0.9rem; transition: all 0.3s ease;
+  }
+
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--spinner-border);
+    border-top-color: var(--blue); border-radius: 50%;
+    animation: spin 0.6s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error {
+    background: var(--error-bg); border: 1px solid var(--red);
+    color: var(--error-text); padding: 12px 20px;
+    border-radius: 8px; margin-top: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .header { padding: 12px 16px; }
+    .input-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== 顶部 ====== -->
+<div class="header">
+  <div class="left-area">
+    <h1>⚡ LangGraph 图编排 — DAG 可视化</h1>
+    <span id="mode-badge" class="badge badge-mock">加载中...</span>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="切换浅色/深色模式">
+    <span class="thumb"></span>
+    <span class="icons"><span>🌙</span><span>☀️</span></span>
+  </button>
+</div>
+
+<div class="container">
+
+  <!-- ====== Canvas DAG 可视化 ====== -->
+  <div class="graph-section">
+    <div class="section-label">📐 图拓扑结构（DAG）</div>
+    <div class="canvas-wrapper">
+      <canvas id="dag-canvas"></canvas>
+    </div>
+    <div class="dag-legend">
+      <span><span class="dot legend-idle"></span> 空闲</span>
+      <span><span class="dot legend-active"></span> 执行中</span>
+      <span><span class="dot legend-done"></span> 已完成</span>
+    </div>
+  </div>
+
+  <!-- ====== 输入区域 ====== -->
+  <div class="input-section">
+    <div class="input-row">
+      <input id="topic-input" type="text"
+        placeholder="输入写作主题，例如：AI Agent 如何改变软件开发的未来"
+        value="AI Agent 如何改变软件开发的未来" />
+      <button class="btn btn-primary" id="run-btn" onclick="runGraph()">
+        ⚡ 执行图
+      </button>
+    </div>
+    <div class="examples">
+      <span>示例：</span>
+      <span class="example-tag" onclick="setTopic('量子计算对密码学的冲击')">量子计算对密码学的冲击</span>
+      <span class="example-tag" onclick="setTopic('大语言模型在企业服务中的落地实践')">LLM 企业落地</span>
+      <span class="example-tag" onclick="setTopic('开源社区如何重塑软件行业')">开源社区</span>
+    </div>
+  </div>
+
+  <!-- ====== 执行结果 ====== -->
+  <div id="results-area"></div>
+
+</div>
+
+<script>
+// ============================================================
+// Canvas DAG 渲染引擎
+// ============================================================
+const dagState = {
+  nodes: {},
+  edges: [],
+  graphData: null,   // 从 API 获取的图结构
+};
+
+function initDAGState(graphInfo) {
+  // graphInfo.nodes: [{id, label}, ...]
+  // graphInfo.edges: [{source, target}, ...]
+  dagState.graphData = graphInfo;
+  dagState.nodes = {};
+  dagState.edges = graphInfo.edges || [];
+
+  // 跳过 __start__ / __end__，它们在 Canvas 里有特殊渲染
+  (graphInfo.nodes || []).forEach(n => {
+    dagState.nodes[n.id] = 'idle';
+  });
+}
+
+function setDAGNodeState(nodeId, state) {
+  if (dagState.nodes.hasOwnProperty(nodeId)) {
+    dagState.nodes[nodeId] = state;
+  }
+}
+
+function resetDAGState() {
+  Object.keys(dagState.nodes).forEach(k => {
+    dagState.nodes[k] = 'idle';
+  });
+}
+
+// ---- Canvas 初始化 ----
+const canvas = document.getElementById('dag-canvas');
+const ctx = canvas.getContext('2d');
+
+let canvasW = 900, canvasH = 240;
+let animFrame = null;
+let animTime = 0;
+
+function resizeCanvas() {
+  const wrapper = canvas.parentElement;
+  const rect = wrapper.getBoundingClientRect();
+  const w = Math.max(600, rect.width);
+  canvasW = w;
+  canvasH = Math.max(200, Math.round(w * 0.26));
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ---- 从 CSS 变量读取颜色 ----
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// ---- 布局引擎：分层布局 (layered layout) ----
+function computeLayout() {
+  const { graphData } = dagState;
+  if (!graphData || !graphData.nodes || !graphData.edges) return [];
+
+  const nodes = graphData.nodes;
+  const edges = graphData.edges;
+
+  // 构建邻接表
+  const outEdges = {}; // source -> [target]
+  const inEdges = {};  // target -> [source]
+  nodes.forEach(n => { outEdges[n.id] = []; inEdges[n.id] = []; });
+  edges.forEach(e => {
+    if (outEdges[e.source]) outEdges[e.source].push(e.target);
+    if (inEdges[e.target]) inEdges[e.target].push(e.source);
+  });
+
+  // 拓扑排序分层：level = 从入口到当前节点的最长路径
+  // 找出所有源节点（无入边或入边来自 __start__）
+  const entryNodes = nodes.filter(n => {
+    const ins = inEdges[n.id] || [];
+    return ins.length === 0 || ins.every(s => s === '__start__');
+  });
+
+  const levels = {};
+  function assignLevel(id, lvl) {
+    if (!levels.hasOwnProperty(id) || levels[id] < lvl) {
+      levels[id] = lvl;
+    } else { return; }
+    (outEdges[id] || []).forEach(t => assignLevel(t, lvl + 1));
+  }
+  entryNodes.forEach(n => assignLevel(n.id, 0));
+
+  // 未分配到的兜底
+  nodes.forEach(n => {
+    if (!levels.hasOwnProperty(n.id)) levels[n.id] = 0;
+  });
+
+  // 按 level 分组
+  const levelGroups = {};
+  Object.entries(levels).forEach(([id, lvl]) => {
+    if (!levelGroups[lvl]) levelGroups[lvl] = [];
+    levelGroups[lvl].push(id);
+  });
+
+  const maxLevel = Math.max(...Object.keys(levelGroups).map(Number), 1);
+  const maxNodesInLevel = Math.max(...Object.values(levelGroups).map(g => g.length), 1);
+
+  // 画布参数
+  const marginX = 60;
+  const marginY = 40;
+  const usableW = canvasW - marginX * 2;
+  const usableH = canvasH - marginY * 2;
+  const nodeW = 130;
+  const nodeH = 52;
+
+  // 计算每个 level 的 x 位置
+  const positions = {};
+  Object.entries(levelGroups).forEach(([lvl, ids]) => {
+    const lvlNum = Number(lvl);
+    const x = marginX + (lvlNum / Math.max(maxLevel, 1)) * usableW;
+
+    ids.forEach((id, idx) => {
+      const totalInLevel = ids.length;
+      const startY = canvasH / 2 - ((totalInLevel - 1) * (nodeH + 30)) / 2;
+      const y = startY + idx * (nodeH + 30);
+      positions[id] = { x: Math.round(x - nodeW / 2), y: Math.round(y), w: nodeW, h: nodeH };
+    });
+  });
+
+  return { positions, edges, levelGroups, maxLevel };
+}
+
+// ---- 绘制箭头 ----
+function drawArrow(fromX, fromY, toX, toY, color, width) {
+  const headLen = 8;
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  const cx = toX - (headLen + 4) * Math.cos(angle);
+  const cy = toY - (headLen + 4) * Math.sin(angle);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(cx, cy);
+  ctx.stroke();
+
+  // 三角形箭头
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle - Math.PI / 6),
+    toY - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle + Math.PI / 6),
+    toY - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ---- 绘制贝塞尔曲线箭头 ----
+function drawCurveArrow(x1, y1, x2, y2, color, width) {
+  const headLen = 8;
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+  const cpX = midX;
+  const cpY = midY;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cpX, cpY, x2, y2);
+  ctx.stroke();
+
+  // 在终点附近算切向
+  const t = 0.92;
+  const bx = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cpX + t * t * x2;
+  const by = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * cpY + t * t * y2;
+  const angle = Math.atan2(y2 - by, x2 - bx);
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(
+    x2 - headLen * Math.cos(angle - Math.PI / 6),
+    y2 - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    x2 - headLen * Math.cos(angle + Math.PI / 6),
+    y2 - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ---- 主渲染函数 ----
+function renderDAG(timestamp) {
+  if (!timestamp) timestamp = performance.now();
+  animTime = timestamp;
+
+  const layout = computeLayout();
+  if (!layout || !layout.positions) {
+    animFrame = requestAnimationFrame(renderDAG);
+    return;
+  }
+  const { positions, edges } = layout;
+
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // 背景网格
+  ctx.strokeStyle = cssVar('--dag-grid');
+  ctx.lineWidth = 1;
+  const gs = 30;
+  for (let x = 0; x < canvasW; x += gs) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasH); ctx.stroke();
+  }
+  for (let y = 0; y < canvasH; y += gs) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasW, y); ctx.stroke();
+  }
+
+  // ---- 画边 ----
+  edges.forEach(e => {
+    const sp = positions[e.source];
+    const tp = positions[e.target];
+    if (!sp || !tp) return;
+
+    const edgeColor = cssVar('--dag-edge');
+    const x1 = sp.x + sp.w;
+    const y1 = sp.y + sp.h / 2;
+    const x2 = tp.x;
+    const y2 = tp.y + tp.h / 2;
+
+    if (Math.abs(y1 - y2) < 20) {
+      // 水平边
+      drawArrow(x1, y1, x2, y2, edgeColor, 2);
+    } else {
+      // 斜向使用贝塞尔
+      drawCurveArrow(x1, y1, x2, y2, edgeColor, 2);
+    }
+  });
+
+  // ---- 画节点 ----
+  const pulse = Math.sin(animTime * 0.004) * 0.4 + 0.6;
+
+  Object.entries(positions).forEach(([id, pos]) => {
+    const state = dagState.nodes[id] || 'idle';
+    const nodeData = (dagState.graphData?.nodes || []).find(n => n.id === id);
+    const label = nodeData ? nodeData.label : id;
+    const isEnd = id === '__end__';
+    const isStart = id === '__start__';
+
+    const { x, y, w, h } = pos;
+    const r = 10; // 圆角半径
+
+    // 阴影 / 发光
+    ctx.save();
+    if (state === 'active') {
+      ctx.shadowColor = cssVar('--dag-active-glow');
+      ctx.shadowBlur = 16 + pulse * 8;
+    } else if (state === 'done') {
+      ctx.shadowColor = cssVar('--dag-done-glow');
+      ctx.shadowBlur = 10;
+    }
+
+    // 填充色
+    let fillColor;
+    if (isStart) fillColor = cssVar('--dag-start-fill');
+    else if (isEnd) fillColor = cssVar('--dag-end-fill');
+    else fillColor = cssVar('--dag-node-fill');
+
+    ctx.fillStyle = fillColor;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // 描边
+    let strokeColor;
+    if (state === 'active') {
+      strokeColor = cssVar('--dag-active-stroke');
+    } else if (state === 'done') {
+      strokeColor = cssVar('--dag-done-stroke');
+    } else {
+      strokeColor = cssVar('--dag-node-stroke');
+    }
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = state === 'active' ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    // 状态小圆点 (右上角)
+    if (state === 'active') {
+      ctx.fillStyle = cssVar('--dag-active-stroke');
+      ctx.beginPath();
+      ctx.arc(x + w - 8, y + 8, 5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (state === 'done') {
+      ctx.fillStyle = cssVar('--dag-done-stroke');
+      ctx.beginPath();
+      ctx.arc(x + w - 8, y + 8, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 文字
+    ctx.fillStyle = cssVar('--dag-node-text');
+    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + w / 2, y + h / 2);
+  });
+
+  animFrame = requestAnimationFrame(renderDAG);
+}
+
+// ---- 响应式 ----
+function handleResize() {
+  resizeCanvas();
+}
+window.addEventListener('resize', handleResize);
+
+// ---- 主题切换时更新 Canvas ----
+const _origToggleTheme = window.toggleTheme;
+window.toggleTheme = function() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('langgraph-theme', next);
+  // Canvas 下一帧自动用新颜色渲染
+};
+
+// ============================================================
+// 主题初始化
+// ============================================================
+(function initTheme() {
+  const saved = localStorage.getItem('langgraph-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('langgraph-theme', next);
+}
+
+// ============================================================
+// 启动：加载图结构 → 初始化 Canvas
+// ============================================================
+resizeCanvas();
+// 先用一个默认布局启动动画循环
+dagState.graphData = {
+  nodes: [
+    { id: '__start__', label: '🚀 开始' },
+    { id: 'planner', label: '📋 计划节点' },
+    { id: 'writer', label: '✍️ 写作节点' },
+    { id: 'polisher', label: '✨ 润色节点' },
+    { id: '__end__', label: '🏁 结束' },
+  ],
+  edges: [
+    { source: '__start__', target: 'planner' },
+    { source: 'planner', target: 'writer' },
+    { source: 'writer', target: 'polisher' },
+    { source: 'polisher', target: '__end__' },
+  ],
+};
+initDAGState(dagState.graphData);
+animFrame = requestAnimationFrame(renderDAG);
+
+// 从 API 获取真实图结构（可能包含更复杂的拓扑）
+fetch('/api/graph-info')
+  .then(r => r.json())
+  .then(data => {
+    // 更新模式 badge
+    const badge = document.getElementById('mode-badge');
+    if (data.mode === 'bailian') {
+      badge.textContent = '🟢 百炼 Qwen-Plus';
+      badge.className = 'badge badge-bailian';
+    } else if (data.mode === 'openai') {
+      badge.textContent = '🟢 OpenAI GPT-4o-mini';
+      badge.className = 'badge badge-openai';
+    } else {
+      badge.textContent = '🟡 Mock 模式';
+      badge.className = 'badge badge-mock';
+    }
+
+    // 用 API 返回的图结构更新 Canvas
+    if (data.nodes && data.edges) {
+      dagState.graphData = data;
+      initDAGState(data);
+    }
+  })
+  .catch(() => {}); // 使用默认布局
+
+window.addEventListener('resize', () => { resizeCanvas(); });
+
+function setTopic(text) {
+  document.getElementById('topic-input').value = text;
+}
+
+// ============================================================
+// SSE 流式执行
+// ============================================================
+async function runGraph() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) return;
+
+  const btn = document.getElementById('run-btn');
+  const resultsArea = document.getElementById('results-area');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 执行中...';
+
+  // 重置 Canvas DAG 状态
+  resetDAGState();
+
+  const nodeOrder = ['planner', 'writer', 'polisher'];
+  const nodeMeta = {
+    planner:  { name: '📋 计划节点', desc: '根据主题生成 3 段式写作大纲', iconClass: 'icon-planner' },
+    writer:   { name: '✍️ 写作节点', desc: '根据大纲撰写 300 字正文',     iconClass: 'icon-writer' },
+    polisher: { name: '✨ 润色节点', desc: '润色正文，修正语法与用词',      iconClass: 'icon-polisher' },
+  };
+
+  // 结果区初始化
+  let placeholdersHtml = '<div class="results">';
+  placeholdersHtml += `<h3>📊 开始执行：<strong>${escapeHtml(topic)}</strong></h3>`;
+  placeholdersHtml += '<div class="progress-bar" id="progress-bar">';
+  placeholdersHtml += '<span>⏳ 等待执行...</span>';
+  placeholdersHtml += '<div class="step-indicators">';
+  nodeOrder.forEach(n => {
+    placeholdersHtml += `<span class="step-dot" id="dot-${n}"></span>`;
+  });
+  placeholdersHtml += '</div></div>';
+
+  nodeOrder.forEach(n => {
+    placeholdersHtml += `
+      <div class="node-card-placeholder" id="placeholder-${n}">
+        <div class="icon ${nodeMeta[n].iconClass}">${nodeMeta[n].name.slice(0,2)}</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;">${nodeMeta[n].name}</div>
+          <div class="meta">${nodeMeta[n].desc}</div>
+        </div>
+        <span class="node-status" style="margin-left:auto;">⏳ 等待</span>
+      </div>
+    `;
+  });
+  placeholdersHtml += '</div>';
+  resultsArea.innerHTML = placeholdersHtml;
+
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = progressBar.querySelector('span');
+  const completedNodes = [];
+
+  try {
+    const res = await fetch('/api/generate-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      resultsArea.innerHTML += `<div class="error">❌ 服务器错误 (${res.status})：${escapeHtml(text)}</div>`;
+      btn.disabled = false;
+      btn.innerHTML = '⚡ 执行图';
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let event;
+        try { event = JSON.parse(line.slice(6)); }
+        catch (e) { continue; }
+
+        switch (event.type) {
+          case 'error': {
+            resultsArea.innerHTML += `<div class="error">❌ ${escapeHtml(event.error)}</div>`;
+            resetDAGState();
+            btn.disabled = false;
+            btn.innerHTML = '⚡ 执行图';
+            return;
+          }
+
+          case 'init': {
+            progressText.textContent = '🔵 图开始执行...';
+            setDAGNodeState('__start__', 'done');
+            break;
+          }
+
+          case 'node_start': {
+            const { id, name, step, total_steps } = event.node;
+            setDAGNodeState(id, 'active');
+            progressText.textContent = `⚡ 正在执行第 ${step}/${total_steps} 步：${name}`;
+
+            const dot = document.getElementById(`dot-${id}`);
+            if (dot) dot.classList.add('current');
+
+            const ph = document.getElementById(`placeholder-${id}`);
+            if (ph) {
+              ph.style.borderStyle = 'solid';
+              ph.style.borderColor = cssVar('--green');
+              const statusEl = ph.querySelector('.node-status');
+              if (statusEl) {
+                statusEl.className = 'node-status running';
+                statusEl.innerHTML = '<span class="mini-dot"></span> 执行中';
+              }
+            }
+            break;
+          }
+
+          case 'node_done': {
+            const { id, name, description, output, output_length, step, total_steps, elapsed_ms } = event.node;
+            setDAGNodeState(id, 'done');
+            completedNodes.push(event.node);
+
+            const dot = document.getElementById(`dot-${id}`);
+            if (dot) { dot.classList.remove('current'); dot.classList.add('done'); }
+
+            const ph = document.getElementById(`placeholder-${id}`);
+            if (ph) {
+              const realCard = document.createElement('div');
+              realCard.className = 'node-card';
+              realCard.innerHTML = `
+                <div class="node-card-header" onclick="toggleBody(this)">
+                  <div class="left">
+                    <div class="icon ${nodeMeta[id].iconClass}">${name.slice(0,2)}</div>
+                    <div>
+                      <div style="font-weight:600;">${name}</div>
+                      <div class="meta">${description} · 输出 ${output_length} 字 · ${elapsed_ms}ms</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="node-status done">✅ 完成</span>
+                    <span class="meta">▶</span>
+                  </div>
+                </div>
+                <div class="node-card-body">${escapeHtml(output)}</div>
+              `;
+              ph.replaceWith(realCard);
+            }
+
+            progressText.textContent = `✅ 已完成 ${completedNodes.length}/${total_steps} 步`;
+            break;
+          }
+
+          case 'done': {
+            setDAGNodeState('__end__', 'done');
+            progressText.textContent = `🎉 全部完成！总耗时 ${event.total_elapsed_ms}ms`;
+
+            nodeOrder.forEach(n => {
+              const dot = document.getElementById(`dot-${n}`);
+              if (dot && !dot.classList.contains('done')) dot.classList.add('done');
+            });
+
+            const finalHtml = `
+              <div class="final-output">
+                <h3>✨ 最终润色稿</h3>
+                <div class="content">${escapeHtml(event.final)}</div>
+              </div>
+            `;
+            resultsArea.insertAdjacentHTML('beforeend', finalHtml);
+            break;
+          }
+        }
+      }
+    }
+
+  } catch (err) {
+    resultsArea.innerHTML += `<div class="error">❌ 网络错误：${escapeHtml(err.message)}</div>`;
+    resetDAGState();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ 执行图';
+  }
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+function toggleBody(header) {
+  const card = header.parentElement;
+  const body = card.querySelector('.node-card-body');
+  const arrow = header.querySelector('.meta:last-child');
+  if (body) {
+    body.classList.toggle('open');
+    if (arrow) arrow.textContent = body.classList.contains('open') ? '▼' : '▶';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+document.getElementById('topic-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runGraph();
+});
+</script>
+
+</body>
+</html>

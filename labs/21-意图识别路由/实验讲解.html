@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验 21 · 意图识别 + 路由 — 一个入口，四条通道</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+  --pink:#db2777;--pink-bg:#fdf2f8;--blue:#2563eb;--blue-bg:#eff6ff;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--orange:#ea580c;--orange-bg:#fff7ed;
+  --green:#16a34a;--green-bg:#f0fdf4;--cyan:#0891b2;--cyan-bg:#ecfeff;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --dark:#0f172a;--dark2:#1e293b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 8px 24px rgba(0,0,0,.09);
+  --mono:'SF Mono','Fira Code',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px 70px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .chip{display:inline-block;font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);border:1px solid #bfdbfe;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.hero h1{font-size:38px;font-weight:900;margin:18px 0 12px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,#2563eb,#0891b2 55%,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:15px;color:var(--text2);max-width:700px;margin:0 auto}
+.hero .stats{display:flex;justify-content:center;gap:36px;margin-top:26px;flex-wrap:wrap}
+.hero .stat b{font-size:22px;font-weight:900;display:block}
+.hero .stat span{font-size:11px;color:var(--text3);letter-spacing:1px}
+.quicknav{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 12px}
+.qn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);box-shadow:var(--shadow);transition:.2s;display:flex;gap:10px;align-items:center}
+.qn:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--c)}
+.qn .ic{width:36px;height:36px;border-radius:10px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.qn b{font-size:12.5px;display:block}
+.qn span{font-size:10.5px;color:var(--text3)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-top:26px;overflow:hidden}
+.sec-head{padding:26px 34px 0;display:flex;align-items:center;gap:13px}
+.sec-head .ic{width:46px;height:46px;border-radius:12px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:var(--mono)}
+.sec-head h2{font-size:21px;font-weight:900}
+.sec-head .sub{font-size:11.5px;color:var(--text3);font-family:var(--mono)}
+.sec-body{padding:18px 34px 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px}
+.sec-body.single{grid-template-columns:1fr}
+.p-block{margin-top:12px}
+.p-block:first-child{margin-top:0}
+.p-block h4{font-size:12px;font-weight:800;color:var(--c);letter-spacing:1.5px;margin-bottom:6px}
+.p-block p,.p-block li{font-size:13px;color:var(--text2)}
+.p-block b{color:var(--text)}
+.p-block code{font-family:var(--mono);font-size:11.5px;background:var(--bg);padding:1px 7px;border-radius:5px;color:var(--c)}
+.dot-list{list-style:none}
+.dot-list li{padding:3px 0 3px 20px;position:relative}
+.dot-list li::before{content:'—';position:absolute;left:2px;color:var(--c);font-size:11px;font-weight:900}
+.codebox{background:var(--dark);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.codebox .cb-hd{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--dark2);font-size:10.5px;color:#94a3b8;font-family:var(--mono)}
+.codebox .cb-hd .d{width:8px;height:8px;border-radius:50%}
+.codebox pre{padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#e2e8f0;overflow-x:auto}
+.c-k{color:#c084fc}.c-s{color:#86efac}.c-f{color:#7dd3fc}.c-c{color:#64748b}.c-n{color:#fbbf24}.c-r{color:#fca5a5}.c-g{color:#6ee7b7}
+.lab-chip{display:inline-block;font-size:10px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:9px;margin:2px 3px 0 0}
+.gcanvas{background:linear-gradient(145deg,var(--cb),#fff 130%);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-row{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.g-node{background:#fff;border:2px solid var(--c);border-radius:12px;padding:8px 15px;font-size:12px;font-weight:800;color:var(--c);text-align:center;box-shadow:var(--shadow)}
+.g-node small{display:block;font-weight:400;font-size:9.5px;color:var(--text3)}
+.g-node.alt{border-color:var(--orange);color:var(--orange)}
+.g-node.ok{border-color:var(--green);color:var(--green)}
+.g-node.warn{border-color:var(--red);color:var(--red)}
+.g-node.dim{border-style:dashed;border-color:var(--text3);color:var(--text2)}
+.g-arr{color:var(--text3);font-weight:900;font-size:15px}
+.g-tag{font-size:10px;font-weight:800;background:var(--cb);color:var(--c);padding:2px 10px;border-radius:10px;border:1px dashed var(--c)}
+.pipe{display:flex;align-items:stretch;gap:0;margin:14px 0 4px;flex-wrap:wrap}
+.pipe .node{background:var(--cb);border:1.5px solid var(--c);color:var(--c);border-radius:10px;padding:8px 13px;font-size:11.5px;font-weight:700;text-align:center;flex:1;min-width:86px;display:flex;flex-direction:column;justify-content:center}
+.pipe .node small{font-weight:400;font-size:9.5px;color:var(--text3);display:block}
+.pipe .arr{display:flex;align-items:center;padding:0 7px;color:var(--text3);font-weight:900}
+/* 四通道卡片 */
+.ch-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
+.ch{border-radius:12px;padding:13px 16px;border:1.5px solid}
+.ch .hd{display:flex;align-items:center;gap:8px}
+.ch .ci{font-size:10px;font-weight:900;font-family:var(--mono);padding:2px 8px;border-radius:7px}
+.ch b{font-size:13px}
+.ch p{font-size:11.5px;color:var(--text2);margin-top:5px}
+.ch .tools{margin-top:6px}
+/* 演进时间轴 */
+.evo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.ev{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:11px 13px;position:relative}
+.ev.now{background:var(--blue-bg);border-color:var(--blue)}
+.ev .lb{font-size:9.5px;font-weight:900;font-family:var(--mono);color:var(--text3);letter-spacing:1px}
+.ev.now .lb{color:var(--blue)}
+.ev b{font-size:12px;display:block;margin-top:2px}
+.ev p{font-size:10.5px;color:var(--text2);margin-top:3px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tbl th{background:#f8fafc;text-align:left;padding:9px 14px;font-size:11px;color:var(--text3);letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:var(--text2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text)}
+.tbl code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:4px}
+.pick{font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px;white-space:nowrap}
+.route{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.rt{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.rt .no{width:26px;height:26px;border-radius:8px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.rt b{font-size:12px;display:block}
+.rt span{font-size:10.5px;color:var(--text3)}
+.check-list{list-style:none;margin-top:6px}
+.check-list li{padding:5px 0 5px 26px;position:relative;font-size:13px;color:var(--text2)}
+.check-list li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:900;font-size:13px}
+.warn,.note,.good{border-radius:11px;padding:12px 16px;margin-top:12px;font-size:12.5px;border-left:4px solid}
+.warn{background:var(--red-bg);border-color:var(--red);color:#7f1d1d}
+.note{background:var(--orange-bg);border-color:var(--orange);color:#7c2d12}
+.good{background:var(--green-bg);border-color:var(--green);color:#14532d}
+.warn b,.note b,.good b{font-weight:900}
+.warn code,.note code,.good code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px}
+.cta{margin-top:40px;background:linear-gradient(120deg,#1e3a8a,#0e7490 55%,#5b21b6);border-radius:18px;padding:30px 36px;color:#fff;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{font-size:20px;font-weight:900}
+.cta p{font-size:12.5px;opacity:.85;margin-top:4px}
+.cta .btns{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);transition:.2s}
+.cta a:hover{background:rgba(255,255,255,.26)}
+.footer{margin-top:44px;text-align:center;font-size:11.5px;color:var(--text3)}
+.footer code{font-family:var(--mono);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:5px}
+@media(max-width:900px){
+  .sec-body{grid-template-columns:1fr}
+  .quicknav{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .route,.ch-grid{grid-template-columns:1fr}
+  .evo{grid-template-columns:repeat(2,1fr)}
+  .pipe{flex-direction:column}
+  .pipe .arr{transform:rotate(90deg);padding:2px 0;justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <span class="chip">LAB 3.1 · INTENT CLASSIFICATION &amp; ROUTING</span>
+    <h1>意图识别 <span class="grad">+ 路由</span></h1>
+    <p>Day 1、Day 2 攒出了四种能力：查设备、统计问数、搜知识库排障、通用问答。但用户得先知道"该说哪种话"才能触发对的那一个。本实验加一层意图识别，让用户随便说一句话，系统自己判断该走哪条通道——<b>从此用户不需要知道后端有几个 Agent</b>。</p>
+    <div class="stats">
+      <div class="stat"><b>4</b><span>通道</span></div>
+      <div class="stat"><b>8/8</b><span>实测准确率</span></div>
+      <div class="stat"><b>3.0s~17.6s</b><span>通道耗时跨度</span></div>
+      <div class="stat"><b>1</b><span>对外入口</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 快速导航 ===== -->
+  <div class="quicknav">
+    <a class="qn" href="#s0"  style="--c:var(--blue);--cb:var(--blue-bg)"><div class="ic">00</div><div><b>为什么要这层</b><span>路由依据变了</span></div></a>
+    <a class="qn" href="#s1"  style="--c:var(--cyan);--cb:var(--cyan-bg)"><div class="ic">INT</div><div><b>意图分类层</b><span>结构化输出</span></div></a>
+    <a class="qn" href="#s2"  style="--c:var(--purple);--cb:var(--purple-bg)"><div class="ic">CH</div><div><b>四条通道</b><span>工具集差异</span></div></a>
+    <a class="qn" href="#s3"  style="--c:var(--orange);--cb:var(--orange-bg)"><div class="ic">RT</div><div><b>Branch 路由</b><span>分发与兜底</span></div></a>
+    <a class="qn" href="#s4"  style="--c:var(--red);--cb:var(--red-bg)"><div class="ic">EVL</div><div><b>评测集陷阱</b><span>标注也会错</span></div></a>
+    <a class="qn" href="#s5"  style="--c:var(--green);--cb:var(--green-bg)"><div class="ic">RUN</div><div><b>跑起来</b><span>验收与坑位</span></div></a>
+  </div>
+
+  <!-- ===== 00 为什么要这层 ===== -->
+  <div class="section" id="s0" style="--c:var(--blue);--cb:var(--blue-bg)">
+    <div class="sec-head"><div class="ic">00</div><div><h2>能力齐了，但入口还是散的</h2><div class="sub">FOUR CAPABILITIES, FOUR DOORS</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>两天攒下来的四种能力</h4>
+          <p>Day 1 做了设备查询和告警分析，Day 2 做了 Text-to-SQL 问数和知识库检索。四种能力都能跑，问题是它们各有各的入口：用户点"设备诊断"页签才能查设备，点"数据分析"才能统计，点"知识库"才能搜排障文档。</p>
+          <p style="margin-top:6px">这套交互的隐含前提是——<b>用户已经知道自己的问题该归到哪一类</b>。可现实里用户想的是"DEV-0001 咋了"，他不关心这句话在后端属于 diagnose 还是 troubleshoot。</p>
+        </div>
+        <div class="evo">
+          <div class="ev"><div class="lb">1.6</div><b>Agent 类型对比</b><p>一个 Agent 配一套工具</p></div>
+          <div class="ev"><div class="lb">1.7</div><b>RunnableBranch</b><p>按告警级别分流</p></div>
+          <div class="ev"><div class="lb">2.11</div><b>Text-to-SQL</b><p>又多一种能力</p></div>
+          <div class="ev now"><div class="lb">3.1</div><b>意图识别路由</b><p>四种能力一个入口</p></div>
+        </div>
+        <div class="note">
+          <b>和 1.7 的真正区别不是"多了几个分支"，而是路由依据换了一层</b>。1.7 的 <code>RunnableBranch</code> 看的是数据字段——<code>severity == "P0"</code>，一个确定的值走一条确定的路，不需要 LLM。3.1 看的是<b>用户这句话的意思</b>，同一个意图有无数种说法，只能交给模型判。前者是 if-else 的语法糖，后者是把不确定性收进了一个可控的枚举里。
+        </div>
+      </div>
+      <div>
+        <div class="gcanvas">
+          <div class="g-tag">改造前：用户得自己选</div>
+          <div class="g-row">
+            <div class="g-node dim">设备诊断页<small>/agent/diagnose</small></div>
+            <div class="g-node dim">数据分析页<small>/agent/sql</small></div>
+          </div>
+          <div class="g-row">
+            <div class="g-node dim">知识库页<small>/agent/kb</small></div>
+            <div class="g-node dim">在线客服<small>/agent/chat</small></div>
+          </div>
+          <div class="g-arr">↓</div>
+          <div class="g-tag">改造后：一个入口</div>
+          <div class="g-row"><div class="g-node">用户一句话<small>自然语言，不限说法</small></div></div>
+          <div class="g-arr">↓</div>
+          <div class="g-row"><div class="g-node alt">意图识别<small>LLM 分类 → 四个枚举值之一</small></div></div>
+          <div class="g-arr">↓</div>
+          <div class="g-row">
+            <div class="g-node ok" style="font-size:11px">diagnose</div>
+            <div class="g-node ok" style="font-size:11px">query_data</div>
+          </div>
+          <div class="g-row">
+            <div class="g-node ok" style="font-size:11px">troubleshoot</div>
+            <div class="g-node ok" style="font-size:11px">chat</div>
+          </div>
+        </div>
+        <div class="good">
+          <b>路由还有个不太被提的好处：省钱</b>。实测四条通道耗时差 5 倍——<code>chat</code> 3.0 秒，<code>troubleshoot</code> 17.6 秒（要查设备 + 搜知识库 + 综合出方案）。如果没有分类层，只能把所有输入都塞进那个"什么工具都挂着"的全能 Agent，一句"你好"也要跑完整套推理。分类那一次调用花掉的 1~2 秒，换回的是不让简单问题走贵通道。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== INT 意图分类层 ===== -->
+  <div class="section" id="s1" style="--c:var(--cyan);--cb:var(--cyan-bg)">
+    <div class="sec-head"><div class="ic">INT</div><div><h2>意图分类层：把自由文本压成一个枚举值</h2><div class="sub">PYDANTIC STRUCTURED OUTPUT</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>三个字段各有各的用处</h4>
+          <ul class="dot-list">
+            <li><code>intent</code> 用 <code>Literal</code> 卡死四个值。这是整层的<b>输出契约</b>——下游 <code>RunnableBranch</code> 只认这四个字符串。</li>
+            <li><code>device_id</code> 是顺手做的<b>槽位抽取</b>（slot filling）。分类和抽取一次调用完成，比再开一次 LLM 划算。</li>
+            <li><code>reason</code> 看着像装饰，其实是<b>调试入口</b>。分错了你得知道它为什么这么想，否则只能瞎调 Prompt。第 4 节那个 bug 就是靠它揪出来的。</li>
+          </ul>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>intent_router.py · 分类 Schema</span></div>
+<pre><span class="c-k">class</span> <span class="c-f">IntentResult</span>(BaseModel):
+    intent: Literal[<span class="c-s">"diagnose"</span>, <span class="c-s">"query_data"</span>,
+                    <span class="c-s">"troubleshoot"</span>, <span class="c-s">"chat"</span>] = Field(
+        description=<span class="c-s">"用户意图分类。diagnose=查设备状态/分析告警；"</span>
+                    <span class="c-s">"query_data=统计/分组/趋势；troubleshoot=排查故障/"</span>
+                    <span class="c-s">"搜知识库；chat=闲聊/通用问答/其他"</span>
+    )
+    device_id: str = Field(default=<span class="c-s">""</span>,
+        description=<span class="c-s">"如果用户提到了具体设备ID则提取，格式DEV-XXXX"</span>)
+    reason: str = Field(description=<span class="c-s">"一句话简述分类依据"</span>)
+
+    <span class="c-n">@field_validator</span>(<span class="c-s">"device_id"</span>)
+    <span class="c-n">@classmethod</span>
+    <span class="c-k">def</span> <span class="c-f">_only_real_device_id</span>(cls, v: str) -> str:
+        <span class="c-c"># description 里写了格式，模型照样会填型号</span>
+        v = v.strip().upper()
+        <span class="c-k">return</span> v <span class="c-k">if</span> re.fullmatch(<span class="c-s">r"DEV-\d{4}"</span>, v) <span class="c-k">else</span> <span class="c-s">""</span>
+</pre>
+        </div>
+        <div class="warn">
+          <b>坑：<code>Field(description=...)</code> 是提示，不是约束</b>。描述里明明写着"格式 DEV-XXXX"，实测输入<b>"AAU5613 SCTP 链路中断怎么排查"</b>时，模型把设备<b>型号</b> <code>AAU5613</code> 当成设备 ID 填了进来。型号不是 ID，拿它去调 <code>/devices/AAU5613</code> 只会 404。<br><br>结构化输出真正保证的只有两件事：JSON 能解析、枚举字段落在合法值里。<b>自由文本字段的格式它不管</b>。凡是要拿去拼 URL、拼 SQL、拼文件路径的槽位，都得自己再校一道——这跟"永远不要相信前端传来的参数"是同一条纪律。
+        </div>
+      </div>
+      <div>
+        <div class="p-block">
+          <h4>校验器的实测行为</h4>
+          <table class="tbl">
+            <tr><th>模型填进来的值</th><th>校验后</th><th>为什么</th></tr>
+            <tr><td><code>DEV-0001</code></td><td><b>DEV-0001</b></td><td>合法，原样通过</td></tr>
+            <tr><td><code>dev-0007</code></td><td><b>DEV-0007</b></td><td>顺手规范化成大写</td></tr>
+            <tr><td><code>AAU5613</code></td><td><b>（空）</b></td><td>是型号不是 ID，拦掉</td></tr>
+            <tr><td><code>DEV-12</code></td><td><b>（空）</b></td><td>位数不对，拦掉</td></tr>
+          </table>
+          <p style="margin-top:8px">置空而不是抛异常，是因为 <code>device_id</code> 本身就是可选的——抽不到就让下游 Agent 自己去问用户。<b>宁可少个参数，不要给个错参数。</b></p>
+        </div>
+        <div class="note">
+          <b>置空之后下游反而更聪明了</b>。实测那句 AAU5613 的输入，校验器把 <code>device_id</code> 清空后，排障 Agent 自己去查了一下、发现查不到，于是在回答里写道："设备 AAU5613 在系统中未注册（可能是型号标识而非实际设备 ID）"，然后照样基于知识库给出了完整方案。<b>把不确定性明确地传下去，比伪造一个确定值要好。</b>
+        </div>
+        <div class="p-block">
+          <h4>四类意图的边界怎么划</h4>
+          <p>Prompt 里给每类配了<b>真实例句</b>而不是抽象定义。"统计告警数"这种抽象说法模型理解不了边界，"告警设备有几台""华为和爱立信各多少"这种例句才能划清 <code>query_data</code> 和 <code>diagnose</code> 的界。</p>
+          <div style="margin-top:6px">
+            <span class="lab-chip">diagnose · 单台设备的状态</span>
+            <span class="lab-chip">query_data · 跨设备的聚合</span>
+            <span class="lab-chip">troubleshoot · 要方法不要数据</span>
+            <span class="lab-chip">chat · 前三类都不是</span>
+          </div>
+        </div>
+        <div class="good">
+          <b>最难划的那条线在 diagnose 和 query_data 之间</b>。"DEV-0001 有几条告警"是查一台设备（diagnose），"告警设备有几台"是跨设备聚合（query_data），中文里两句话长得很像。区分的诀窍是<b>看聚合的单位</b>：算一台设备内部的东西归 diagnose，算设备之间的东西归 query_data。这条线画不清，8 条用例里至少错 2 条。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CH 四条通道 ===== -->
+  <div class="section" id="s2" style="--c:var(--purple);--cb:var(--purple-bg)">
+    <div class="sec-head"><div class="ic">CH</div><div><h2>四条通道：分的不是标签，是工具集</h2><div class="sub">DIFFERENT TOOLS, DIFFERENT PROMPTS</div></div></div>
+    <div class="sec-body single">
+      <div class="ch-grid">
+        <div class="ch" style="border-color:var(--blue);background:var(--blue-bg)">
+          <div class="hd"><span class="ci" style="background:var(--blue);color:#fff">diagnose</span><b>设备诊断</b></div>
+          <p>先查设备详情拿到状态和告警列表，有告警再查详情，最后综合判断严重程度。Prompt 里明确要求"引用具体数据，不要泛泛而谈"。</p>
+          <div class="tools"><span class="lab-chip">query_device</span><span class="lab-chip">list_devices</span><span class="lab-chip">get_alarms</span><span class="lab-chip">来自 Day 1</span></div>
+        </div>
+        <div class="ch" style="border-color:var(--cyan);background:var(--cyan-bg)">
+          <div class="hd"><span class="ci" style="background:var(--cyan);color:#fff">query_data</span><b>统计问数</b></div>
+          <p>把自然语言翻成 SQL 打到 SQLite（devices.json 灌进内存库），再解读结果。Prompt 提示了 GROUP BY / ORDER BY / JOIN 的适用场景。</p>
+          <div class="tools"><span class="lab-chip">query_devices_sql</span><span class="lab-chip">来自 2.11</span></div>
+        </div>
+        <div class="ch" style="border-color:var(--orange);background:var(--orange-bg)">
+          <div class="hd"><span class="ci" style="background:var(--orange);color:#fff">troubleshoot</span><b>排障建议</b></div>
+          <p>提到了设备就先查设备状态，然后搜 2.1 那个 FAISS 知识库，把"设备实际情况 + 知识库文档"合起来给排查步骤。要求引用文档来源、具体到命令级别。</p>
+          <div class="tools"><span class="lab-chip">query_device</span><span class="lab-chip">search_kb</span><span class="lab-chip">Day 1 + 2.5</span></div>
+        </div>
+        <div class="ch" style="border-color:var(--green);background:var(--green-bg)">
+          <div class="hd"><span class="ci" style="background:var(--green);color:#fff">chat</span><b>通用对话</b></div>
+          <p>零工具。除了闲聊，主要职责是<b>教用户怎么问</b>——回答里带上"试试说'分析 DEV-0001 告警'"这种引导，把用户拉回前三条通道。</p>
+          <div class="tools"><span class="lab-chip">无工具</span><span class="lab-chip">不是 Agent</span></div>
+        </div>
+      </div>
+
+      <div class="sec-body" style="padding:0;margin-top:20px">
+        <div>
+          <div class="warn">
+            <b>课堂上最容易翻车的一行：不要用 <code>create_react_agent</code></b><br><br>
+            如果 <code>_make_agent</code> 里写的是 <code>create_react_agent</code>，配上 <code>ChatPromptTemplate</code> 的 <code>("placeholder", "{agent_scratchpad}")</code>，四条通道<b>全都跑不起来</b>，一律抛：
+            <div class="codebox" style="margin-top:8px">
+<pre><span class="c-r">ValueError: variable agent_scratchpad should be a list
+of base messages, got  of type &lt;class 'str'&gt;</span>
+</pre>
+            </div>
+            <div style="margin-top:8px">根因是两套模板体系撞了：ReAct 靠<b>提示词文本</b>驱动，它的 scratchpad 是一段 <code>Thought/Action/Observation</code> 拼接出来的<b>字符串</b>，必须配字符串模板 <code>PromptTemplate</code>；而 <code>ChatPromptTemplate</code> 的 <code>placeholder</code> 要求填进来的是 <b>message 列表</b>。<br><br>这个报错最坑的地方是它<b>既不提 ReAct 也不提模板类型</b>，只说"给了个 str"，很难从字面反推回"你该换个 agent 构造函数"。</div>
+          </div>
+          <div class="codebox" style="margin-top:12px">
+            <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>intent_router.py · Agent 工厂</span></div>
+<pre><span class="c-c"># 四个通道共用的输出约束：模型默认爱在 markdown 里撑 emoji</span>
+_OUTPUT_STYLE = <span class="c-s">"\n\n输出要求：不要使用 emoji 和装饰符号，用纯文本陈述。"</span>
+
+<span class="c-k">def</span> <span class="c-f">_make_agent</span>(tools: list, system_prompt: str) -> AgentExecutor:
+    prompt = ChatPromptTemplate.from_messages([
+        (<span class="c-s">"system"</span>, system_prompt + _OUTPUT_STYLE),
+        (<span class="c-s">"human"</span>, <span class="c-s">"{input}"</span>),
+        (<span class="c-s">"placeholder"</span>, <span class="c-s">"{agent_scratchpad}"</span>),
+    ])
+    agent = <span class="c-f">create_tool_calling_agent</span>(llm, tools, prompt)
+    <span class="c-k">return</span> AgentExecutor(agent=agent, tools=tools,
+        max_iterations=<span class="c-n">8</span>, handle_parsing_errors=<span class="c-k">True</span>)
+</pre>
+          </div>
+        </div>
+        <div>
+          <div class="p-block">
+            <h4>为什么 chat 通道不套 Agent</h4>
+            <p>Agent 的全部价值在于那个循环：<b>选工具 → 看结果 → 再决定下一步</b>。零工具就没有循环可言，套一层 <code>AgentExecutor</code> 只是白多一轮空转。</p>
+            <p style="margin-top:6px">更实际的问题是：给 <code>create_tool_calling_agent</code> 传空 <code>tools</code> 列表，底层会调 <code>llm.bind_tools([])</code>，<b>部分 OpenAI 兼容网关收到空的 tools 数组会直接报错</b>。</p>
+          </div>
+          <div class="codebox">
+            <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>chat 通道 · 一条普通链就够</span></div>
+<pre>chat_prompt = ChatPromptTemplate.from_messages([
+    (<span class="c-s">"system"</span>, <span class="c-s">"""你是 5G 基站运维平台助手……
+引导用户使用正确的表述来触发诊断、问数、排障功能。
+回答简洁友好，不超过 100 字。"""</span> + _OUTPUT_STYLE),
+    (<span class="c-s">"human"</span>, <span class="c-s">"{input}"</span>),
+])
+chat_chain = chat_prompt | llm | StrOutputParser()
+</pre>
+          </div>
+          <div class="good">
+            <b>这条通道的实测耗时是 3.0 秒，troubleshoot 是 17.6 秒</b>。差距不只来自工具调用次数，也来自"要不要走 Agent 循环"。一句"你好"如果被塞进全能 Agent，模型得先纠结一遍"我要不要查设备"——那是纯粹的浪费。<b>不是所有请求都值得一个 Agent。</b>
+          </div>
+          <div class="note">
+            <b>顺手治了个显示问题</b>：模型默认喜欢在回答里堆 emoji 和 markdown 表格，课堂投屏时很吵。四个通道的 system prompt 末尾统一追加一段 <code>_OUTPUT_STYLE</code> 就治住了——<b>统一追加，而不是四处各写一遍</b>，这也是 <code>_make_agent</code> 这个工厂函数存在的意义之一。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RT 路由 ===== -->
+  <div class="section" id="s3" style="--c:var(--orange);--cb:var(--orange-bg)">
+    <div class="sec-head"><div class="ic">RT</div><div><h2>RunnableBranch：分发、兜底、别每次重建</h2><div class="sub">DISPATCH &amp; FALLBACK</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>intent_router.py · 路由链</span></div>
+<pre><span class="c-c"># 建一次就好：RunnableBranch 无状态，每次请求重建是白花开销</span>
+router_chain = RunnableBranch(
+    (<span class="c-k">lambda</span> x: x[<span class="c-s">"intent"</span>] == <span class="c-s">"diagnose"</span>,
+     <span class="c-k">lambda</span> x: diagnose_agent.invoke(x)[<span class="c-s">"output"</span>]),
+    (<span class="c-k">lambda</span> x: x[<span class="c-s">"intent"</span>] == <span class="c-s">"query_data"</span>,
+     <span class="c-k">lambda</span> x: query_data_agent.invoke(x)[<span class="c-s">"output"</span>]),
+    (<span class="c-k">lambda</span> x: x[<span class="c-s">"intent"</span>] == <span class="c-s">"troubleshoot"</span>,
+     <span class="c-k">lambda</span> x: troubleshoot_agent.invoke(x)[<span class="c-s">"output"</span>]),
+    (<span class="c-k">lambda</span> x: x[<span class="c-s">"intent"</span>] == <span class="c-s">"chat"</span>,
+     <span class="c-k">lambda</span> x: chat_chain.invoke(x)),
+    <span class="c-k">lambda</span> x: chat_chain.invoke(x),  <span class="c-c"># 兜底</span>
+)
+</pre>
+        </div>
+        <div class="note">
+          <b>为什么 <code>chat</code> 分支和兜底要写两遍</b>——看着重复，守的却是两种不同情况。前者是模型<b>正常</b>返回了 <code>chat</code>；后者是模型返回了四个枚举值<b>之外</b>的东西。<code>Literal</code> 加 <code>PydanticOutputParser</code> 已经拦掉大部分越界值，但解析器也可能被绕过（比如换个模型、改了 Prompt）。<b><code>RunnableBranch</code> 没有兜底分支时会直接抛异常</b>，一个入口的服务不该因为分类器打了个嗝就 500。
+        </div>
+        <div class="p-block">
+          <h4>注意那个 dict 是怎么攒出来的</h4>
+          <p>路由的判断条件读的是 <code>x["intent"]</code>，而各通道 Agent 读的是 <code>x["input"]</code>。两个 key 同在一个 dict 里往下传：<code>_build_input()</code> 先放 <code>input</code>，<code>route()</code> 再补 <code>intent</code>。少了后者，<code>RunnableBranch</code> 第一个 lambda 就 <code>KeyError</code>。</p>
+        </div>
+      </div>
+      <div>
+        <div class="p-block">
+          <h4>和 3.8 那套关键词路由对着看</h4>
+          <p>3.8 的分发层里也有个"路由"，但它是 20 行的关键词 <code>dict</code> 匹配。两者放一起，正好是同一个问题的两种答法。</p>
+          <table class="tbl">
+            <tr><th>维度</th><th>3.8 关键词匹配</th><th>3.1 语义分类</th></tr>
+            <tr><td><b>延迟</b></td><td><span class="pick" style="background:var(--green-bg);color:var(--green)">&lt;1ms</span></td><td><span class="pick" style="background:var(--orange-bg);color:var(--orange)">1~2s</span></td></tr>
+            <tr><td><b>成本</b></td><td>零</td><td>一次 LLM 调用</td></tr>
+            <tr><td><b>新说法</b></td><td>不认识就漏</td><td>能泛化</td></tr>
+            <tr><td><b>可解释</b></td><td>命中哪个词很清楚</td><td>靠 <code>reason</code> 字段</td></tr>
+            <tr><td><b>改一条会不会带崩别的</b></td><td><span class="pick" style="background:var(--red-bg);color:var(--red)">会</span></td><td>不会</td></tr>
+          </table>
+        </div>
+        <div class="warn">
+          <b>3.8 那个路由 bug 正是"为什么需要 3.1"的反面教材</b>。关键词 <code>dict</code> 的迭代顺序就是匹配优先级，命中即 <code>break</code>。"帮我看下华为有多少告警设备"因为"告警"排在"多少"前面，被判成了 <code>diagnose</code>。<br><br>关键点是：<b>把顺序调对，第 6 条输入照样会错</b>。"统计一下 DEV-0001 的告警历史"里"统计"在前，于是又被判成 query_data，可它明明是查单台设备。<b>关键词法的问题不在于哪条规则写错了，而在于"一句话里出现了哪个词"跟"这句话什么意思"之间本来就没有稳定映射。</b>加规则只是把错误挪个位置。
+        </div>
+        <div class="good">
+          <b>但也别急着把关键词法一棍子打死</b>。工业界常见的做法是<b>两级</b>：先用关键词/正则拦住那些高置信度的固定说法（比如工单系统固定发来的 <code>[ALARM]</code> 前缀），走零延迟快路；剩下的自由文本才交给 LLM 分类。既省了大部分调用，又保住了泛化能力。3.8 的问题不是用了关键词，而是<b>只有</b>关键词、且没有兜底到语义分类。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EVL 评测集陷阱 ===== -->
+  <div class="section" id="s4" style="--c:var(--red);--cb:var(--red-bg)">
+    <div class="sec-head"><div class="ic">EVL</div><div><h2>准确率 7/8 的那次，错的是标注</h2><div class="sub">MISLABELED GROUND TRUTH</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>现象</h4>
+          <p>脚本跑 8 条用例统计准确率。改造前无论跑几次，结果永远是 <b>7/8</b>，而且永远是同一条不一致：</p>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>改造前的实测输出</span></div>
+<pre>用户: 帮我看下华为有多少告警设备
+预期意图: <span class="c-r">diagnose</span>
+意图: <span class="c-g">query_data</span> | 设备: 无
+原因: 用户询问华为的告警设备数量，属于统计查询
+结果: <span class="c-r">不一致（预期 diagnose）</span>
+
+意图识别准确率: <span class="c-n">7/8 (88%)</span>
+</pre>
+        </div>
+        <div class="p-block">
+          <h4>三个信号说明模型没错</h4>
+          <ul class="dot-list">
+            <li><code>reason</code> 写得清清楚楚："询问数量，属于统计查询"——这个理由<b>站得住</b>。</li>
+            <li>Prompt 里 <code>query_data</code> 的例句本来就有一条"告警设备有几台"，跟这句几乎同构。</li>
+            <li>这句话确实是<b>跨设备聚合</b>（华为一共几台），符合上一节说的那条边界。</li>
+          </ul>
+          <p style="margin-top:8px">所以问题在<b>测试用例的标签</b>上：<code>("diagnose", "帮我看下华为有多少告警设备")</code> 这条标注写错了。改成 <code>query_data</code> 之后，准确率是 <b>8/8</b>。</p>
+        </div>
+      </div>
+      <div>
+        <div class="warn">
+          <b>标注错误比模型错误危险得多，因为它伪装成模型的锅</b>。模型错了，你去调 Prompt——但这次你怎么调都调不好，因为"正确答案"本身是错的。更糟的是它会<b>指引你把 Prompt 往错的方向改</b>：为了让模型把这句判成 diagnose，你可能会在 Prompt 里加一句"提到'看下设备'的归 diagnose"——然后真正的统计类输入开始成批出错。<b>一次错误的标注，能引出一串错误的修复。</b>
+        </div>
+        <div class="note">
+          <b>更隐蔽的一层：完成标准把问题盖住了</b>。原来的验收线写的是"准确率 ≥ 75%"，而 7/8 = 88%，<b>达标</b>。于是这个 bug 在"实验已通过"的状态下安静地躺着。<br><br>阈值型验收标准都有这个毛病——它只告诉你"够不够"，不告诉你"哪一条错了、错得合不合理"。所以现在的完成标准提到了 ≥ 87.5%（最多错 1 条），并且要求<b>逐条看 <code>reason</code></b>。
+        </div>
+        <div class="p-block">
+          <h4>可以带走的三条习惯</h4>
+          <table class="tbl">
+            <tr><th>习惯</th><th>为什么</th></tr>
+            <tr><td><b>让分类器输出理由</b></td><td>没有 <code>reason</code>，这个 bug 就得靠人肉猜。多花几十个 token 买一个调试入口。</td></tr>
+            <tr><td><b>看到"不一致"先查标注</b></td><td>顺序反了会浪费一整个下午。先问"标准答案对吗"，再问"模型错在哪"。</td></tr>
+            <tr><td><b>评测集要有人复核</b></td><td>标注是人写的，人会错。尤其是这种边界模糊的语义分类，标注者自己都可能拿不准。</td></tr>
+          </table>
+        </div>
+        <div class="good">
+          <b>顺带一个巧合</b>：3.8 的关键词路由把这<b>同一句话</b>也判错成了 <code>diagnose</code>。两个实验、两套完全不同的机制，在同一句话上栽了跟头——说明这句话确实处在 diagnose 和 query_data 的边界地带。<b>这种天然的边界样例，比随手编的用例值钱得多，值得单独留一份。</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RUN 跑起来 ===== -->
+  <div class="section" id="s5" style="--c:var(--green);--cb:var(--green-bg)">
+    <div class="sec-head"><div class="ic">RUN</div><div><h2>跑起来：五步与验收</h2><div class="sub">RUN &amp; VERIFY</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>本实验把 Day 1 和 Day 2 全串上了</h4>
+          <p>所以三个前置依赖缺一不可。<b>但意图识别那一层不依赖任何业务数据</b>——依赖挂了，分类照样能跑。设备类工具还多了一层降级：<b>平台不可达时自动读 1.1 的 <code>devices.json</code></b>，输出末尾会标注「数据来源：本地快照」。这本身就是分层的一个体现。</p>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span><span>第零步 · 三个依赖自检</span></div>
+<pre><span class="c-c"># 1) 1.1 平台服务（diagnose / troubleshoot 要调）</span>
+curl -s http://localhost:8000/devices/DEV-0001 | head -c 80
+
+<span class="c-c"># 2) 2.1 向量库索引（troubleshoot 要搜）</span>
+ls ../15-FAISS向量库/faiss_index/
+
+<span class="c-c"># 3) 1.1 设备数据（query_data 要灌进 SQLite）</span>
+ls ../04-平台搭建/data/devices.json
+</pre>
+        </div>
+        <div class="p-block">
+          <h4>平台挂了不能让 Agent “看不出来”</h4>
+          <p>工具函数最容易随手写成这样：</p>
+          <div class="codebox">
+<pre><span class="c-k">except</span> Exception <span class="c-k">as</span> e:
+    <span class="c-k">return</span> <span class="c-s">f"查询失败：{e}"</span>   <span class="c-c"># 看着很耗健壮，实际上是个坑</span>
+</pre>
+          </div>
+          <p>问题不在于它把异常吞了，而在于<b>它把异常吞成了一句 LLM 能继续往下编的话</b>。平台没起时，Agent 不报错、不中断，它拿着“查询失败”照样产出一份格式完整、看着挺专业的诊断报告——里面的设备型号、IP、告警级别全是编的。<b>静默产出胡编结果比直接崩溃更危险，因为你根本看不出它在编。</b></p>
+          <p>所以降级要分三档，三档对 LLM 说的话完全不同：</p>
+          <table class="tbl">
+            <tr><th>档位</th><th>数据源</th><th>给 LLM 的信号</th></tr>
+            <tr><td><b>1</b></td><td>平台 API（:8000）</td><td>实时数据，直接用</td></tr>
+            <tr><td><b>2</b></td><td>1.1 的 <code>devices.json</code></td><td>可用，但末尾明确标注「本地快照」</td></tr>
+            <tr><td><b>3</b></td><td>都没有</td><td><b>“请勿基于推测作答，直接说明数据不可用”</b></td></tr>
+          </table>
+          <p style="margin-top:8px">第二档能成立的前提是：<b>平台 API 读的就是这份 <code>devices.json</code></b>，降级前后数据完全一致。如果兜底里随手编一台“华为 AAU5613 / alarm”，学员开着平台查到 <code>running</code>、关了平台又看到 <code>alarm</code>，只会以为自己环境坏了——<b>兜底数据必须和主数据同源，否则兜底本身就成了新的 bug 源。</b></p>
+          <p>第三档那句“请勿基于推测作答”不是客套。工具返回值是直接拼进上下文给模型看的，<b>它就是一次 Prompt 机会</b>——你在这里说得多确定，模型就少编多少。</p>
+        </div>
+        <div class="route">
+          <div class="rt"><div class="no">1</div><div><b>自检三个依赖</b><span>缺哪个哪条通道瘸</span></div></div>
+          <div class="rt"><div class="no">2</div><div><b>只跑分类层</b><span>先验 8 条意图判得对不对</span></div></div>
+          <div class="rt"><div class="no">3</div><div><b>逐条看 reason</b><span>不一致先查标注再改 Prompt</span></div></div>
+          <div class="rt"><div class="no">4</div><div><b>跑完整四通道</b><span>python intent_router.py</span></div></div>
+          <div class="rt"><div class="no">5</div><div><b>接平台入口</b><span>/agent/intent-router</span></div></div>
+          <div class="rt"><div class="no">6</div><div><b>造歧义输入</b><span>试试边界地带的说法</span></div></div>
+        </div>
+        <div class="p-block">
+          <h4>实测耗时分布（8 条用例）</h4>
+          <table class="tbl">
+            <tr><th>通道</th><th>耗时</th><th>为什么</th></tr>
+            <tr><td><b>chat</b></td><td>3.0 ~ 3.6s</td><td>分类 + 一次生成，无工具</td></tr>
+            <tr><td><b>diagnose</b></td><td>6.0 ~ 6.6s</td><td>一两次工具调用</td></tr>
+            <tr><td><b>query_data</b></td><td>7.3 ~ 10.1s</td><td>还要多一次 LLM 生成 SQL</td></tr>
+            <tr><td><b>troubleshoot</b></td><td>17.6 ~ 17.7s</td><td>查设备 + 向量检索 + 长文综合</td></tr>
+          </table>
+          <p style="margin-top:8px">17.6 秒的通道就是 3.7 要做流式输出的理由，也是 3.2 要把它拆成四个子 Agent 的理由。<b>这张表是后面几个实验的起点。</b></p>
+        </div>
+      </div>
+      <div>
+        <div class="p-block">
+          <h4>完成标准</h4>
+          <ul class="check-list">
+            <li>8 条用例准确率 ≥ 87.5%（最多错 1 条）</li>
+            <li>四个通道全都跑通，没有任何一个抛 <code>agent_scratchpad</code> 相关异常</li>
+            <li>四种通道各有不同的工具集和回答风格，不是同一套 Prompt 换标签</li>
+            <li>diagnose / query_data 的回答引用了实际设备数据</li>
+            <li>chat 通道不挂工具，也不套 AgentExecutor</li>
+            <li>输入"AAU5613 …"时 <code>device_id</code> 被置空，而不是填成型号</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>坑位速查</h4>
+          <table class="tbl">
+            <tr><th>现象</th><th>根因 / 处理</th></tr>
+            <tr><td><code>agent_scratchpad should be a list of base messages</code></td><td>ReAct agent 配了 chat 模板 → 换 <code>create_tool_calling_agent</code></td></tr>
+            <tr><td>四条通道全挂，报错都一样</td><td>同上。是工厂函数的问题，不是某条通道的问题</td></tr>
+            <tr><td><code>device_id</code> 填成了型号</td><td>description 只是提示 → 加 <code>field_validator</code></td></tr>
+            <tr><td>准确率永远卡在同一个值</td><td>先怀疑标注，别急着改 Prompt</td></tr>
+            <tr><td><code>KeyError: 'intent'</code></td><td><code>route()</code> 里漏了给 dict 补 <code>intent</code> 字段</td></tr>
+            <tr><td>排障通道说"知识库检索失败"</td><td>2.1 的 <code>faiss_index/</code> 没建</td></tr>
+            <tr><td>回答末尾出现「数据来源：本地快照」</td><td>不是 bug，是降级生效了 → 1.1 平台服务（:8000）没启，想用实时数据就把它跑起来</td></tr>
+            <tr><td>回答里说"取数失败"</td><td>平台没启<b>且</b>本地 <code>devices.json</code> 也读不到 → 确认 <code>../04-平台搭建/data/devices.json</code> 存在</td></tr>
+            <tr><td>回答里一堆 emoji</td><td>system prompt 末尾统一追加输出约束</td></tr>
+            <tr><td>chat 通道报 tools 相关错误</td><td>别给 <code>create_tool_calling_agent</code> 传空 tools 列表</td></tr>
+          </table>
+        </div>
+        <div class="p-block">
+          <h4>值得往深处想的三个问题</h4>
+          <ul class="dot-list">
+            <li><b>多轮对话里的意图怎么切</b>：第一句"查下 DEV-0001"（diagnose），第二句"这个告警怎么修"（troubleshoot）。第二句<b>没有主语</b>，单看它模型不知道"这个"指什么。要把对话历史喂给分类器——但历史喂多少？喂全了 token 涨、还容易被前文带偏。</li>
+            <li><b>这一次分类调用值不值</b>：它给每个请求加了 1~2 秒。可以换小模型、可以缓存高频问法、可以像上面说的加一层关键词快路。也可以反过来问：<b>能不能不分类，直接把四套工具全挂给一个 Agent 让它自己选？</b>——那就退回 1.6 了，代价是 Prompt 膨胀、工具选错、以及"你好"也要走全套推理。</li>
+            <li><b>降级策略比兜底分支更重要</b>：现在解析失败就全走 <code>chat</code>。但"分不清"和"该闲聊"是两件事——更好的做法是<b>反问用户</b>（"你是想查这台设备的状态，还是想知道怎么修？"），把歧义交回给唯一真正知道答案的人。这跟 3.4 的 HITL 是同一个思路。</li>
+          </ul>
+        </div>
+        <div class="good">
+          <b>还有个顺手的收获</b>：意图识别天然就是一层<b>输入分类器</b>，位置正好在所有业务逻辑之前。3.5 要做的输入护栏（拦越权、拦注入）完全可以搭在这里——给 <code>intent</code> 多加一个 <code>reject</code> 枚举值，越权请求连通道都进不去。<b>一层设计得当的分类器，往往能顺带解决它本来没打算解决的问题。</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CTA ===== -->
+  <div class="cta">
+    <div>
+      <h2>四种能力，一个入口</h2>
+      <p>上一站 1.7 按数据字段分流，本站按语言含义分流。下一站把最慢的那条通道拆开重编。</p>
+    </div>
+    <div class="btns">
+      <a href="./实验文档.md">实验文档</a>
+      <a href="./intent_router.py">intent_router.py</a>
+      <a href="../13-RunnableBranch/实验文档.md">上一站 1.7 RunnableBranch</a>
+      <a href="../27-LangGraph多Agent/实验讲解.html">下一站 3.2 多 Agent 流水线</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    实验 21 · 意图识别 + 路由　|　<code>python intent_router.py</code>　|　四通道实测 8/8　|　前置：1.1 平台 · 2.1 向量库
+  </div>
+
+</div>
+</body>
+</html>

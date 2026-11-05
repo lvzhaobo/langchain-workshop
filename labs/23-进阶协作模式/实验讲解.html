@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验 23 · LangGraph 进阶协作模式 — Map-Reduce · Iterative Loop · Peer Mesh</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+  --pink:#db2777;--pink-bg:#fdf2f8;--blue:#2563eb;--blue-bg:#eff6ff;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--orange:#ea580c;--orange-bg:#fff7ed;
+  --green:#16a34a;--green-bg:#f0fdf4;--cyan:#0891b2;--cyan-bg:#ecfeff;
+  --dark:#0f172a;--dark2:#1e293b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 8px 24px rgba(0,0,0,.09);
+  --mono:'SF Mono','Fira Code',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px 70px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .chip{display:inline-block;font-size:12px;font-weight:700;color:var(--purple);background:var(--purple-bg);border:1px solid #ddd6fe;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.hero h1{font-size:38px;font-weight:900;margin:18px 0 12px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,#7c3aed,#db2777 55%,#ea580c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:15px;color:var(--text2);max-width:700px;margin:0 auto}
+.hero .stats{display:flex;justify-content:center;gap:36px;margin-top:26px;flex-wrap:wrap}
+.hero .stat b{font-size:22px;font-weight:900;display:block}
+.hero .stat span{font-size:11px;color:var(--text3);letter-spacing:1px}
+.quicknav{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 12px}
+.qn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);box-shadow:var(--shadow);transition:.2s;display:flex;gap:10px;align-items:center}
+.qn:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--c)}
+.qn .ic{width:36px;height:36px;border-radius:10px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.qn b{font-size:12.5px;display:block}
+.qn span{font-size:10.5px;color:var(--text3)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-top:26px;overflow:hidden}
+.sec-head{padding:26px 34px 0;display:flex;align-items:center;gap:13px}
+.sec-head .ic{width:46px;height:46px;border-radius:12px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;font-family:var(--mono)}
+.sec-head h2{font-size:21px;font-weight:900}
+.sec-head .sub{font-size:11.5px;color:var(--text3);font-family:var(--mono)}
+.sec-body{padding:18px 34px 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px}
+.sec-body.single{grid-template-columns:1fr}
+.p-block{margin-top:12px}
+.p-block:first-child{margin-top:0}
+.p-block h4{font-size:12px;font-weight:800;color:var(--c);letter-spacing:1.5px;margin-bottom:6px}
+.p-block p,.p-block li{font-size:13px;color:var(--text2)}
+.p-block b{color:var(--text)}
+.p-block code{font-family:var(--mono);font-size:11.5px;background:var(--bg);padding:1px 7px;border-radius:5px;color:var(--c)}
+.dot-list{list-style:none}
+.dot-list li{padding:3px 0 3px 20px;position:relative}
+.dot-list li::before{content:'—';position:absolute;left:2px;color:var(--c);font-size:11px;font-weight:900}
+.codebox{background:var(--dark);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.codebox .cb-hd{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--dark2);font-size:10.5px;color:#94a3b8;font-family:var(--mono)}
+.codebox .cb-hd .d{width:8px;height:8px;border-radius:50%}
+.codebox pre{padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#e2e8f0;overflow-x:auto}
+.c-k{color:#c084fc}.c-s{color:#86efac}.c-f{color:#7dd3fc}.c-c{color:#64748b}.c-n{color:#fbbf24}
+.lab-chip{display:inline-block;font-size:10px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:9px;margin:2px 3px 0 0}
+/* 图示画布 */
+.gcanvas{background:linear-gradient(145deg,var(--cb),#fff 130%);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-row{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.g-node{background:#fff;border:2px solid var(--c);border-radius:12px;padding:8px 15px;font-size:12px;font-weight:800;color:var(--c);text-align:center;box-shadow:var(--shadow)}
+.g-node small{display:block;font-weight:400;font-size:9.5px;color:var(--text3)}
+.g-node.alt{border-color:var(--orange);color:var(--orange)}
+.g-node.ok{border-color:var(--green);color:var(--green)}
+.g-node.dim{border-style:dashed;border-color:var(--text3);color:var(--text2)}
+.g-arr{color:var(--text3);font-weight:900;font-size:15px}
+.g-tag{font-size:10px;font-weight:800;background:var(--cb);color:var(--c);padding:2px 10px;border-radius:10px;border:1px dashed var(--c);font-family:var(--mono)}
+/* 演进时间轴 */
+.evo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px}
+.evo-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative}
+.evo-card.cur{border-color:var(--purple);background:var(--purple-bg)}
+.evo-card .no{font-size:10px;font-weight:900;font-family:var(--mono);color:var(--text3);letter-spacing:1px}
+.evo-card.cur .no{color:var(--purple)}
+.evo-card b{font-size:13.5px;display:block;margin:2px 0 4px}
+.evo-card p{font-size:11px;color:var(--text2);line-height:1.55}
+.evo-card .how{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tbl th{background:#f8fafc;text-align:left;padding:9px 14px;font-size:11px;color:var(--text3);letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:var(--text2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text)}
+.tbl code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:4px}
+.pick{font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px;white-space:nowrap}
+/* 步骤路线 */
+.route{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.rt{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.rt .no{width:26px;height:26px;border-radius:8px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.rt b{font-size:12px;display:block}
+.rt span{font-size:10.5px;color:var(--text3)}
+/* 检查清单 */
+.check-list{list-style:none;margin-top:6px}
+.check-list li{padding:5px 0 5px 26px;position:relative;font-size:13px;color:var(--text2)}
+.check-list li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:900;font-size:13px}
+.cta{margin-top:40px;background:linear-gradient(120deg,#4c1d95,#831843 55%,#7c2d12);border-radius:18px;padding:30px 36px;color:#fff;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{font-size:20px;font-weight:900}
+.cta p{font-size:12.5px;opacity:.85;margin-top:4px}
+.cta .btns{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);transition:.2s}
+.cta a:hover{background:rgba(255,255,255,.26)}
+.footer{margin-top:44px;text-align:center;font-size:11.5px;color:var(--text3)}
+.footer code{font-family:var(--mono);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:5px}
+@media(max-width:900px){
+  .sec-body{grid-template-columns:1fr}
+  .quicknav{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .evo{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <span class="chip">LAB 3.3 · ADVANCED COLLABORATION PATTERNS</span>
+    <h1>LangGraph <span class="grad">进阶协作模式</span></h1>
+    <p>3.2 的三种模式都是单方向推进——数据只往前流、不回头。但真实排障经常需要「三件事同时做」「置信度不够重来一次」「没 Supervisor 谁调度」。本实验在<b>同一套 Agent 节点</b>上换三种连边方式——Agent 不变，编排变。</p>
+    <div class="stats">
+      <div class="stat"><b>3 种</b><span>进阶模式</span></div>
+      <div class="stat"><b>Send</b><span>并行原语</span></div>
+      <div class="stat"><b>0.7</b><span>置信度阈值</span></div>
+      <div class="stat"><b>0 个</b><span>新增 NODE 实现</span></div>
+      <div class="stat"><b>6 种</b><span>模式全景（含 3.2）</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 快速导航 ===== -->
+  <div class="quicknav">
+    <a class="qn" href="#evo" style="--c:#0891b2;--cb:#ecfeff"><span class="ic">00</span><span><b>编排演进脉络</b><span>1.7 → 3.1 → 3.2 → 3.3</span></span></a>
+    <a class="qn" href="#mapreduce" style="--c:#db2777;--cb:#fdf2f8"><span class="ic">M-R</span><span><b>Map-Reduce</b><span>并行扇出 → 汇总</span></span></a>
+    <a class="qn" href="#loop" style="--c:#7c3aed;--cb:#f5f3ff"><span class="ic">LP</span><span><b>Iterative Loop</b><span>置信度回退重来</span></span></a>
+    <a class="qn" href="#mesh" style="--c:#2563eb;--cb:#eff6ff"><span class="ic">MS</span><span><b>Peer Mesh</b><span>去中心化互调</span></span></a>
+    <a class="qn" href="#run" style="--c:#16a34a;--cb:#f0fdf4"><span class="ic">RUN</span><span><b>动手跑</b><span>步骤 · 标准 · 排坑</span></span></a>
+  </div>
+
+  <!-- ===== 00 演进脉络 ===== -->
+  <div class="section" id="evo" style="--c:#0891b2;--cb:#ecfeff">
+    <div class="sec-head"><span class="ic">00</span><div><h2>动手前先对齐：四个实验都在讲「编排」，别混淆</h2><span class="sub">1.7 打底 · 3.1 分路 · 3.2 串起来 · 3.3 灵活起来</span></div></div>
+    <div class="sec-body single">
+      <div class="evo">
+        <div class="evo-card">
+          <span class="no">LAB 1.7 · 怎么分岔</span>
+          <b>RunnableBranch</b>
+          <p>按<b>告警级别</b>路由：P0 走紧急、P1 走重要、其他走常规。一个 Prompt 链，无状态。</p>
+          <span class="how">RunnableBranch + lambda 条件</span>
+        </div>
+        <div class="evo-card">
+          <span class="no">LAB 3.1 · 分到哪</span>
+          <b>意图识别 + 路由</b>
+          <p>按<b>用户意图</b>路由：diagnose / query_data / troubleshoot / chat 四个独立 Agent，无共享 State。</p>
+          <span class="how">LLM 分类(Pydantic) + RunnableBranch</span>
+        </div>
+        <div class="evo-card">
+          <span class="no">LAB 3.2 · 怎么走</span>
+          <b>LangGraph 流水线</b>
+          <p>按<b>流程步骤</b>编排：检测→诊断→决策→处置。Serial / Supervisor / Conditional，共享 State。</p>
+          <span class="how">StateGraph + add_edge / conditional_edges</span>
+        </div>
+        <div class="evo-card cur">
+          <span class="no">LAB 3.3 · 还能怎么走</span>
+          <b>进阶协作模式</b>
+          <p>按<b>任务模式</b>编排：Map-Reduce 并行扇出、Loop 回退重来、Mesh 互调无中心。同一套 Node。</p>
+          <span class="how">StateGraph + Send API / 回退边 / 全互联边</span>
+        </div>
+      </div>
+      <div class="p-block" style="margin-top:16px">
+        <h4>核心演进逻辑</h4>
+        <ul class="dot-list">
+          <li>1.7 → 3.1：从「按数据字段路由」升级为「按语义意图路由」——从 <code>if severity == "P0"</code> 到 LLM 理解用户想干什么</li>
+          <li>3.1 → 3.2：从「分到正确的 Agent」升级为「多个 Agent 串成一条流水线」——从单 Agent 到多 Agent StateGraph</li>
+          <li>3.2 → 3.3：从「固定顺序的流水线」升级为「灵活可变的协作网」——从 add_edge 到 Send / 回退 / 全互联</li>
+        </ul>
+      </div>
+      <div class="p-block">
+        <h4>本实验的核心哲学</h4>
+        <p><b>Agent 是积木，Graph 的边决定协作模式。</b>三种新模式全部复用 3.2 的 detector / diagnoser / decider / executor 节点实现，一行 Agent 逻辑都不重写——只改 <code>add_edge</code> / <code>add_conditional_edges</code> 的连法。State 上新增了三组字段支撑新模式：<code>sub_tasks</code> + <code>parallel_results</code>（Map-Reduce 用）、<code>loop_count</code> + <code>confidence_score</code> + <code>history_log</code>（Loop 用）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 模式一 Map-Reduce ===== -->
+  <div class="section" id="mapreduce" style="--c:#db2777;--cb:#fdf2f8">
+    <div class="sec-head"><span class="ic">M-R</span><div><h2>模式一：Map-Reduce — 并行扇出，汇总收拢</h2><span class="sub">splitter → Send × N → map_worker → reducer</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>场景</h4>
+          <p>「DEV-0001 退服了，全面排查」——这个任务天然可拆成三个<b>互不依赖</b>的子任务：查设备状态（平台 API）、搜排障知识库（FAISS）、拉历史告警（平台 API）。三件事互不依赖，为什么要串行等？同时发、各自跑、最后汇总。</p>
+        </div>
+        <div class="p-block">
+          <h4>Send：LangGraph 的并行原语</h4>
+          <ul class="dot-list">
+            <li>路由函数返回 <b>Send 对象列表</b>，LangGraph 就自动并行执行——不需要 asyncio、不需要手写线程池</li>
+            <li>每个 Send 携带一份独立的 State 副本（塞进各自的 <code>current_task</code>），Worker 之间互不干扰</li>
+            <li>Worker 只返回 <code>{"parallel_results": [...]}</code> 增量，靠 <code>operator.add</code> reducer 自动合并三路结果——这就是 3.2 学过的 Reducer 在并行场景的真正用武之地</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>本实验的三个 Worker 分工</h4>
+          <p><code>check-device</code> 查设备实时状态 · <code>search-kb</code> 搜 FAISS 知识库 · <code>check-history</code> 拉历史告警。每个 Worker 执行完还会让 LLM 提炼一段不超过 100 字的关键发现，Reducer 最后综合三路证据链输出诊断方案。</p>
+        </div>
+        <div class="p-block">
+          <h4>适合场景</h4>
+          <p>可拆分的独立子任务。耗时特点：<b>取决于最慢的那个 Worker</b>，而不是三者之和。</p>
+        </div>
+      </div>
+      <div>
+        <div class="gcanvas">
+          <div class="g-row"><div class="g-node">splitter<small>把大任务拆成 N 个子任务</small></div></div>
+          <div class="g-row"><span class="g-tag">return [Send("map_worker", ...) for t in tasks]</span></div>
+          <div class="g-row">
+            <div class="g-node alt">worker A<small>查设备状态</small></div>
+            <div class="g-node alt">worker B<small>搜知识库</small></div>
+            <div class="g-node alt">worker C<small>查历史告警</small></div>
+          </div>
+          <div class="g-row"><span class="g-arr">&#8600;</span><span class="g-tag">parallel_results 经 operator.add 合并</span><span class="g-arr">&#8601;</span></div>
+          <div class="g-row"><div class="g-node ok">reducer<small>汇总三路 + LLM 综合分析</small></div><span class="g-arr">&#8594;</span><div class="g-node dim">END</div></div>
+        </div>
+        <div class="codebox" style="margin-top:12px">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>continue_to_workers() — Send 并行扇出</div>
+          <pre><span class="c-k">from</span> langgraph.constants <span class="c-k">import</span> Send
+
+<span class="c-k">def</span> <span class="c-f">continue_to_workers</span>(state) -&gt; <span class="c-f">list</span>:
+    <span class="c-c"># 返回 Send 列表 → LangGraph 自动并行</span>
+    <span class="c-k">return</span> [<span class="c-f">Send</span>(<span class="c-s">"map_worker"</span>,
+        {**state, <span class="c-s">"current_task"</span>: t})
+        <span class="c-k">for</span> t <span class="c-k">in</span> state[<span class="c-s">"sub_tasks"</span>]]
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"splitter"</span>,
+    continue_to_workers, [<span class="c-s">"map_worker"</span>])
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"map_worker"</span>, <span class="c-s">"reducer"</span>)
+
+<span class="c-c"># Worker 只返回增量，reducer 字段自动合并</span>
+<span class="c-k">def</span> <span class="c-f">map_worker</span>(state):
+    ...
+    <span class="c-k">return</span> {<span class="c-s">"parallel_results"</span>: [{
+        <span class="c-s">"task_id"</span>: task_id,
+        <span class="c-s">"summary"</span>: summary}]}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 模式二 Iterative Loop ===== -->
+  <div class="section" id="loop" style="--c:#7c3aed;--cb:#f5f3ff">
+    <div class="sec-head"><span class="ic">LP</span><div><h2>模式二：Iterative Loop — 结果不够好就回退重来</h2><span class="sub">confidence_checker · loop_router · 阈值 0.7 · 上限 3 轮</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>场景</h4>
+          <p>第一次诊断结论：「可能是 SCTP 配置问题，但也可能是硬件故障」，置信度 0.5——这个结论没法用。应该让流程<b>回退到 detector 重新取数</b>（比如查更详细的接口统计）→ 再次诊断 → 还不够？再来一轮。直到置信度达标，或触发最大循环次数保底。</p>
+        </div>
+        <div class="p-block">
+          <h4>实现拆解：一个新节点 + 一条回退边</h4>
+          <ul class="dot-list">
+            <li><b>checker 节点</b>：让 LLM 从诊断文本里提取 0-1 的置信度分数（解析失败兜底 0.5），同时 <code>loop_count + 1</code>，并把每轮结论追加进 <code>history_log</code></li>
+            <li><b>loop_router</b>：<code>score ≥ 0.7</code> 或 <code>loops ≥ 3</code> → 放行去 decider；否则返回 <code>"detector"</code> 回退重来</li>
+            <li>四个业务节点<b>一行没改</b>——循环能力完全由边和阈值实现</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>两个保底设计（生产必备）</h4>
+          <p><b>MAX_LOOPS = 3</b> 防止无限循环烧钱；<b>达上限强制放行</b>而不是报错终止——置信度不高也要给出"当前最优解"，比空手而归有用。适合场景：首次诊断不确定、需要多轮收敛的任务。耗时特点：回退一次就多一轮完整的检测+诊断。</p>
+        </div>
+      </div>
+      <div>
+        <div class="gcanvas">
+          <div class="g-row">
+            <div class="g-node">detector<small>取数</small></div><span class="g-arr">&#8594;</span>
+            <div class="g-node">diagnoser<small>诊断</small></div><span class="g-arr">&#8594;</span>
+            <div class="g-node alt">checker<small>提取置信度</small></div>
+          </div>
+          <div class="g-row"><span class="g-tag">loop_router: score &lt; 0.7 且未满 3 轮 → 回退 detector</span></div>
+          <div class="g-row"><span class="g-arr">&#8617; 回退边</span></div>
+          <div class="g-row">
+            <span class="g-tag" style="border-style:solid">score ≥ 0.7 或满 3 轮 → 放行</span>
+          </div>
+          <div class="g-row">
+            <div class="g-node ok">decider</div><span class="g-arr">&#8594;</span>
+            <div class="g-node ok">executor</div><span class="g-arr">&#8594;</span>
+            <div class="g-node dim">END</div>
+          </div>
+        </div>
+        <div class="codebox" style="margin-top:12px">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>loop_router() — 回退还是放行</div>
+          <pre>MAX_LOOPS = <span class="c-n">3</span>
+CONFIDENCE_THRESHOLD = <span class="c-n">0.7</span>
+
+<span class="c-k">def</span> <span class="c-f">loop_router</span>(state):
+    score = state.<span class="c-f">get</span>(<span class="c-s">"confidence_score"</span>, <span class="c-n">0</span>)
+    loops = state.<span class="c-f">get</span>(<span class="c-s">"loop_count"</span>, <span class="c-n">0</span>)
+    <span class="c-k">if</span> score &gt;= CONFIDENCE_THRESHOLD:
+        <span class="c-k">return</span> <span class="c-s">"decider"</span>   <span class="c-c"># 达标 → 继续</span>
+    <span class="c-k">if</span> loops &gt;= MAX_LOOPS:
+        <span class="c-k">return</span> <span class="c-s">"decider"</span>   <span class="c-c"># 满 3 轮强制放行</span>
+    <span class="c-k">return</span> <span class="c-s">"detector"</span>      <span class="c-c"># 不够 → 回退重来</span>
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"checker"</span>,
+    loop_router, {
+    <span class="c-s">"decider"</span>:  <span class="c-s">"decider"</span>,
+    <span class="c-s">"detector"</span>: <span class="c-s">"detector"</span>,  <span class="c-c"># 回退边</span>
+    <span class="c-s">"__end__"</span>:  END})</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 模式三 Peer Mesh ===== -->
+  <div class="section" id="mesh" style="--c:#2563eb;--cb:#eff6ff">
+    <div class="sec-head"><span class="ic">MS</span><div><h2>模式三：Peer Mesh — 没有 Supervisor，Agent 互相调用</h2><span class="sub">peer_router · 全互联条件边 · 去中心化协作</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>场景</h4>
+          <p>不是所有排障流程都固定：「这个告警我见过，直接跳到处置」「诊断结果不确定，让 detector 帮忙再查一下」「处置完了，回去验证设备是否恢复」。<b>没有中央调度者</b>——就像运维团队里同事之间直接喊话，不用每件事都经过主管。</p>
+        </div>
+        <div class="p-block">
+          <h4>和 Supervisor 的本质区别</h4>
+          <ul class="dot-list">
+            <li>Supervisor（3.2）：所有节点执行完都<b>回到同一个中心</b>重新决策，路由逻辑集中在一处</li>
+            <li>Mesh：<b>每个节点都挂多个出口</b>——detector 可以去 diagnoser / decider / executor，diagnoser 可以回退 detector，executor 处置完还能回 detector 验证</li>
+            <li>本实验用共享的 <code>peer_router</code> 模拟"节点自主决策"：诊断文本里出现「不确定」「需要更多信息」时自动回调 detector 补数据</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>代价：灵活是双刃剑</h4>
+          <p>互调没有中心管控，可能<b>无限循环爆栈</b>。本实验用 <code>step_count</code>（数 messages 条数）限制回退时机；进阶挑战 3 要求你实现更完善的收敛机制——每个 Agent 记录被调次数，超阈值强制路由到 executor 收尾。适合场景：非固定流程；耗时取决于跳转次数。</p>
+        </div>
+      </div>
+      <div>
+        <div class="gcanvas">
+          <div class="g-row"><span class="g-tag">每条边双向 — 任何 Agent 可调任何其他 Agent</span></div>
+          <div class="g-row">
+            <div class="g-node">detector</div>
+            <span class="g-arr">&#8596;</span>
+            <div class="g-node">diagnoser</div>
+          </div>
+          <div class="g-row">
+            <span class="g-arr">&#8597;</span>
+            <span class="g-arr" style="opacity:.4">&#10530;</span>
+            <span class="g-arr">&#8597;</span>
+          </div>
+          <div class="g-row">
+            <div class="g-node">executor</div>
+            <span class="g-arr">&#8596;</span>
+            <div class="g-node">decider</div>
+          </div>
+          <div class="g-row"><span class="g-tag" style="border-style:solid">peer_router 按 State + 关键词决定下一跳</span></div>
+        </div>
+        <div class="codebox" style="margin-top:12px">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>build_mesh_pipeline() — 全互联边</div>
+          <pre><span class="c-c"># 每个节点都有多种出口</span>
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"detector"</span>,
+    peer_router, {
+    <span class="c-s">"diagnoser"</span>: <span class="c-s">"diagnoser"</span>, <span class="c-c"># 正常流程</span>
+    <span class="c-s">"decider"</span>:   <span class="c-s">"decider"</span>,   <span class="c-c"># 跳过诊断</span>
+    <span class="c-s">"executor"</span>:  <span class="c-s">"executor"</span>,  <span class="c-c"># 直接处置</span>
+    <span class="c-s">"__end__"</span>:   END})
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"diagnoser"</span>,
+    peer_router, {
+    <span class="c-s">"detector"</span>: <span class="c-s">"detector"</span>,  <span class="c-c"># 请求补数据</span>
+    <span class="c-s">"decider"</span>:  <span class="c-s">"decider"</span>, ...})
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"executor"</span>,
+    peer_router, {
+    <span class="c-s">"detector"</span>: <span class="c-s">"detector"</span>,  <span class="c-c"># 处置后回查验证</span>
+    <span class="c-s">"__end__"</span>:  END})</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 六模式全景对比 ===== -->
+  <div class="section" style="--c:#ea580c;--cb:#fff7ed">
+    <div class="sec-head"><span class="ic">VS</span><div><h2>六种模式全景：3.2 + 3.3 怎么选</h2><span class="sub">同一套节点 · 六种连边 · 按场景选型</span></div></div>
+    <div class="sec-body single" style="padding-top:10px">
+      <table class="tbl">
+        <thead><tr><th>模式</th><th>来自</th><th>核心机制</th><th>解决什么问题</th><th>典型场景</th></tr></thead>
+        <tbody>
+          <tr><td><b>Serial 串行</b></td><td>3.2</td><td><code>add_edge</code> 固定边</td><td>流程固定、按部就班</td><td>排障 SOP，步骤永不跳</td></tr>
+          <tr><td><b>Supervisor 调度</b></td><td>3.2</td><td>中央 router + 条件边</td><td>每一步动态决定去哪</td><td>复杂任务调度</td></tr>
+          <tr><td><b>Conditional 分支</b></td><td>3.2</td><td>分支点一处条件边</td><td>不同结果不同处理</td><td>高/中/低风险分级处置</td></tr>
+          <tr><td><b>Map-Reduce 并行</b></td><td>3.3</td><td><code>Send</code> 扇出 + reducer 合并</td><td>独立子任务串行太慢</td><td>多维度同时排查再汇总</td></tr>
+          <tr><td><b>Iterative Loop 循环</b></td><td>3.3</td><td>回退边 + 阈值判断</td><td>一次结果不够好</td><td>诊断置信度低，回退重取数</td></tr>
+          <tr><td><b>Peer Mesh 互调</b></td><td>3.3</td><td>全互联条件边</td><td>流程本身不固定</td><td>跳步、回查、互相帮忙</td></tr>
+        </tbody>
+      </table>
+      <div class="p-block" style="margin-top:14px">
+        <h4>三种新模式的运行观察点</h4>
+        <table class="tbl">
+          <thead><tr><th>观察点</th><th>Map-Reduce</th><th>Loop</th><th>Mesh</th></tr></thead>
+          <tbody>
+            <tr><td><b>节点执行顺序</b></td><td>并行 → 汇总</td><td>检测→诊断→(可能回退)→决策</td><td>不固定</td></tr>
+            <tr><td><b>耗时特点</b></td><td>取决于最慢的 Worker</td><td>回退时成倍增长</td><td>取决于跳转次数</td></tr>
+            <tr><td><b>失控风险</b></td><td><span class="pick" style="background:#f0fdf4;color:#16a34a">低</span></td><td><span class="pick" style="background:#fffbeb;color:#d97706">中 — 靠 MAX_LOOPS 保底</span></td><td><span class="pick" style="background:#fef2f2;color:#dc2626">高 — 必须做收敛</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 动手跑 ===== -->
+  <div class="section" id="run" style="--c:#16a34a;--cb:#f0fdf4">
+    <div class="sec-head"><span class="ic">RUN</span><div><h2>实验步骤：跑起来 + 验收 + 排坑</h2><span class="sub">python advanced_patterns.py [mapreduce|loop|mesh|all]</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>实验路线（六步）</h4>
+        </div>
+        <div class="route">
+          <div class="rt" style="--c:#0891b2"><span class="no">1</span><span><b>对齐演进脉络</b><span>先弄清 1.7 / 3.1 / 3.2 / 3.3 各自「编排的是什么」</span></span></div>
+          <div class="rt" style="--c:#db2777"><span class="no">2</span><span><b>跑 mapreduce</b><span>观察 Splitter 拆出 3 个子任务、三路并行、Reducer 汇总证据链</span></span></div>
+          <div class="rt" style="--c:#7c3aed"><span class="no">3</span><span><b>跑 loop</b><span>观察置信度提取、回退轮次、history_log 里每轮的结论变化</span></span></div>
+          <div class="rt" style="--c:#2563eb"><span class="no">4</span><span><b>跑 mesh</b><span>观察节点跳转是否突破固定顺序（诊断"不确定"时回调 detector）</span></span></div>
+          <div class="rt" style="--c:#ea580c"><span class="no">5</span><span><b>一键 all 对比</b><span>三种模式的耗时 / 循环次数 / 并行任务数 / 消息步数</span></span></div>
+          <div class="rt" style="--c:#16a34a"><span class="no">6</span><span><b>进阶挑战</b><span>LLM 动态拆分 · 可变回退目标 · Mesh 调用收敛机制</span></span></div>
+        </div>
+        <div class="p-block" style="margin-top:14px">
+          <h4>完成标准</h4>
+          <ul class="check-list">
+            <li>Map-Reduce：同一任务拆为 ≥3 个子任务并行执行，Reducer 成功汇总</li>
+            <li>Loop：置信度 &lt; 0.7 时自动回退，达阈值或 3 次上限后停止</li>
+            <li>Mesh：节点跳转不限于固定顺序——可从 diagnoser 直接跳到 executor</li>
+            <li>六种模式（含 3.2 的三种）能说出各自的适用场景</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>terminal — 运行前置 + 命令</div>
+          <pre><span class="c-c"># 前置：平台服务 :8000 在跑（Day1 产物）</span>
+<span class="c-c">#      FAISS 索引已建（2.1 产物，缺了自动降级）</span>
+<span class="c-c">#      agent-course/.env 配了 AGENT_API_KEY</span>
+<span class="c-c"># 依赖与 3.2 完全一致，无需新装任何包</span>
+
+<span class="c-f">cd</span> agent-course/labs/28-进阶协作模式
+<span class="c-f">source</span> ../../.venv/bin/activate
+
+python advanced_patterns.py mapreduce  <span class="c-c"># 模式一</span>
+python advanced_patterns.py loop       <span class="c-c"># 模式二</span>
+python advanced_patterns.py mesh       <span class="c-c"># 模式三</span>
+python advanced_patterns.py all        <span class="c-c"># 全跑+对比</span></pre>
+        </div>
+        <div class="p-block" style="margin-top:12px">
+          <h4>常见坑位速查</h4>
+          <table class="tbl">
+            <thead><tr><th>症状</th><th>原因 → 解法</th></tr></thead>
+            <tbody>
+              <tr><td>Send 不并行执行</td><td><code>Send</code> 是 LangGraph 0.2+ 才稳定的 API → <code>pip install "langgraph&gt;=0.2"</code>（本课环境已满足）</td></tr>
+              <tr><td>Loop 不回退</td><td><code>loop_router</code> 返回值与目标 dict 不匹配 → 确认 <code>{"detector": "detector"}</code> 映射正确</td></tr>
+              <tr><td>Mesh 循环爆栈</td><td>Agent 互调陷入死循环 → 限制 <code>max_iterations</code> 或加 step counter</td></tr>
+              <tr><td>Reducer 结果为空</td><td>Worker 返回的字段没走 <code>parallel_results</code> 合并 → 确认 <code>Annotated[list, operator.add]</code> 声明</td></tr>
+              <tr><td>置信度总是 0.5</td><td>LLM 输出的不是纯数字，float 解析失败走了兜底 → 收紧提取 Prompt「只输出数字」</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CTA ===== -->
+  <div class="cta">
+    <div>
+      <h2>同一套积木，换六种搭法</h2>
+      <p>先 all 模式对比三种新模式，再做进阶挑战——能给 Mesh 写出收敛机制，才算真正驾驭了去中心化协作。</p>
+    </div>
+    <div class="btns">
+      <a href="../27-LangGraph多Agent/实验讲解.html">上一站 · 3.2 多 Agent 流水线</a>
+      <a href="实验文档.md">本实验文档</a>
+      <a href="../29-HITL/实验讲解.html">下一站 · 3.4 HITL 审批</a>
+      <a href="http://localhost:8000" target="_blank">平台服务 :8000</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    实验 23 · LangGraph 进阶协作模式 · 源码见 <code>labs/28-进阶协作模式/advanced_patterns.py</code> · 完成后进入 3.4 HITL 人工审批
+  </div>
+
+</div>
+</body>
+</html>

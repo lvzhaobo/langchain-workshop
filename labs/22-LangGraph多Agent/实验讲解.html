@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验 22 · LangGraph 多 Agent 流水线 — 串行 · Supervisor · 条件分支</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+  --pink:#db2777;--pink-bg:#fdf2f8;--blue:#2563eb;--blue-bg:#eff6ff;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--orange:#ea580c;--orange-bg:#fff7ed;
+  --green:#16a34a;--green-bg:#f0fdf4;--cyan:#0891b2;--cyan-bg:#ecfeff;
+  --dark:#0f172a;--dark2:#1e293b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 8px 24px rgba(0,0,0,.09);
+  --mono:'SF Mono','Fira Code',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px 70px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .chip{display:inline-block;font-size:12px;font-weight:700;color:var(--pink);background:var(--pink-bg);border:1px solid #fbcfe8;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.hero h1{font-size:38px;font-weight:900;margin:18px 0 12px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,#db2777,#7c3aed 55%,#2563eb);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:15px;color:var(--text2);max-width:700px;margin:0 auto}
+.hero .stats{display:flex;justify-content:center;gap:36px;margin-top:26px;flex-wrap:wrap}
+.hero .stat b{font-size:22px;font-weight:900;display:block}
+.hero .stat span{font-size:11px;color:var(--text3);letter-spacing:1px}
+.quicknav{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:8px 0 12px}
+.qn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);box-shadow:var(--shadow);transition:.2s;display:flex;gap:10px;align-items:center}
+.qn:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--c)}
+.qn .ic{width:36px;height:36px;border-radius:10px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.qn b{font-size:12.5px;display:block}
+.qn span{font-size:10.5px;color:var(--text3)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-top:26px;overflow:hidden}
+.sec-head{padding:26px 34px 0;display:flex;align-items:center;gap:13px}
+.sec-head .ic{width:46px;height:46px;border-radius:12px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;font-family:var(--mono)}
+.sec-head h2{font-size:21px;font-weight:900}
+.sec-head .sub{font-size:11.5px;color:var(--text3);font-family:var(--mono)}
+.sec-body{padding:18px 34px 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px}
+.sec-body.single{grid-template-columns:1fr}
+.p-block{margin-top:12px}
+.p-block:first-child{margin-top:0}
+.p-block h4{font-size:12px;font-weight:800;color:var(--c);letter-spacing:1.5px;margin-bottom:6px}
+.p-block p,.p-block li{font-size:13px;color:var(--text2)}
+.p-block b{color:var(--text)}
+.p-block code{font-family:var(--mono);font-size:11.5px;background:var(--bg);padding:1px 7px;border-radius:5px;color:var(--c)}
+.dot-list{list-style:none}
+.dot-list li{padding:3px 0 3px 20px;position:relative}
+.dot-list li::before{content:'—';position:absolute;left:2px;color:var(--c);font-size:11px;font-weight:900}
+.codebox{background:var(--dark);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.codebox .cb-hd{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--dark2);font-size:10.5px;color:#94a3b8;font-family:var(--mono)}
+.codebox .cb-hd .d{width:8px;height:8px;border-radius:50%}
+.codebox pre{padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#e2e8f0;overflow-x:auto}
+.c-k{color:#c084fc}.c-s{color:#86efac}.c-f{color:#7dd3fc}.c-c{color:#64748b}.c-n{color:#fbbf24}
+.lab-chip{display:inline-block;font-size:10px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:9px;margin:2px 3px 0 0}
+/* 图示画布 */
+.gcanvas{background:linear-gradient(145deg,var(--cb),#fff 130%);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-row{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.g-node{background:#fff;border:2px solid var(--c);border-radius:12px;padding:8px 15px;font-size:12px;font-weight:800;color:var(--c);text-align:center;box-shadow:var(--shadow)}
+.g-node small{display:block;font-weight:400;font-size:9.5px;color:var(--text3)}
+.g-node.alt{border-color:var(--orange);color:var(--orange)}
+.g-node.ok{border-color:var(--green);color:var(--green)}
+.g-node.dim{border-style:dashed;border-color:var(--text3);color:var(--text2)}
+.g-arr{color:var(--text3);font-weight:900;font-size:15px}
+.g-tag{font-size:10px;font-weight:800;background:var(--cb);color:var(--c);padding:2px 10px;border-radius:10px;border:1px dashed var(--c)}
+/* 横向管道 */
+.pipe{display:flex;align-items:stretch;gap:0;margin:14px 0 4px;flex-wrap:wrap}
+.pipe .node{background:var(--cb);border:1.5px solid var(--c);color:var(--c);border-radius:10px;padding:8px 13px;font-size:11.5px;font-weight:700;text-align:center;flex:1;min-width:86px;display:flex;flex-direction:column;justify-content:center}
+.pipe .node small{font-weight:400;font-size:9.5px;color:var(--text3);display:block}
+.pipe .arr{display:flex;align-items:center;padding:0 7px;color:var(--text3);font-weight:900}
+/* 子 Agent 卡片 */
+.agent-cards{display:flex;flex-direction:column;gap:10px}
+.agent-card{border-radius:12px;padding:12px 16px;border:1.5px solid;display:flex;gap:12px;align-items:flex-start}
+.agent-card .ai{font-size:10px;font-weight:900;font-family:var(--mono);padding-top:4px}
+.agent-card b{font-size:13px;display:block}
+.agent-card p{font-size:11.5px;color:var(--text2)}
+.agent-card .tag{font-size:9.5px;font-weight:800;font-family:var(--mono);padding:1px 8px;border-radius:8px;display:inline-block;margin-top:3px}
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tbl th{background:#f8fafc;text-align:left;padding:9px 14px;font-size:11px;color:var(--text3);letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:var(--text2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text)}
+.tbl code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:4px}
+.pick{font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px;white-space:nowrap}
+/* 步骤路线 */
+.route{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.rt{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.rt .no{width:26px;height:26px;border-radius:8px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.rt b{font-size:12px;display:block}
+.rt span{font-size:10.5px;color:var(--text3)}
+/* 检查清单 */
+.check-list{list-style:none;margin-top:6px}
+.check-list li{padding:5px 0 5px 26px;position:relative;font-size:13px;color:var(--text2)}
+.check-list li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:900;font-size:13px}
+.cta{margin-top:40px;background:linear-gradient(120deg,#831843,#6d28d9 55%,#1e40af);border-radius:18px;padding:30px 36px;color:#fff;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{font-size:20px;font-weight:900}
+.cta p{font-size:12.5px;opacity:.85;margin-top:4px}
+.cta .btns{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);transition:.2s}
+.cta a:hover{background:rgba(255,255,255,.26)}
+.footer{margin-top:44px;text-align:center;font-size:11.5px;color:var(--text3)}
+.footer code{font-family:var(--mono);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:5px}
+@media(max-width:900px){
+  .sec-body{grid-template-columns:1fr}
+  .quicknav{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .route{grid-template-columns:1fr}
+  .pipe{flex-direction:column}
+  .pipe .arr{transform:rotate(90deg);padding:2px 0;justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <span class="chip">LAB 3.2 · LANGGRAPH MULTI-AGENT PIPELINE</span>
+    <h1>LangGraph <span class="grad">多 Agent 流水线</span></h1>
+    <p>3.1 的意图路由把问题分到了正确的通道，但通道里还是一个 Agent 干所有事。本实验把 troubleshoot 通道拆成<b>四个子 Agent</b>（检测 → 诊断 → 决策 → 处置），用 StateGraph 编排协作——同一个排障任务，三种模式各跑一遍，看清差异。</p>
+    <div class="stats">
+      <div class="stat"><b>4</b><span>子 AGENT</span></div>
+      <div class="stat"><b>3 种</b><span>协作模式</span></div>
+      <div class="stat"><b>State</b><span>共享状态流转</span></div>
+      <div class="stat"><b>1 份</b><span>State 三模式复用</span></div>
+      <div class="stat"><b>≈2 min</b><span>ALL 模式跑完</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 快速导航 ===== -->
+  <div class="quicknav">
+    <a class="qn" href="#core" style="--c:#db2777;--cb:#fdf2f8"><span class="ic">01</span><span><b>三要素</b><span>State · Node · Edge</span></span></a>
+    <a class="qn" href="#agents" style="--c:#7c3aed;--cb:#f5f3ff"><span class="ic">02</span><span><b>四个子 Agent</b><span>检测·诊断·决策·处置</span></span></a>
+    <a class="qn" href="#modes" style="--c:#2563eb;--cb:#eff6ff"><span class="ic">03</span><span><b>三种模式</b><span>串行·Supervisor·分支</span></span></a>
+    <a class="qn" href="#compare" style="--c:#0891b2;--cb:#ecfeff"><span class="ic">VS</span><span><b>模式对比</b><span>选型建议</span></span></a>
+    <a class="qn" href="#run" style="--c:#16a34a;--cb:#f0fdf4"><span class="ic">RUN</span><span><b>动手跑</b><span>步骤·标准·排坑</span></span></a>
+  </div>
+
+  <!-- ===== ① 三要素 ===== -->
+  <div class="section" id="core" style="--c:#db2777;--cb:#fdf2f8">
+    <div class="sec-head"><span class="ic">01</span><div><h2>知识点①：StateGraph 三要素</h2><span class="sub">TypedDict State · Node = 函数 · Edge = 路由 · Reducer</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>心智模型</h4>
+          <p>一张图 = <b>一份共享 State</b>（TypedDict）+ <b>若干节点</b>（普通 Python 函数，入参是 State、返回更新后的 State）+ <b>边</b>（决定下一步去哪）。<code>invoke</code> 后引擎从入口节点出发，沿边执行到 END——State 像接力棒，在节点间传递并不断被写入新字段。</p>
+        </div>
+        <div class="p-block">
+          <h4>本实验的 State 设计</h4>
+          <ul class="dot-list">
+            <li><b>输入区</b>：<code>user_input</code> / <code>device_id</code> —— 用户说了什么、查哪台设备</li>
+            <li><b>产出区</b>：<code>detect / diagnose / decide / execute_result</code> —— 四个节点各写各的字段，互不覆盖</li>
+            <li><b>控制区</b>：<code>risk_level</code> / <code>next_step</code> —— 流程控制字段，条件边靠它路由</li>
+            <li><b>日志区</b>：<code>messages</code> 配 <code>operator.add</code> reducer —— 追加而非覆盖，留下完整协作轨迹</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>关键认知</h4>
+          <p><b>一份 State 定义，三种模式复用。</b>模式的差异不在节点、不在 State，只在<b>边怎么连</b>——这正是「流程编排」与「业务逻辑」解耦的价值。</p>
+        </div>
+        <div class="p-block">
+          <h4>前置知识</h4>
+          <span class="lab-chip">labs 1.7 RunnableBranch</span><span class="lab-chip">labs 3.1 意图路由</span><span class="lab-chip">sample-1~4 StateGraph 基础</span>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>supervisor_pipeline.py — AgentState</div>
+          <pre><span class="c-k">class</span> <span class="c-n">AgentState</span>(TypedDict):
+    <span class="c-c"># 输入</span>
+    user_input: <span class="c-f">str</span>
+    device_id: <span class="c-f">str</span>
+    <span class="c-c"># 各节点产出——各写各的，互不干扰</span>
+    detect_result: <span class="c-f">str</span>    <span class="c-c"># 检测：状态+告警</span>
+    diagnose_result: <span class="c-f">str</span>  <span class="c-c"># 诊断：根因定位</span>
+    decide_result: <span class="c-f">str</span>    <span class="c-c"># 决策：风险+策略</span>
+    execute_result: <span class="c-f">str</span>   <span class="c-c"># 处置：最终方案</span>
+    <span class="c-c"># 流程控制——条件边靠它路由</span>
+    next_step: <span class="c-f">str</span>
+    risk_level: <span class="c-f">str</span>       <span class="c-c"># high/medium/low</span>
+    <span class="c-c"># 消息日志——reducer 追加不覆盖</span>
+    messages: Annotated[<span class="c-f">list</span>, operator.add]</pre>
+        </div>
+        <div class="gcanvas" style="margin-top:12px">
+          <div class="g-row"><span class="g-tag">State 在节点间流转，每个节点写自己的字段</span></div>
+          <div class="g-row">
+            <div class="g-node dim">START</div><span class="g-arr">→</span>
+            <div class="g-node">Node<small>读 State → 干活 → 写回</small></div><span class="g-arr">→</span>
+            <div class="g-node">Edge<small>普通边 / 条件边</small></div><span class="g-arr">→</span>
+            <div class="g-node dim">END</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ② 四个子 Agent ===== -->
+  <div class="section" id="agents" style="--c:#7c3aed;--cb:#f5f3ff">
+    <div class="sec-head"><span class="ic">02</span><div><h2>知识点②：单 Agent 拆成四个子 Agent</h2><span class="sub">detector · diagnoser · decider · executor · 各管一段</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>为什么要拆</h4>
+          <p>3.1 的 troubleshoot 通道是<b>一个 Prompt 干四件事</b>：查状态、找根因、评风险、给方案。Prompt 越长模型越容易顾此失彼。拆成四个 Node 后，<b>每个节点只有一个职责、一个专注的 System Prompt</b>——检测节点只说"你是检测工程师"，处置节点只说"你是排障执行专家"。</p>
+        </div>
+        <div class="p-block">
+          <h4>拆分的三个工程收益</h4>
+          <ul class="dot-list">
+            <li><b>产出可检查</b>：每个节点的结果写进独立的 State 字段，终端能看到四段清晰的产出，而不是混在一起的一大段话</li>
+            <li><b>Prompt 可单独调优</b>：诊断不准就只改 diagnoser 的 Prompt，不影响其他三个</li>
+            <li><b>节点可复用</b>：同一组节点函数，三种模式直接复用——只换连边方式</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>数据从哪来</h4>
+          <p>detector 调平台 API（<code>:8000/devices</code>，Day 1 产物）拿真实设备数据；diagnoser 用 <b>FAISS 知识库</b>（2.1 产物）做 RAG 检索——知识库没建好时自动降级为通用排障知识，实验不会卡死。</p>
+        </div>
+      </div>
+      <div>
+        <div class="agent-cards">
+          <div class="agent-card" style="border-color:#fbcfe8;background:var(--pink-bg)">
+            <span class="ai" style="color:#db2777">DET</span>
+            <div><b>detector 检测</b><p>提取设备 ID → 调 API 查状态和告警 → 初判故障类型（硬件/配置/传输）。</p><span class="tag" style="background:#fce7f3;color:#db2777">写入 detect_result</span></div>
+          </div>
+          <div class="agent-card" style="border-color:#c4b5fd;background:var(--purple-bg)">
+            <span class="ai" style="color:#7c3aed">DIA</span>
+            <div><b>diagnoser 诊断</b><p>拿检测结果搜 FAISS 知识库 → 定位最可能的根因 + 置信度 + 备选原因。</p><span class="tag" style="background:#ede9fe;color:#7c3aed">写入 diagnose_result</span></div>
+          </div>
+          <div class="agent-card" style="border-color:#93c5fd;background:var(--blue-bg)">
+            <span class="ai" style="color:#2563eb">DEC</span>
+            <div><b>decider 决策</b><p>综合检测+诊断 → 评估风险等级（high/medium/low）→ 决定处置策略、是否需要人工审批。</p><span class="tag" style="background:#dbeafe;color:#2563eb">写入 decide_result + risk_level</span></div>
+          </div>
+          <div class="agent-card" style="border-color:#fed7aa;background:var(--orange-bg)">
+            <span class="ai" style="color:#ea580c">EXE</span>
+            <div><b>executor 处置</b><p>汇总全部前置分析 → 输出带耗时预估的分步操作方案 + 回滚方案。</p><span class="tag" style="background:#ffedd5;color:#ea580c">写入 execute_result</span></div>
+          </div>
+        </div>
+        <div class="codebox" style="margin-top:12px">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>节点范式 — 读 State、干活、写回</div>
+          <pre><span class="c-k">def</span> <span class="c-f">detector_node</span>(state: AgentState):
+    info = <span class="c-f">fetch_device_info</span>(state[<span class="c-s">"device_id"</span>])
+    analysis = <span class="c-f">_ask</span>(<span class="c-s">f"你是检测工程师…{info}"</span>)
+    <span class="c-k">return</span> {**state,           <span class="c-c"># 展开原 state！</span>
+        <span class="c-s">"detect_result"</span>: analysis,
+        <span class="c-s">"messages"</span>: [AIMessage(<span class="c-s">"[检测Agent]…"</span>)]}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ③ 三种模式 ===== -->
+  <div class="section" id="modes" style="--c:#2563eb;--cb:#eff6ff">
+    <div class="sec-head"><span class="ic">03</span><div><h2>知识点③：三种协作模式——差异全在「边」上</h2><span class="sub">serial 固定边 · supervisor 条件边 · conditional 风险分流</span></div></div>
+
+    <!-- 模式一 -->
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>模式一 · 串行流水线（最简单）</h4>
+          <p>全是固定边——<b>铁轨，没有岔路口</b>。<code>add_edge("A","B")</code> 表示 A 完成后一定去 B。适合流程固定、步骤明确的排障 SOP："基站退服排查"永远是检测 → 诊断 → 决策 → 处置，不会跳步。</p>
+        </div>
+        <div class="pipe">
+          <div class="node">detector<small>查状态</small></div><span class="arr">→</span>
+          <div class="node">diagnoser<small>找根因</small></div><span class="arr">→</span>
+          <div class="node">decider<small>评风险</small></div><span class="arr">→</span>
+          <div class="node">executor<small>出方案</small></div><span class="arr">→</span>
+          <div class="node" style="border-style:dashed">END</div>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>build_serial_pipeline() — 固定边</div>
+          <pre>graph = <span class="c-f">StateGraph</span>(AgentState)
+graph.<span class="c-f">add_node</span>(<span class="c-s">"detector"</span>, detector_node)
+graph.<span class="c-f">add_node</span>(<span class="c-s">"diagnoser"</span>, diagnoser_node)
+graph.<span class="c-f">add_node</span>(<span class="c-s">"decider"</span>, decider_node)
+graph.<span class="c-f">add_node</span>(<span class="c-s">"executor"</span>, executor_node)
+
+graph.<span class="c-f">set_entry_point</span>(<span class="c-s">"detector"</span>)
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"detector"</span>, <span class="c-s">"diagnoser"</span>)  <span class="c-c"># 铁轨</span>
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"diagnoser"</span>, <span class="c-s">"decider"</span>)
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"decider"</span>, <span class="c-s">"executor"</span>)
+graph.<span class="c-f">add_edge</span>(<span class="c-s">"executor"</span>, END)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模式二 -->
+    <div class="sec-body" style="padding-top:0">
+      <div>
+        <div class="p-block">
+          <h4>模式二 · Supervisor 调度（最灵活）</h4>
+          <p>把固定边换成<b>条件边</b>：每个节点完成后不直接去下一站，而是交给 <code>supervisor_router</code> 函数<b>看 State 重新决策</b>——哪个产出字段还是空的，就派活给对应节点；全齐了返回 <code>__end__</code> 收工。</p>
+        </div>
+        <div class="p-block">
+          <h4>和串行的关键差异</h4>
+          <ul class="dot-list">
+            <li>串行：<code>add_edge("A","B")</code> → A 完成后<b>一定</b>去 B</li>
+            <li>Supervisor：<code>add_conditional_edges("A", router, {...})</code> → A 完成后<b>由 router 决定</b>去哪</li>
+            <li>流程简单时两者结果几乎一致；当需要"诊断置信度低 → 回退重新检测"时，只改 router 一个函数就能实现——串行做不到</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>supervisor_router() — 按 State 进度派活</div>
+          <pre><span class="c-k">def</span> <span class="c-f">supervisor_router</span>(state: AgentState):
+    <span class="c-k">if not</span> state.<span class="c-f">get</span>(<span class="c-s">"detect_result"</span>):
+        <span class="c-k">return</span> <span class="c-s">"detector"</span>   <span class="c-c"># 还没检测→去检测</span>
+    <span class="c-k">if not</span> state.<span class="c-f">get</span>(<span class="c-s">"diagnose_result"</span>):
+        <span class="c-k">return</span> <span class="c-s">"diagnoser"</span>
+    <span class="c-k">if not</span> state.<span class="c-f">get</span>(<span class="c-s">"decide_result"</span>):
+        <span class="c-k">return</span> <span class="c-s">"decider"</span>
+    <span class="c-k">if not</span> state.<span class="c-f">get</span>(<span class="c-s">"execute_result"</span>):
+        <span class="c-k">return</span> <span class="c-s">"executor"</span>
+    <span class="c-k">return</span> <span class="c-s">"__end__"</span>       <span class="c-c"># 全部完成</span>
+
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"detector"</span>,
+    supervisor_router, {<span class="c-s">"diagnoser"</span>: <span class="c-s">"diagnoser"</span>,
+                        <span class="c-s">"__end__"</span>: END})</pre>
+        </div>
+        <div class="gcanvas" style="margin-top:12px">
+          <div class="g-row"><div class="g-node">supervisor_router<small>看 State 缺什么，派谁补什么</small></div></div>
+          <div class="g-row"><span class="g-tag">条件边：每步执行完回来重新决策</span></div>
+          <div class="g-row">
+            <div class="g-node alt">detector</div>
+            <div class="g-node alt">diagnoser</div>
+            <div class="g-node alt">decider</div>
+            <div class="g-node alt">executor</div>
+          </div>
+          <div class="g-row"><div class="g-node dim">全部字段就绪 → __end__</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模式三 -->
+    <div class="sec-body" style="padding-top:0">
+      <div>
+        <div class="p-block">
+          <h4>模式三 · 条件分支（最精准）</h4>
+          <p>生产环境更常见的诉求："<b>高风险走紧急通道、低风险走常规通道</b>"。前三步照旧串行，decider 之后按 State 里的 <code>risk_level</code> 分流到<b>三个不同的 executor</b>——高风险方案自动标注"建议人工审批"，低风险只给例行巡检建议（省 LLM 调用）。这是 1.7 RunnableBranch 的 StateGraph 版。</p>
+        </div>
+        <div class="gcanvas">
+          <div class="g-row">
+            <div class="g-node">detector</div><span class="g-arr">→</span>
+            <div class="g-node">diagnoser</div><span class="g-arr">→</span>
+            <div class="g-node">decider</div>
+          </div>
+          <div class="g-row"><span class="g-tag">risk_router(state) 按 risk_level 分流</span></div>
+          <div class="g-row">
+            <div class="g-node alt">executor_high<small>紧急 + 人工审批</small></div>
+            <div class="g-node">executor_normal<small>标准处置</small></div>
+            <div class="g-node ok">executor_low<small>例行巡检</small></div>
+          </div>
+          <div class="g-row"><span class="g-arr">↘</span><div class="g-node dim">END</div><span class="g-arr">↙</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>risk_router() — 按风险等级分流</div>
+          <pre><span class="c-k">def</span> <span class="c-f">risk_router</span>(state: AgentState):
+    risk = state.<span class="c-f">get</span>(<span class="c-s">"risk_level"</span>, <span class="c-s">"medium"</span>)
+    <span class="c-k">if</span> risk == <span class="c-s">"high"</span>:
+        <span class="c-k">return</span> <span class="c-s">"executor_high"</span>   <span class="c-c"># 紧急+审批</span>
+    <span class="c-k">elif</span> risk == <span class="c-s">"low"</span>:
+        <span class="c-k">return</span> <span class="c-s">"executor_low"</span>    <span class="c-c"># 例行巡检</span>
+    <span class="c-k">return</span> <span class="c-s">"executor_normal"</span>
+
+<span class="c-c"># decider 之后不是固定边，而是条件路由</span>
+graph.<span class="c-f">add_conditional_edges</span>(<span class="c-s">"decider"</span>,
+    risk_router, {
+    <span class="c-s">"executor_high"</span>:   <span class="c-s">"executor_high"</span>,
+    <span class="c-s">"executor_normal"</span>: <span class="c-s">"executor_normal"</span>,
+    <span class="c-s">"executor_low"</span>:    <span class="c-s">"executor_low"</span>})</pre>
+        </div>
+        <div class="p-block" style="margin-top:12px">
+          <h4>一个隐藏细节</h4>
+          <p><code>risk_level</code> 是 decider 节点用<b>关键词匹配</b>从 LLM 输出中提取的（匹配 <code>【风险等级】：high</code>）——LLM 输出格式一变就会提取失败退回默认值 medium。更稳的做法是 3.1 学过的 <b>PydanticOutputParser 结构化输出</b>，这是进阶挑战之一。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ④ 对比表 ===== -->
+  <div class="section" id="compare" style="--c:#0891b2;--cb:#ecfeff">
+    <div class="sec-head"><span class="ic">VS</span><div><h2>三种模式怎么选？</h2><span class="sub">复杂度 vs 灵活性 · KISS 原则优先</span></div></div>
+    <div class="sec-body single" style="padding-top:10px">
+      <table class="tbl">
+        <thead><tr><th>对比维度</th><th>Serial 串行</th><th>Supervisor 调度</th><th>Conditional 分支</th></tr></thead>
+        <tbody>
+          <tr><td><b>复杂度</b></td><td><span class="pick" style="background:#f0fdf4;color:#16a34a">最低</span></td><td><span class="pick" style="background:#fffbeb;color:#d97706">中等</span></td><td><span class="pick" style="background:#fffbeb;color:#d97706">中等</span></td></tr>
+          <tr><td><b>灵活性</b></td><td>无——固定顺序</td><td>最高——每一步可跳转/回退</td><td>中等——只在分支点灵活</td></tr>
+          <tr><td><b>边的写法</b></td><td><code>add_edge</code> 固定边</td><td>每个节点接 <code>conditional_edges</code> + router</td><td>串行 + 分支点一处 <code>conditional_edges</code></td></tr>
+          <tr><td><b>适合场景</b></td><td>流程固定、无例外的排障 SOP</td><td>复杂任务调度、需要动态调整流程</td><td>分级处置——不同情况不同处理</td></tr>
+          <tr><td><b>与前面实验的关系</b></td><td>1.7 RunnableBranch 的升级版</td><td>3.1 意图路由的 StateGraph 实现</td><td>1.4 Agent 的条件路由版</td></tr>
+        </tbody>
+      </table>
+      <div class="p-block" style="margin-top:14px">
+        <h4>选型口诀</h4>
+        <p>流程固定 → <b>serial</b>（KISS 原则，别为了灵活而灵活）；需要动态调度 → <b>supervisor</b>；根据结果分流 → <b>conditional</b>。另外记住：调度本身也是开销，<b>多 Agent = 更多 LLM 调用 = 更贵更慢</b>，拆之前先算 ROI（进阶挑战 3 会让你实测 Token 消耗对比）。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ⑤ 动手跑 ===== -->
+  <div class="section" id="run" style="--c:#16a34a;--cb:#f0fdf4">
+    <div class="sec-head"><span class="ic">RUN</span><div><h2>实验步骤：跑起来 + 验收 + 排坑</h2><span class="sub">python supervisor_pipeline.py [serial|supervisor|conditional|all]</span></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>实验路线（六步）</h4>
+        </div>
+        <div class="route" style="grid-template-columns:1fr">
+          <div class="rt" style="--c:#db2777"><span class="no">1</span><span><b>读懂 AgentState</b><span>输入区 / 产出区 / 控制区 / 日志区，四类字段各司其职</span></span></div>
+          <div class="rt" style="--c:#db2777"><span class="no">2</span><span><b>跑模式一 serial</b><span>python supervisor_pipeline.py serial —— 观察四段独立产出</span></span></div>
+          <div class="rt" style="--c:#7c3aed"><span class="no">3</span><span><b>跑模式二 supervisor</b><span>对比：结果相近，但每一步由 router 决策，可加回退</span></span></div>
+          <div class="rt" style="--c:#2563eb"><span class="no">4</span><span><b>跑模式三 conditional</b><span>确认高风险走 executor_high、低风险走 executor_low</span></span></div>
+          <div class="rt" style="--c:#0891b2"><span class="no">5</span><span><b>一键对比 all</b><span>看耗时 / 风险 / 节点步数对比表和选型建议</span></span></div>
+          <div class="rt" style="--c:#16a34a"><span class="no">6</span><span><b>进阶挑战</b><span>给 Supervisor 加回退逻辑 · 其他通道套流水线 · Token 消耗对比</span></span></div>
+        </div>
+        <div class="p-block" style="margin-top:14px">
+          <h4>完成标准</h4>
+          <ul class="check-list">
+            <li>三种模式都能成功运行同一个排障任务</li>
+            <li>条件分支下高风险走 <code>executor_high</code>、低风险走 <code>executor_low</code></li>
+            <li>能说出三种模式的差异和适用场景</li>
+            <li>终端能看到四个子 Agent 各自的产出（不是混在一起的一段话）</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#34d399"></span>terminal — 运行前置 + 命令</div>
+          <pre><span class="c-c"># 前置：平台服务在跑（Day1 产物）</span>
+<span class="c-c">#      FAISS 索引已建（2.1 产物，缺了会自动降级）</span>
+<span class="c-c">#      agent-course/.env 配了 AGENT_API_KEY</span>
+
+<span class="c-f">cd</span> agent-course/labs/27-LangGraph多Agent
+<span class="c-f">source</span> ../../.venv/bin/activate
+
+python supervisor_pipeline.py serial       <span class="c-c"># 模式一</span>
+python supervisor_pipeline.py supervisor   <span class="c-c"># 模式二</span>
+python supervisor_pipeline.py conditional  <span class="c-c"># 模式三</span>
+python supervisor_pipeline.py all          <span class="c-c"># 全跑+对比</span></pre>
+        </div>
+        <div class="p-block" style="margin-top:12px">
+          <h4>常见坑位速查</h4>
+          <table class="tbl">
+            <thead><tr><th>症状</th><th>原因 → 解法</th></tr></thead>
+            <tbody>
+              <tr><td><code>conditional_edges</code> 报 KeyError</td><td>router 返回值不在映射字典里 → 对照 <code>{返回值: Node名}</code> 逐个核对</td></tr>
+              <tr><td>Supervisor 无限循环</td><td>router 永远不返回 <code>__end__</code> → 加 step counter，超 10 步强制 END</td></tr>
+              <tr><td>分支没按预期分流</td><td><code>risk_level</code> 提取失败 → 在 decider 里打印确认，改用结构化输出更稳</td></tr>
+              <tr><td>State 字段莫名丢失</td><td>节点 return 忘了 <code>**state</code> 展开 → 只返回增量字段时原字段会被丢弃</td></tr>
+              <tr><td>四个节点输出雷同</td><td>System Prompt 区分度不够 → 明确每个节点"输入是什么、产出是什么"</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CTA ===== -->
+  <div class="cta">
+    <div>
+      <h2>同一个任务，三种编排跑一遍</h2>
+      <p>先跑 all 模式看对比表，再回头改 supervisor_router 加回退逻辑——理解「边」才算真正掌握 LangGraph。</p>
+    </div>
+    <div class="btns">
+      <a href="../26-意图识别路由/实验讲解.html">上一站 · 3.1 意图路由</a>
+      <a href="实验文档.md">本实验文档</a>
+      <a href="http://localhost:8000" target="_blank">平台服务 :8000</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    实验 22 · LangGraph 多 Agent 流水线 · 源码见 <code>labs/27-LangGraph多Agent/supervisor_pipeline.py</code> · 完成后进入 3.3 进阶协作模式
+  </div>
+
+</div>
+</body>
+</html>

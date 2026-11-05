@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAT Work · 多智能体调度</title>
+<style>
+/* ═══════════ Theme ═══════════ */
+:root {
+  --bg-root: #f5f5f7; --bg-sidebar: #ececf1; --bg-main: #fff; --bg-card: #f0f0f5;
+  --border: #e0e0e6; --text: #1a1a2e; --text2: #6b6b80; --text3: #9a9ab0;
+  --accent: #6b5ce7; --shadow: 0 2px 16px rgba(0,0,0,.06);
+  --svg-edge: #c0c0cf; --svg-bg: #f9f9fc;
+  --font: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+[data-theme="dark"] {
+  --bg-root: #0a0a14; --bg-sidebar: #11111f; --bg-main: #15152a; --bg-card: #1d1d3a;
+  --border: #282850; --text: #e4e4ed; --text2: #9898b0; --text3: #5a5a7a;
+  --accent: #7c5cfc; --shadow: 0 4px 24px rgba(0,0,0,.5);
+  --svg-edge: #3a3a60; --svg-bg: #15152a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg-root);color:var(--text);height:100vh;display:flex;flex-direction:column;font-size:13px;transition:background .3s,color .3s}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Header ── */
+.header{height:44px;background:var(--bg-sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+.header .logo{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px}
+.header .nav-links{display:flex;gap:2px;margin-left:24px}
+.header .nav-link{padding:6px 14px;border-radius:6px;text-decoration:none;font-size:12px;color:var(--text2);transition:all .12s}
+.header .nav-link:hover{color:var(--text);background:var(--bg-card)}
+.header .nav-link.active{color:var(--accent);background:rgba(124,92,252,.1)}
+.header .spacer{flex:1}
+.header .header-btn{padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text2);font-size:11px;cursor:pointer;transition:all .12s;font-family:var(--font);display:flex;align-items:center;gap:4px}
+.header .header-btn:hover{border-color:var(--accent);color:var(--accent)}
+.header .back-btn{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text2);font-size:11px;cursor:pointer;text-decoration:none;transition:all .12s}
+.header .back-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Main Layout ── */
+.main{display:flex;flex:1;overflow:hidden}
+
+/* ── Left Panel ── */
+.panel-left{width:300px;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:background .3s}
+.panel-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.panel-section h3{font-size:11.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.task-input{width:100%;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--text);outline:none;resize:none;font-family:var(--font);transition:border-color .15s;min-height:80px}
+.task-input:focus{border-color:var(--accent)}
+.task-input::placeholder{color:var(--text3)}
+.task-hints{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.task-hint{padding:5px 12px;border-radius:14px;border:1px solid var(--border);background:var(--bg-card);font-size:11px;color:var(--text2);cursor:pointer;transition:all .12s;white-space:nowrap}
+.task-hint:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── DeepSeek Toggle ── */
+.llm-toggle-wrap{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border)}
+.llm-toggle-label{font-size:11px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:5px}
+.llm-toggle-label .badge{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:10px;font-size:9px;font-weight:600}
+.llm-toggle-label .badge.on{background:rgba(34,197,94,.15);color:#22c55e}
+.llm-toggle-label .badge.off{background:rgba(239,68,68,.12);color:#ef4444}
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);transition:.3s;border-radius:24px}
+.toggle-slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:white;transition:.3s;border-radius:50%}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px)}
+.toggle-switch input:disabled+.toggle-slider{opacity:.35;cursor:not-allowed}
+
+.run-btn{width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:500;cursor:pointer;margin-top:10px;transition:all .15s;font-family:var(--font)}
+.run-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.run-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.run-btn.running{animation:pulse 1.5s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* Execution History */
+.exec-history{flex:1;overflow-y:auto;padding:8px 16px}
+.exec-item{padding:10px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;font-size:11.5px;background:var(--bg-card);cursor:pointer;transition:all .12s}
+.exec-item:hover{border-color:var(--accent)}
+.exec-item .e-task{color:var(--text);font-weight:500;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exec-item .e-meta{color:var(--text3);font-size:10.5px;display:flex;gap:8px}
+
+/* ── Center: Graph Canvas ── */
+.panel-center{flex:1;background:var(--bg-main);position:relative;overflow:hidden;min-width:0;transition:background .3s}
+#graphCanvas{width:100%;height:100%}
+.agent-node{cursor:pointer;transition:all .3s ease}
+.agent-node.active{filter:drop-shadow(0 0 20px currentColor)}
+.agent-node text{font-family:var(--font);font-size:13px;text-anchor:middle;pointer-events:none}
+.node-title{font-size:12px;font-weight:500}
+.node-desc{font-size:10px}
+.agent-edge{transition:all .3s ease}
+.agent-edge.active{stroke-width:3;filter:drop-shadow(0 0 6px rgba(124,92,252,.4))}
+
+.graph-legend{position:absolute;bottom:20px;left:20px;display:flex;gap:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:11px}
+.legend-item{display:flex;align-items:center;gap:6px;color:var(--text2)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── Mode Badge on Graph ── */
+.mode-badge{position:absolute;top:56px;right:20px;display:flex;align-items:center;gap:5px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:10px;color:var(--text2)}
+.mode-badge .mode-dot{width:6px;height:6px;border-radius:50%}
+.mode-badge .mode-dot.sim{background:#f59e0b}
+.mode-badge .mode-dot.llm{background:#22c55e;animation:pulse 1.5s infinite}
+
+/* ── Right: Trace Log ── */
+.panel-right{width:340px;background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:background .3s}
+.panel-right .panel-section{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.trace-log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.trace-entry{display:flex;gap:10px;padding:10px 12px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);font-size:11.5px;animation:slideIn .3s ease;align-items:flex-start}
+.trace-entry .t-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.trace-entry .t-body{flex:1;min-width:0}
+.trace-entry .t-agent{font-weight:600;font-size:12px;margin-bottom:3px}
+.trace-entry .t-action{color:var(--text2);line-height:1.4}
+.trace-entry .t-time{font-size:10px;color:var(--text3);margin-top:4px}
+.trace-entry.current{border-color:var(--accent);box-shadow:0 0 12px rgba(124,92,252,.15)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* Status bar */
+.status-bar{position:absolute;top:16px;right:20px;display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:11px;color:var(--text2)}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-dot.idle{background:var(--text3)}
+.status-dot.running{background:#22c55e;animation:pulse 1s infinite}
+.status-dot.complete{background:var(--accent)}
+
+.task-count-badge{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--accent);background:rgba(124,92,252,.12);padding:3px 10px;border-radius:12px}
+
+/* LLM unavailable hint */
+.llm-hint{padding:6px 10px;border-radius:6px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);font-size:10px;color:var(--text2);margin-top:6px;line-height:1.5;display:none}
+.llm-hint.show{display:block}
+
+@media(max-width:900px){.panel-left,.panel-right{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<div class="header">
+  <div class="logo">
+    <svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="12" height="12" rx="2.5" fill="#00B4D8" opacity=".9"/><rect x="15" y="1" width="12" height="12" rx="2.5" fill="#FF6A00" opacity=".9"/><rect x="7" y="14" width="14" height="13" rx="2.5" fill="#0052D9" opacity=".9"/></svg>
+    <span>BAT Work</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Agent 工作台</a>
+    <a href="/multi-agent" class="nav-link active">多智能体调度</a>
+  </div>
+  <div class="spacer"></div>
+  <span class="task-count-badge" id="taskBadge">等待任务</span>
+  <button class="header-btn" onclick="toggleTheme()" title="切换主题">🌙</button>
+  <a href="/" class="back-btn">← 返回工作台</a>
+</div>
+
+<!-- ═══ Main ═══ -->
+<div class="main">
+
+  <!-- Left: Task Input -->
+  <aside class="panel-left">
+    <div class="panel-section">
+      <h3>📋 任务输入</h3>
+      <textarea class="task-input" id="taskInput" placeholder="描述你想让多智能体协作完成的任务…&#10;&#10;例如：分析一下 sales.csv 的销售数据趋势并生成报告&#10;或：研究竞品市场动态并给出策略建议"></textarea>
+      <div class="task-hints">
+        <span class="task-hint" onclick="pickTask(this.textContent)">分析销售数据趋势</span>
+        <span class="task-hint" onclick="pickTask(this.textContent)">竞品市场研究</span>
+        <span class="task-hint" onclick="pickTask(this.textContent)">生成周报</span>
+        <span class="task-hint" onclick="pickTask(this.textContent)">列出目录文件</span>
+      </div>
+      
+      <!-- DeepSeek Toggle -->
+      <div class="llm-toggle-wrap">
+        <div class="llm-toggle-label">
+          🤖 DeepSeek
+          <span class="badge off" id="llmBadge">未配置</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="llmToggle" onchange="onLLMToggle()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="llm-hint" id="llmHint">
+        ⚠️ DeepSeek 未配置。设置环境变量 <code>DEEPSEEK_API_KEY</code> 后重启服务即可使用真实 AI。
+      </div>
+      
+      <button class="run-btn" id="runBtn" onclick="runMultiAgent()">🚀 启动多智能体</button>
+    </div>
+    <div class="panel-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <h3>📜 执行历史</h3>
+      <div class="exec-history" id="execHistory">
+        <div style="text-align:center;color:var(--text3);font-size:11px;padding:20px">尚无执行记录</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Center: Graph Visualization -->
+  <main class="panel-center">
+    <div class="status-bar">
+      <span class="status-dot idle" id="statusDot"></span>
+      <span id="statusText">就绪</span>
+    </div>
+    <div class="mode-badge">
+      <span class="mode-dot" id="modeDot" style="background:#f59e0b"></span>
+      <span id="modeText">模拟模式</span>
+    </div>
+    <svg id="graphCanvas" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="graph-legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#7c5cfc"></span> 编排器</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> 研究员</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> 分析师</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> 写手</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> 审阅官</div>
+    </div>
+  </main>
+
+  <!-- Right: Trace Log -->
+  <aside class="panel-right">
+    <div class="panel-section">
+      <h3>🔍 执行追踪</h3>
+      <div class="trace-log" id="traceLog">
+        <div style="text-align:center;color:var(--text3);font-size:11px;padding:20px">等待任务执行…</div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+/* ═══════════ Constants ═══════════ */
+const WS_URL = `ws://${location.host}/ws/multi-agent`;
+let graphData = null;
+let currentActiveAgent = null;
+let ws = null;
+let llmAvailable = false;
+let llmEnabled = false;
+
+/* ═══════════ Theme ═══════════ */
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.querySelector('.header-btn');
+  if (html.dataset.theme === 'dark') {
+    html.dataset.theme = 'light';
+    btn.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    html.dataset.theme = 'dark';
+    btn.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+  // Re-render graph with new colors
+  setTimeout(renderGraph, 50);
+}
+
+// Init theme from localStorage
+(function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.dataset.theme = saved;
+  document.querySelector('.header-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
+})();
+
+/* ═══════════ LLM Status ═══════════ */
+async function checkLLMStatus() {
+  try {
+    const r = await fetch('/api/multi-agent/llm-status');
+    const d = await r.json();
+    llmAvailable = d.llm_available;
+    updateLLMUI();
+    if (!d.llm_available) {
+      document.getElementById('llmHint').classList.add('show');
+    }
+  } catch(e) {
+    llmAvailable = false;
+  }
+}
+
+function updateLLMUI() {
+  const toggle = document.getElementById('llmToggle');
+  const badge = document.getElementById('llmBadge');
+  const hint = document.getElementById('llmHint');
+  
+  if (llmAvailable) {
+    toggle.disabled = false;
+    badge.textContent = '就绪';
+    badge.className = 'badge on';
+    hint.classList.remove('show');
+  } else {
+    toggle.disabled = true;
+    toggle.checked = false;
+    llmEnabled = false;
+    badge.textContent = '未配置';
+    badge.className = 'badge off';
+    hint.classList.add('show');
+  }
+  
+  updateModeBadge();
+}
+
+function onLLMToggle() {
+  llmEnabled = document.getElementById('llmToggle').checked;
+  updateModeBadge();
+}
+
+function updateModeBadge() {
+  const dot = document.getElementById('modeDot');
+  const text = document.getElementById('modeText');
+  if (llmEnabled) {
+    dot.className = 'mode-dot llm';
+    text.textContent = 'DeepSeek 驱动';
+  } else {
+    dot.className = 'mode-dot sim';
+    text.textContent = '模拟模式';
+  }
+}
+
+/* ═══════════ Graph ═══════════ */
+async function loadGraph() {
+  try {
+    const r = await fetch('/api/multi-agent/graph');
+    graphData = await r.json();
+    renderGraph();
+  } catch(e) { console.error('Load graph:', e); }
+}
+
+function renderGraph() {
+  if (!graphData) return;
+  const svg = document.getElementById('graphCanvas');
+  const ns = 'http://www.w3.org/2000/svg';
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const edgeColor = isDark ? '#3a3a60' : '#c0c0cf';
+  const textDim = isDark ? '#5a5a7a' : '#9a9ab0';
+  
+  svg.innerHTML = '';
+
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = `
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="${edgeColor}"/>
+    </marker>
+    <marker id="arrowhead-active" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="${isDark ? '#7c5cfc' : '#6b5ce7'}"/>
+    </marker>
+  `;
+  svg.appendChild(defs);
+
+  (graphData.edges || []).forEach(edge => {
+    const fromNode = graphData.nodes.find(n => n.id === edge.from);
+    const toNode = graphData.nodes.find(n => n.id === edge.to);
+    if (!fromNode || !toNode) return;
+    
+    const pathEl = document.createElementNS(ns, 'path');
+    const x1 = fromNode.x, y1 = fromNode.y, x2 = toNode.x, y2 = toNode.y;
+    
+    if (edge.from === 'reviewer' && edge.to === 'writer') {
+      pathEl.setAttribute('d', `M${x1},${y1} C${x1+120},${y1-40} ${x2+80},${y2-40} ${x2},${y2-10}`);
+    } else if (edge.from === 'reviewer' && edge.to === 'end') {
+      pathEl.setAttribute('d', `M${x1},${y1+30} L${x1},${y1+80}`);
+    } else {
+      const midY = (y1 + y2) / 2;
+      pathEl.setAttribute('d', `M${x1},${y1+30} C${x1},${midY} ${x2},${midY} ${x2},${y2-30}`);
+    }
+    
+    pathEl.setAttribute('fill', 'none');
+    pathEl.setAttribute('stroke', edgeColor);
+    pathEl.setAttribute('stroke-width', '2');
+    pathEl.setAttribute('marker-end', 'url(#arrowhead)');
+    pathEl.setAttribute('opacity', '0.6');
+    pathEl.classList.add('agent-edge');
+    pathEl.setAttribute('data-edge', `${edge.from}-${edge.to}`);
+    svg.appendChild(pathEl);
+    
+    if (edge.label) {
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - 10;
+      const labelEl = document.createElementNS(ns, 'text');
+      labelEl.setAttribute('x', mx); labelEl.setAttribute('y', my);
+      labelEl.setAttribute('text-anchor', 'middle');
+      labelEl.setAttribute('font-size', '10'); labelEl.setAttribute('fill', textDim);
+      labelEl.setAttribute('font-family', 'var(--font)');
+      labelEl.textContent = edge.label;
+      svg.appendChild(labelEl);
+    }
+  });
+
+  // END node
+  const endNode = document.createElementNS(ns, 'g');
+  endNode.setAttribute('transform', 'translate(400, 480)');
+  const bgCard = isDark ? '#1d1d3a' : '#f0f0f5';
+  endNode.innerHTML = `
+    <rect x="-30" y="-14" width="60" height="28" rx="14" fill="${bgCard}" stroke="${edgeColor}" stroke-width="1.5"/>
+    <text y="4" text-anchor="middle" font-size="11" fill="${textDim}" font-family="var(--font)">END</text>
+  `;
+  svg.appendChild(endNode);
+
+  graphData.nodes.forEach(node => {
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+    g.classList.add('agent-node');
+    g.setAttribute('data-agent', node.id);
+    
+    g.innerHTML = `
+      <circle cx="0" cy="0" r="32" fill="${node.color}" opacity="0.15"/>
+      <circle cx="0" cy="0" r="26" fill="var(--bg-card)" stroke="${node.color}" stroke-width="2"/>
+      <text y="-6" font-size="16" fill="${node.color}" font-family="var(--font)">${node.emoji}</text>
+      <text class="node-title" y="18" fill="var(--text)">${node.label}</text>
+      <text class="node-desc" y="34" fill="var(--text3)">${node.description || ''}</text>
+    `;
+    
+    const activeRing = document.createElementNS(ns, 'circle');
+    activeRing.setAttribute('cx', '0'); activeRing.setAttribute('cy', '0'); activeRing.setAttribute('r', '28');
+    activeRing.setAttribute('fill', 'none'); activeRing.setAttribute('stroke', node.color);
+    activeRing.setAttribute('stroke-width', '3'); activeRing.setAttribute('stroke-dasharray', '8 4');
+    activeRing.setAttribute('opacity', '0');
+    activeRing.classList.add('active-ring');
+    g.appendChild(activeRing);
+    
+    svg.appendChild(g);
+  });
+}
+
+function highlightAgent(agentId, active = true) {
+  const svg = document.getElementById('graphCanvas');
+  svg.querySelectorAll('.active-ring').forEach(r => r.style.opacity = '0');
+  document.querySelectorAll('.agent-edge').forEach(e => e.classList.remove('active'));
+
+  if (active && agentId) {
+    const node = svg.querySelector(`[data-agent="${agentId}"]`);
+    if (node) {
+      const ring = node.querySelector('.active-ring');
+      if (ring) { ring.style.opacity = '1'; ring.style.animation = 'spin 2s linear infinite'; }
+    }
+    graphData.edges.forEach(edge => {
+      if (edge.to === agentId) {
+        const pathEl = svg.querySelector(`[data-edge="${edge.from}-${edge.to}"]`);
+        if (pathEl) {
+          pathEl.classList.add('active');
+          pathEl.setAttribute('stroke', 'var(--accent)');
+          pathEl.setAttribute('stroke-width', '3');
+        }
+      }
+    });
+  }
+}
+
+/* ═══════════ WebSocket ═══════════ */
+function connectWS() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => updateStatus('idle', '就绪');
+  ws.onmessage = e => { try { handleWSMessage(JSON.parse(e.data)); } catch(ex) {} };
+  ws.onclose = () => { setTimeout(connectWS, 3000); updateStatus('idle', '断线重连中…'); };
+  ws.onerror = () => {};
+}
+
+function handleWSMessage(d) {
+  switch(d.type) {
+    case 'start':
+      updateStatus('running', '执行中…');
+      addTraceEntry('orchestrator', '🎯', '#7c5cfc', '接收任务', d.task);
+      highlightAgent('orchestrator', true);
+      // Update mode badge from server response
+      if (d.mode === 'llm') {
+        document.getElementById('modeDot').className = 'mode-dot llm';
+        document.getElementById('modeText').textContent = 'DeepSeek 驱动';
+      } else {
+        document.getElementById('modeDot').className = 'mode-dot sim';
+        document.getElementById('modeText').textContent = '模拟模式';
+      }
+      break;
+    case 'agent_start':
+      currentActiveAgent = d.agent;
+      highlightAgent(d.agent, true);
+      break;
+    case 'agent_end':
+      addTraceEntry(d.agent, d.role?.emoji || '🤖', d.role?.color || '#888', d.output, '');
+      highlightAgent(d.agent, false);
+      break;
+    case 'done':
+      currentActiveAgent = null;
+      highlightAgent(null, false);
+      updateStatus('complete', '完成');
+      const taskText = document.getElementById('taskInput').value.trim();
+      if (taskText) addExecHistory(taskText);
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').classList.remove('running');
+      document.getElementById('runBtn').textContent = '🚀 启动多智能体';
+      document.getElementById('taskBadge').textContent = '任务完成';
+      break;
+    case 'error':
+      addTraceEntry('system', '❌', '#ef4444', '错误', d.message);
+      updateStatus('idle', '出错');
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').classList.remove('running');
+      document.getElementById('runBtn').textContent = '🚀 启动多智能体';
+      if (d.message.includes('LLM 未就绪')) {
+        llmEnabled = false;
+        document.getElementById('llmToggle').checked = false;
+        updateModeBadge();
+      }
+      break;
+  }
+}
+
+/* ═══════════ Trace Log ═══════════ */
+const traceEntries = [];
+function addTraceEntry(agentId, emoji, color, action, detail) {
+  const log = document.getElementById('traceLog');
+  const empty = log.querySelector('div:not(.trace-entry)');
+  if (empty) empty.remove();
+  const time = new Date().toLocaleTimeString('zh-CN');
+  const entry = document.createElement('div');
+  entry.className = 'trace-entry current';
+  entry.innerHTML = `
+    <div class="t-icon" style="background:${color}20;color:${color}">${emoji}</div>
+    <div class="t-body">
+      <div class="t-agent" style="color:${color}">${getAgentName(agentId)}</div>
+      <div class="t-action">${escapeHtml(action)}</div>
+      ${detail ? `<div class="t-action" style="font-size:10px;color:var(--text3);margin-top:2px">${escapeHtml(detail.substring(0,100))}</div>` : ''}
+      <div class="t-time">${time} ${llmEnabled ? '🤖' : '📝'}</div>
+    </div>`;
+  log.querySelectorAll('.trace-entry.current').forEach(e => e.classList.remove('current'));
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  traceEntries.push({agentId, emoji, color, action, time, detail});
+}
+
+function getAgentName(id) {
+  const map = {
+    orchestrator: '🎯 编排器', researcher: '🔍 研究员', analyst: '📊 分析师',
+    writer: '✍️ 写手', reviewer: '🔎 审阅官', system: '⚙️ 系统',
+  };
+  return map[id] || id;
+}
+
+/* ═══════════ Execution History ═══════════ */
+const execHistory = [];
+function addExecHistory(task) {
+  const container = document.getElementById('execHistory');
+  const empty = container.querySelector('div:not(.exec-item)');
+  if (empty) empty.remove();
+  const time = new Date().toLocaleString('zh-CN');
+  const agents = traceEntries.length;
+  const modeTag = llmEnabled ? '🤖 AI' : '📝 模拟';
+  const item = document.createElement('div');
+  item.className = 'exec-item';
+  item.innerHTML = `
+    <div class="e-task">${escapeHtml(task.substring(0,40))}${task.length>40?'…':''}</div>
+    <div class="e-meta"><span>${time}</span><span>${agents}步</span><span>${modeTag}</span></div>`;
+  container.prepend(item);
+  execHistory.unshift({task, time, agents, mode: llmEnabled ? 'llm' : 'sim'});
+  document.getElementById('taskBadge').textContent = `${execHistory.length} 次执行`;
+}
+
+/* ═══════════ Actions ═══════════ */
+function pickTask(text) { document.getElementById('taskInput').value = text; }
+
+async function runMultiAgent() {
+  const taskInput = document.getElementById('taskInput');
+  const task = taskInput.value.trim();
+  if (!task) return;
+  
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectWS();
+    await new Promise(r => setTimeout(r, 500));
+  }
+  
+  document.getElementById('traceLog').innerHTML = '<div style="text-align:center;color:var(--text3);font-size:11px;padding:20px">等待任务执行…</div>';
+  traceEntries.length = 0;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').classList.add('running');
+  document.getElementById('runBtn').textContent = '⏳ 执行中…';
+  updateStatus('running', '启动中…');
+  document.getElementById('taskBadge').textContent = '执行中';
+  
+  // Send with LLM toggle state
+  ws.send(JSON.stringify({ task, enable_llm: llmEnabled }));
+}
+
+function updateStatus(state, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Spin Animation ── */
+const styleSheet = document.createElement('style');
+styleSheet.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+document.head.appendChild(styleSheet);
+
+/* ── Init ── */
+loadGraph();
+connectWS();
+checkLLMStatus();
+</script>
+</body>
+</html>

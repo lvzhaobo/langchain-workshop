@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 三层记忆分层与画像系统 — 可视化</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --text-secondary: #5a6c7d;
+    --border: #e2e8f0;
+    --accent: #3b82f6;
+    --accent-light: #eff6ff;
+    --green: #10b981;
+    --green-light: #ecfdf5;
+    --purple: #8b5cf6;
+    --purple-light: #f5f3ff;
+    --orange: #f59e0b;
+    --orange-light: #fffbeb;
+    --pink: #ec4899;
+    --pink-light: #fdf2f8;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+    --shadow-md: 0 4px 6px rgba(0,0,0,.07);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 48px; }
+  .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  .header p { font-size: .95rem; color: var(--text-secondary); }
+  .header .badge { display: inline-block; margin-top: 12px; padding: 4px 14px; background: var(--accent-light); color: var(--accent); border-radius: 20px; font-size: .8rem; font-weight: 600; }
+
+  /* Section */
+  .section { margin-bottom: 40px; }
+  .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--accent); display: flex; align-items: center; gap: 8px; }
+  .section-title .num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--accent); color: #fff; border-radius: 6px; font-size: .85rem; font-weight: 700; }
+
+  /* Cards */
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; }
+  .card p { font-size: .9rem; color: var(--text-secondary); margin-bottom: 10px; }
+
+  /* Grids */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Graph container */
+  .graph-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); overflow-x: auto; padding: 20px; margin-bottom: 20px; }
+  .graph-container svg { display: block; margin: 0 auto; }
+  .graph-container figcaption { text-align: center; font-size: .82rem; color: var(--text-secondary); margin-top: 10px; }
+
+  /* Code blocks */
+  pre.code-block {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: .8rem;
+    line-height: 1.65;
+    overflow-x: auto;
+    margin: 8px 0;
+  }
+  pre.code-block .kw { color: #c084fc; }
+  pre.code-block .fn { color: #60a5fa; }
+  pre.code-block .str { color: #34d399; }
+  pre.code-block .cm { color: #64748b; font-style: italic; }
+  pre.code-block .num { color: #fbbf24; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: #f1f5f9; font-weight: 600; font-size: .8rem; color: var(--text-secondary); text-transform: uppercase; }
+  tr:hover td { background: #fafbfc; }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .72rem; font-weight: 600; }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-green { background: #dcfce7; color: #15803d; }
+  .tag-purple { background: #ede9fe; color: #6d28d9; }
+  .tag-pink { background: #fce7f3; color: #be185d; }
+  .tag-orange { background: #fef3c7; color: #a16207; }
+
+  /* Concept box */
+  .concept-box {
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    margin-bottom: 12px;
+    font-size: .85rem;
+  }
+  .concept-box.blue  { background: var(--accent-light); border-color: var(--accent); }
+  .concept-box.green { background: var(--green-light);  border-color: var(--green); }
+  .concept-box.purple { background: var(--purple-light); border-color: var(--purple); }
+  .concept-box.orange { background: var(--orange-light); border-color: var(--orange); }
+  .concept-box.pink  { background: var(--pink-light);  border-color: var(--pink); }
+  .concept-box strong { display: block; margin-bottom: 4px; }
+
+  .footer { text-align: center; margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); font-size: .8rem; color: var(--text-secondary); }
+
+  /* Flow arrow */
+  .flow-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: "Fira Code", monospace; font-size: .82rem; padding: 8px 0; }
+  .flow-row .arrow { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Header ─────────────────────────────── -->
+  <header class="header">
+    <h1>Agent 三层记忆分层与画像系统</h1>
+    <p>基于 LangGraph Store + Checkpointer 实现短期、长期、工作区三层记忆持久化</p>
+    <span class="badge">来源：5-Agent记忆分层与画像系统/ 实际代码</span>
+  </header>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 一、三层记忆架构总览                      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">1</span> 三层记忆模型 → LangGraph 原语映射</div>
+
+    <figure class="graph-container">
+      <svg viewBox="0 0 1000 500" width="100%" height="500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/></marker>
+          <marker id="arr-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/></marker>
+        </defs>
+
+        <!-- 三层记忆框 -->
+        <!-- 短期记忆 -->
+        <rect x="20" y="20" width="460" height="130" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+        <text x="40" y="48" font-size="15" font-weight="700" fill="#1d4ed8">第一层：短期记忆（Working Memory）</text>
+        <text x="40" y="70" font-size="12" fill="#3b82f6">内容：当前对话 Turn、活跃工具调用结果、Memory Blocks</text>
+        <text x="40" y="90" font-size="12" fill="#3b82f6">生命周期：单次会话内（上下文窗口 128K-1M tokens）</text>
+        <text x="40" y="115" font-size="12" fill="#1d4ed8" font-weight="600">LangGraph: StateGraph State + add_messages Reducer</text>
+        <text x="40" y="135" font-size="11" fill="#64748b">messages: Annotated[list[BaseMessage], add_messages]</text>
+
+        <!-- 从短期到情节的箭头 -->
+        <line x1="250" y1="150" x2="250" y2="175" stroke="#10b981" stroke-width="2" marker-end="url(#arr-green)"/>
+        <text x="260" y="168" font-size="10" fill="#10b981" font-weight="600">压缩 / 保存会话摘要</text>
+
+        <!-- 情节记忆 -->
+        <rect x="20" y="180" width="460" height="120" rx="10" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="2"/>
+        <text x="40" y="208" font-size="15" font-weight="700" fill="#065f46">第二层：情节记忆（Episodic Memory）</text>
+        <text x="40" y="230" font-size="12" fill="#10b981">内容：每日会话摘要、关键决策、未完成任务</text>
+        <text x="40" y="250" font-size="12" fill="#10b981">生命周期：数天到数周（今天的全量加载，历史的按需检索）</text>
+        <text x="40" y="275" font-size="12" fill="#065f46" font-weight="600">LangGraph: Store namespace ("sessions", user_id, date)</text>
+        <text x="40" y="293" font-size="11" fill="#64748b">Checkpointer → get_state_history(config) 回溯任意历史快照</text>
+
+        <!-- 从情节目到长期的箭头 -->
+        <line x1="250" y1="300" x2="250" y2="325" stroke="#10b981" stroke-width="2" marker-end="url(#arr-green)"/>
+        <text x="260" y="318" font-size="10" fill="#10b981" font-weight="600">巩固管道（Dreaming）</text>
+
+        <!-- 长期记忆 -->
+        <rect x="20" y="330" width="460" height="145" rx="10" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+        <text x="40" y="358" font-size="15" font-weight="700" fill="#5b21b6">第三层：长期记忆（Long-Term / Semantic Memory）</text>
+        <text x="40" y="380" font-size="12" fill="#8b5cf6">内容：经过巩固管道的持久事实、用户偏好、知识条目</text>
+        <text x="40" y="400" font-size="12" fill="#8b5cf6">写入门控：minScore + minRecallCount + minUniqueQueries</text>
+        <text x="40" y="425" font-size="12" fill="#5b21b6" font-weight="600">LangGraph: Store namespace ("memories", user_id) + 内置 embedding 搜索</text>
+        <text x="40" y="445" font-size="11" fill="#64748b">时间衰减: score × e^(-λ × days_old), 30天半衰期</text>
+        <text x="40" y="463" font-size="11" fill="#64748b">memory.remember() / memory.recall() / memory.forget()</text>
+
+        <!-- 右侧：LangGraph 基础设施 + 画像 -->
+        <rect x="520" y="20" width="460" height="130" rx="10" fill="#fff7ed" stroke="#fdba74" stroke-width="2"/>
+        <text x="540" y="48" font-size="15" font-weight="700" fill="#9a3412">画像系统（Profiling）</text>
+        <text x="540" y="72" font-size="12" fill="#ea580c">从对话中自动提取和动态更新用户画像</text>
+        <text x="540" y="95" font-size="12" fill="#ea580c">实体类型：人物 / 项目 / 技术 / 概念</text>
+        <text x="540" y="118" font-size="12" fill="#9a3412" font-weight="600">LangGraph: Store namespace ("profiles", user_id)</text>
+        <text x="540" y="140" font-size="11" fill="#64748b">EMA 平滑更新 + Jaccard 去重 + 置信度管理</text>
+
+        <rect x="520" y="170" width="460" height="305" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+        <text x="540" y="198" font-size="15" font-weight="700" fill="#334155">LangGraph 基础设施</text>
+
+        <rect x="540" y="215" width="200" height="55" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+        <text x="640" y="238" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">Store (BaseStore)</text>
+        <text x="640" y="255" text-anchor="middle" font-size="10" fill="#3b82f6">长期记忆后端</text>
+
+        <rect x="760" y="215" width="200" height="55" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
+        <text x="860" y="238" text-anchor="middle" font-size="12" font-weight="600" fill="#15803d">Checkpointer</text>
+        <text x="860" y="255" text-anchor="middle" font-size="10" fill="#10b981">短期记忆持久化</text>
+
+        <rect x="540" y="285" width="420" height="70" rx="6" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="560" y="308" font-size="12" font-weight="600" fill="#475569">Store API</text>
+        <text x="560" y="328" font-size="11" fill="#64748b">store.put(namespace, key, value)   → 写入</text>
+        <text x="560" y="345" font-size="11" fill="#64748b">store.search(namespace, query, limit) → 语义搜索  store.get(namespace, key) → 精确获取</text>
+
+        <rect x="540" y="370" width="420" height="45" rx="6" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="560" y="393" font-size="12" font-weight="600" fill="#475569">Checkpointer API</text>
+        <text x="560" y="410" font-size="11" fill="#64748b">自动每步保存 → get_state_history() 时间旅行 → 断点续跑</text>
+
+        <!-- 从三层记忆到基础设施的连线 -->
+        <line x1="480" y1="60" x2="520" y2="80" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="480" y1="230" x2="520" y2="240" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="480" y1="400" x2="520" y2="400" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+      </svg>
+      <figcaption>图1：三层记忆模型与 LangGraph 原语的映射关系</figcaption>
+    </figure>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 二、真实代码：图执行流程                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">2</span> 图的真实执行流程（来自 memory_graph.py）</div>
+
+    <div class="card">
+      <p>每次 Agent 调用，记忆系统按以下图的顺序执行。<strong>每个框对应 memory_graph.py 中的一个真实节点函数。</strong></p>
+    </div>
+
+    <figure class="graph-container">
+      <svg viewBox="0 0 1000 340" width="100%" height="340" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="ar2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/></marker>
+        </defs>
+
+        <!-- 节点1: load_memory -->
+        <rect x="20" y="40" width="170" height="70" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+        <text x="105" y="65" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">📥 load_memory</text>
+        <text x="105" y="85" text-anchor="middle" font-size="10" fill="#3b82f6">获取画像 + 搜索记忆</text>
+        <text x="105" y="100" text-anchor="middle" font-size="10" fill="#3b82f6">注入 SystemMessage</text>
+
+        <!-- 节点2: agent -->
+        <rect x="230" y="40" width="150" height="70" rx="10" fill="#dcfce7" stroke="#10b981" stroke-width="2"/>
+        <text x="305" y="65" text-anchor="middle" font-size="13" font-weight="700" fill="#065f46">🤖 agent</text>
+        <text x="305" y="85" text-anchor="middle" font-size="10" fill="#10b981">LLM + 工具调用</text>
+        <text x="305" y="100" text-anchor="middle" font-size="10" fill="#10b981">根据记忆上下文响应</text>
+
+        <!-- 节点3: detect_changes -->
+        <rect x="420" y="40" width="170" height="70" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+        <text x="505" y="65" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">🔍 detect_changes</text>
+        <text x="505" y="85" text-anchor="middle" font-size="10" fill="#b45309">检测画像变更</text>
+        <text x="505" y="100" text-anchor="middle" font-size="10" fill="#b45309">例如：偏好变化、新技能</text>
+
+        <!-- 节点4: update_profile -->
+        <rect x="640" y="10" width="160" height="60" rx="10" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+        <text x="720" y="32" text-anchor="middle" font-size="12" font-weight="700" fill="#9d174d">👤 update_profile</text>
+        <text x="720" y="50" text-anchor="middle" font-size="10" fill="#be185d">EMA 平滑写入 Store</text>
+        <text x="720" y="65" text-anchor="middle" font-size="10" fill="#be185d">("profiles", user_id)</text>
+
+        <!-- 节点5: save_memory -->
+        <rect x="640" y="85" width="160" height="60" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="720" y="108" text-anchor="middle" font-size="12" font-weight="700" fill="#5b21b6">💾 save_memory</text>
+        <text x="720" y="125" text-anchor="middle" font-size="10" fill="#7c3aed">提取事实 → Store</text>
+        <text x="720" y="140" text-anchor="middle" font-size="10" fill="#7c3aed">("memories", user_id)</text>
+
+        <!-- 节点6: consolidate -->
+        <rect x="640" y="160" width="160" height="60" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2"/>
+        <text x="720" y="183" text-anchor="middle" font-size="12" font-weight="700" fill="#3730a3">🌙 consolidate</text>
+        <text x="720" y="200" text-anchor="middle" font-size="10" fill="#4f46e5">巩固管道（Dreaming）</text>
+        <text x="720" y="215" text-anchor="middle" font-size="10" fill="#4f46e5">评分 → 去重 → 提升</text>
+
+        <!-- END -->
+        <rect x="850" y="100" width="100" height="50" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+        <text x="900" y="130" text-anchor="middle" font-size="14" font-weight="700" fill="#475569">🏁 END</text>
+
+        <!-- 边 -->
+        <line x1="190" y1="75" x2="230" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#ar2)"/>
+        <line x1="380" y1="75" x2="420" y2="75" stroke="#64748b" stroke-width="2" marker-end="url(#ar2)"/>
+
+        <!-- 条件边：detect_changes → update_profile or save_memory -->
+        <path d="M 590 55 Q 615 30 640 30" fill="none" stroke="#ec4899" stroke-width="2" marker-end="url(#ar2)"/>
+        <text x="612" y="22" font-size="9" fill="#ec4899" font-weight="600">有变更</text>
+        <path d="M 590 95 Q 615 115 640 115" fill="none" stroke="#8b5cf6" stroke-width="2" marker-end="url(#ar2)"/>
+        <text x="612" y="130" font-size="9" fill="#8b5cf6" font-weight="600">无变更</text>
+
+        <line x1="800" y1="40" x2="850" y2="85" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="800" y1="115" x2="850" y2="125" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <line x1="800" y1="190" x2="850" y2="140" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+        <!-- 图例 -->
+        <rect x="20" y="270" width="14" height="14" rx="3" fill="#dbeafe"/>
+        <text x="40" y="282" font-size="11" fill="#64748b">记忆加载</text>
+        <rect x="120" y="270" width="14" height="14" rx="3" fill="#dcfce7"/>
+        <text x="140" y="282" font-size="11" fill="#64748b">Agent 执行</text>
+        <rect x="230" y="270" width="14" height="14" rx="3" fill="#fef3c7"/>
+        <text x="250" y="282" font-size="11" fill="#64748b">变更检测</text>
+        <rect x="340" y="270" width="14" height="14" rx="3" fill="#ede9fe"/>
+        <text x="360" y="282" font-size="11" fill="#64748b">记忆保存</text>
+        <rect x="450" y="270" width="14" height="14" rx="3" fill="#e0e7ff"/>
+        <text x="470" y="282" font-size="11" fill="#64748b">巩固管道</text>
+      </svg>
+      <figcaption>图2：记忆增强 Agent 的完整执行图（6 个节点 + 1 个条件分支）</figcaption>
+    </figure>
+
+    <!-- 对应代码 -->
+    <div class="grid-2">
+      <div class="card">
+        <h3>构建图的代码（demo.py 第143-170行）</h3>
+        <pre class="code-block"><span class="kw">def</span> <span class="fn">build_demo_graph</span>(store, checkpointer):
+    builder = StateGraph(MemoryAgentState)
+
+    <span class="cm"># 添加 6 个节点</span>
+    builder.add_node(<span class="str">"load_memory"</span>, load_memory_node)
+    builder.add_node(<span class="str">"agent"</span>, demo_agent_node)
+    builder.add_node(<span class="str">"detect_changes"</span>, detect_profile_changes_node)
+    builder.add_node(<span class="str">"save_memory"</span>, save_to_memory_node)
+    builder.add_node(<span class="str">"update_profile"</span>, update_profile_node)
+    builder.add_node(<span class="str">"consolidate"</span>, consolidate_memory_node)
+
+    <span class="cm"># 连接边：定义流转顺序</span>
+    builder.set_entry_point(<span class="str">"load_memory"</span>)
+    builder.add_edge(<span class="str">"load_memory"</span>, <span class="str">"agent"</span>)
+    builder.add_edge(<span class="str">"agent"</span>, <span class="str">"detect_changes"</span>)
+
+    <span class="cm"># 条件边：有画像变更 → update_profile，否则 → save_memory</span>
+    builder.add_conditional_edges(
+        <span class="str">"detect_changes"</span>,
+        <span class="kw">lambda</span> s: <span class="str">"update_profile"</span>
+            <span class="kw">if</span> s.get(<span class="str">"profile_delta"</span>)
+            <span class="kw">else</span> <span class="str">"save_memory"</span>,
+        {<span class="str">"update_profile"</span>: <span class="str">"update_profile"</span>,
+         <span class="str">"save_memory"</span>: <span class="str">"save_memory"</span>})
+
+    builder.add_edge(<span class="str">"update_profile"</span>, <span class="str">"save_memory"</span>)
+    builder.add_edge(<span class="str">"save_memory"</span>, <span class="str">"consolidate"</span>)
+    builder.add_edge(<span class="str">"consolidate"</span>, END)
+
+    <span class="kw">return</span> builder.compile(
+        checkpointer=checkpointer,
+        store=store)</pre>
+      </div>
+      <div class="card">
+        <h3>每个节点对应的真实文件</h3>
+        <table>
+          <tr><th>节点名</th><th>函数</th><th>所在文件</th></tr>
+          <tr><td><code>load_memory</code></td><td>load_memory_node</td><td>memory_graph.py:40</td></tr>
+          <tr><td><code>agent</code></td><td>demo_agent_node</td><td>demo.py:39</td></tr>
+          <tr><td><code>detect_changes</code></td><td>detect_profile_changes_node</td><td>demo.py:80</td></tr>
+          <tr><td><code>save_memory</code></td><td>save_to_memory_node</td><td>memory_graph.py:72</td></tr>
+          <tr><td><code>update_profile</code></td><td>update_profile_node</td><td>memory_graph.py:101</td></tr>
+          <tr><td><code>consolidate</code></td><td>consolidate_memory_node</td><td>memory_graph.py:121</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 三、Store 命名空间：数据实际存哪          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">3</span> Store 命名空间：三层记忆 + 画像的数据存储结构</div>
+
+    <div class="card">
+      <p>所有持久化数据存在同一个 <code>Store</code> 实例中，通过 <strong>namespace（元组）</strong> 实现三层隔离。</p>
+    </div>
+
+    <figure class="graph-container">
+      <svg viewBox="0 0 1000 340" width="100%" height="340" xmlns="http://www.w3.org/2000/svg">
+        <!-- Store 总框 -->
+        <rect x="10" y="10" width="980" height="320" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+        <text x="30" y="38" font-size="15" font-weight="700" fill="#334155">LangGraph Store（单一实例）</text>
+
+        <!-- namespace 1: 长期记忆 -->
+        <rect x="30" y="55" width="450" height="125" rx="8" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+        <text x="50" y="78" font-size="13" font-weight="700" fill="#5b21b6">长期记忆 facts</text>
+        <text x="50" y="96" font-size="11" fill="#7c3aed">namespace: ("memories", "{user_id}")</text>
+        <text x="50" y="115" font-size="10" fill="#64748b">key: fact_id (MD5 hash)</text>
+        <text x="50" y="132" font-size="10" fill="#64748b">value: {fact_id, content, category, score, confidence,</text>
+        <text x="65" y="148" font-size="10" fill="#64748b">recall_count, created_at, superseded_by}</text>
+        <text x="50" y="168" font-size="10" fill="#8b5cf6">API: memory.remember() / memory.recall() / memory.forget()</text>
+
+        <!-- namespace 2: 画像 -->
+        <rect x="30" y="190" width="450" height="115" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+        <text x="50" y="213" font-size="13" font-weight="700" fill="#9a3412">用户画像 profiles</text>
+        <text x="50" y="231" font-size="11" fill="#ea580c">namespace: ("profiles", "{user_id}")</text>
+        <text x="50" y="250" font-size="10" fill="#64748b">key: "profile"</text>
+        <text x="50" y="267" font-size="10" fill="#64748b">value: {user_id, name, role, skill_level,</text>
+        <text x="65" y="283" font-size="10" fill="#64748b">traits: {trait: {value, confidence, updated_at}}, facts: [...]}</text>
+        <text x="50" y="300" font-size="10" fill="#f97316">API: memory.update_profile() / memory.add_profile_fact()</text>
+
+        <!-- namespace 3: 会话摘要 -->
+        <rect x="510" y="55" width="460" height="125" rx="8" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5"/>
+        <text x="530" y="78" font-size="13" font-weight="700" fill="#065f46">情节记忆 sessions</text>
+        <text x="530" y="96" font-size="11" fill="#10b981">namespace: ("sessions", "{user_id}", "{date}")</text>
+        <text x="530" y="115" font-size="10" fill="#64748b">key: session_id</text>
+        <text x="530" y="132" font-size="10" fill="#64748b">value: {summary, session_id, saved_at}</text>
+        <text x="530" y="168" font-size="10" fill="#059669">API: memory.save_session_summary()</text>
+
+        <!-- namespace 4: Agent 自身 -->
+        <rect x="510" y="190" width="460" height="115" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="530" y="213" font-size="13" font-weight="700" fill="#475569">Agent 身份记忆（类似 SOUL.md）</text>
+        <text x="530" y="231" font-size="11" fill="#64748b">namespace: ("agent", "{key}")</text>
+        <text x="530" y="250" font-size="10" fill="#64748b">key: "current"</text>
+        <text x="530" y="267" font-size="10" fill="#64748b">value: 任意 dict（persona、rules、identity...）</text>
+        <text x="530" y="300" font-size="10" fill="#475569">API: memory.set_agent_memory() / memory.get_agent_memory()</text>
+      </svg>
+      <figcaption>图3：Store 中的 4 个命名空间，实现三层记忆 + 画像的数据隔离</figcaption>
+    </figure>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 四、真实 API 调用：如何增加记忆          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">4</span> 如何调用：增/查/改记忆的真实代码</div>
+
+    <div class="grid-2">
+      <!-- 初始化 -->
+      <div class="card">
+        <h3>4.1 初始化记忆系统</h3>
+        <pre class="code-block"><span class="cm"># demo.py 第187-192行</span>
+<span class="kw">from</span> langgraph.store.memory <span class="kw">import</span> InMemoryStore
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+<span class="kw">from</span> memory_store <span class="kw">import</span> MemoryStoreManager
+
+store = InMemoryStore()              <span class="cm"># 长期记忆后端</span>
+checkpointer = MemorySaver()         <span class="cm"># 短期记忆持久化</span>
+memory = MemoryStoreManager(store, <span class="str">"user_001"</span>)</pre>
+        <p style="font-size:.82rem;color:var(--text-secondary);margin-top:8px;">
+          生产环境将 <code>InMemoryStore</code> 替换为 <code>AsyncPostgresStore</code>，图代码无需改动。
+        </p>
+      </div>
+
+      <!-- 写入记忆 -->
+      <div class="card">
+        <h3>4.2 写入一条长期记忆</h3>
+        <pre class="code-block"><span class="cm"># memory_store.py 第48行</span>
+<span class="cm"># 写入一条记忆，自动去重（Jaccard ≥ 0.7）</span>
+<span class="kw">await</span> memory.remember(
+    content=<span class="str">"用户是后端工程师，主要使用 Python 和 TypeScript"</span>,
+    category=<span class="str">"knowledge"</span>,   <span class="cm"># preference/knowledge/decision/pattern</span>
+    score=<span class="num">8.0</span>,              <span class="cm"># 重要性评分 1-10</span>
+    confidence=<span class="num">0.9</span>,          <span class="cm"># 置信度 0.0-1.0</span>
+)
+<span class="cm"># → Store.put(("memories", "user_001"), fact_id, {...})</span></pre>
+      </div>
+
+      <!-- 搜索记忆 -->
+      <div class="card">
+        <h3>4.3 语义搜索记忆</h3>
+        <pre class="code-block"><span class="cm"># memory_store.py 第103行</span>
+<span class="cm"># 语义搜索，后处理：时间衰减 + 回忆加权</span>
+results = <span class="kw">await</span> memory.recall(
+    query=<span class="str">"SQL 注入"</span>,
+    limit=<span class="num">5</span>,              <span class="cm"># 返回前 5 条</span>
+    min_score=<span class="num">1.0</span>,         <span class="cm"># 最低评分过滤</span>
+)
+<span class="cm"># → Store.search(("memories", "user_001"), query, limit)</span>
+<span class="cm"># 每条结果: {content, category, score, effective_score, ...}</span></pre>
+      </div>
+
+      <!-- 更新画像 -->
+      <div class="card">
+        <h3>4.4 更新用户画像（EMA 平滑）</h3>
+        <pre class="code-block"><span class="cm"># memory_store.py 第210行</span>
+<span class="cm"># EMA 平滑：new = old×0.7 + new×0.3</span>
+<span class="kw">await</span> memory.update_profile(
+    trait_updates={
+        <span class="str">"security_sensitivity"</span>: <span class="str">"high"</span>,
+        <span class="str">"preferred_language"</span>: <span class="str">"TypeScript"</span>,
+    },
+    confidence=<span class="num">0.7</span>,
+)
+<span class="cm"># → Store.put(("profiles", "user_001"), "profile", {...})</span></pre>
+      </div>
+    </div>
+
+    <div class="concept-box blue">
+      <strong>💡 记忆的生命周期是怎么触发的？</strong>
+      不是手动调用！在图的执行流程中，<code>save_to_memory_node</code> 在每次 Agent 响应后<strong>自动</strong>执行，提取事实并写入 Store。你只需要配置好图，记忆自动积累。
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 五、完整调用流程：从启动到记忆保存      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">5</span> 完整调用流程（来自 demo.py）</div>
+
+    <div class="card">
+      <h3>5.1 启动 → 对话 → 记忆持久化</h3>
+      <pre class="code-block"><span class="cm"># demo.py main() 函数</span>
+
+<span class="cm"># Step 0: 预填充已有记忆（模拟历史对话）</span>
+memory.remember(<span class="str">"用户是后端工程师，主要技术栈 Python 和 TypeScript"</span>,
+                category=<span class="str">"knowledge"</span>, score=<span class="num">8.0</span>, confidence=<span class="num">0.9</span>)
+memory.update_profile({<span class="str">"security_sensitivity"</span>: <span class="str">"high"</span>}, confidence=<span class="num">0.8</span>)
+
+<span class="cm"># Step 1: 构建带记忆的 Agent 图</span>
+app = build_demo_graph(store, checkpointer)
+
+<span class="cm"># Step 2: 第 1 天——用户发起审查</span>
+config1 = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"session-day-1"</span>, <span class="str">"store"</span>: store}}
+result1 = <span class="kw">await</span> app.ainvoke(
+    {<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"帮我审查代码，我比较关注SQL注入安全"</span>)],
+     <span class="str">"session_meta"</span>: {<span class="str">"user_id"</span>: <span class="str">"user_001"</span>, <span class="str">"session_id"</span>: <span class="str">"session-day-1"</span>}},
+    config1,
+)
+<span class="cm"># ↑ 此行自动执行了 load_memory → agent → detect_changes → update_profile → save_memory → consolidate</span>
+
+<span class="cm"># Step 3: 第 2 天——新会话，自动恢复记忆</span>
+config2 = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"session-day-2"</span>, <span class="str">"store"</span>: store}}
+result2 = <span class="kw">await</span> app.ainvoke(
+    {<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"又有一批新代码需要审查"</span>)],
+     <span class="str">"session_meta"</span>: {<span class="str">"user_id"</span>: <span class="str">"user_001"</span>, <span class="str">"session_id"</span>: <span class="str">"session-day-2"</span>}},
+    config2,
+)
+<span class="cm"># ↑ load_memory 节点自动从 Store 恢复了第1天的画像和偏好！</span>
+
+<span class="cm"># Step 4: 搜索验证</span>
+results = memory.recall(<span class="str">"SQL 注入"</span>, limit=<span class="num">3</span>)
+profile = memory.get_profile()
+<span class="kw">print</span>(profile[<span class="str">"traits"</span>])  <span class="cm"># → {"security_sensitivity": {"value": "high", "confidence": 0.7}, ...}</span></pre>
+    </div>
+
+    <div class="card">
+      <h3>5.2 关键：新会话如何自动恢复记忆？</h3>
+      <div class="grid-2">
+        <div class="concept-box green">
+          <strong>load_memory_node 做的事（memory_graph.py:40）</strong>
+          1. 从 Store 获取用户画像<br/>
+          2. 用当前用户消息搜索相关长期记忆<br/>
+          3. 组装为 SystemMessage 注入到 messages<br/>
+          → Agent 看到的上下文自动包含了历史记忆
+        </div>
+        <div class="concept-box purple">
+          <strong>为什么新 thread_id 也能恢复？</strong>
+          Store 是<strong>跨 thread</strong> 的（Checkpointer 是 thread 内），所有会话共享同一个 Store 实例。只要 <code>user_id</code> 相同，就能查到同一份记忆。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 六、画像 vs SOUL.md vs Memory            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">6</span> 画像、SOUL.md、Memory 三者的区别</div>
+
+    <table>
+      <tr>
+        <th>概念</th><th>WHO（关于谁）</th><th>WHAT（存什么）</th><th>变化频率</th><th>LangGraph 存储位置</th>
+      </tr>
+      <tr>
+        <td><strong>SOUL.md</strong></td>
+        <td>Agent 自己</td>
+        <td>核心哲学、行为准则、语气、身份</td>
+        <td>几乎不变</td>
+        <td>Store namespace <code>("agent", "persona")</code></td>
+      </tr>
+      <tr>
+        <td><strong>IDENTITY.md</strong></td>
+        <td>Agent 自己</td>
+        <td>表面身份：名称、代词、默认语言</td>
+        <td>几乎不变</td>
+        <td>Store namespace <code>("agent", "identity")</code></td>
+      </tr>
+      <tr>
+        <td><strong>USER.md / 用户画像</strong></td>
+        <td>用户</td>
+        <td>角色、技能、偏好、沟通风格、审查优先级</td>
+        <td>缓慢进化 (EMA)</td>
+        <td>Store namespace <code>("profiles", user_id)</code></td>
+      </tr>
+      <tr>
+        <td><strong>MEMORY.md / 长期记忆</strong></td>
+        <td>对话内容</td>
+        <td>从对话中提取的事实：技术栈、决策、偏好表述</td>
+        <td>持续增长</td>
+        <td>Store namespace <code>("memories", user_id)</code></td>
+      </tr>
+      <tr>
+        <td><strong>情节记忆</strong></td>
+        <td>会话内容</td>
+        <td>每日会话摘要、关键决策记录</td>
+        <td>每天新增</td>
+        <td>Store namespace <code>("sessions", user_id, date)</code></td>
+      </tr>
+    </table>
+
+    <div class="concept-box orange" style="margin-top:16px;">
+      <strong>简单记忆法：</strong>
+      SOUL.md = Agent 的"人格"（我是谁）<br/>
+      画像 = Agent 对用户的"认知模型"（你是谁）<br/>
+      长期记忆 = Agent 的"经验"（我们之间发生了什么）<br/>
+      三者都存在同一个 Store 实例中，namespace 隔离。
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 七、所有 API 速查                         -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">7</span> 完整 API 速查（MemoryStoreManager 类）</div>
+
+    <table>
+      <tr><th>方法</th><th>参数</th><th>作用</th><th>对应 Store API</th></tr>
+      <tr>
+        <td><code>remember()</code></td>
+        <td>content, category, score, confidence</td>
+        <td>写入一条记忆（自动去重）</td>
+        <td><code>store.put(("memories", uid), fact_id, fact)</code></td>
+      </tr>
+      <tr>
+        <td><code>recall()</code></td>
+        <td>query, limit, min_score</td>
+        <td>语义搜索记忆（时间衰减+加权排序）</td>
+        <td><code>store.search(("memories", uid), query, limit)</code></td>
+      </tr>
+      <tr>
+        <td><code>forget()</code></td>
+        <td>fact_id</td>
+        <td>标记记忆为过时（不物理删除）</td>
+        <td><code>store.put(... superseded_by="manual_forget")</code></td>
+      </tr>
+      <tr>
+        <td><code>get_profile()</code></td>
+        <td>user_id</td>
+        <td>获取完整用户画像</td>
+        <td><code>store.get(("profiles", uid), "profile")</code></td>
+      </tr>
+      <tr>
+        <td><code>update_profile()</code></td>
+        <td>trait_updates, confidence</td>
+        <td>EMA 平滑更新画像特征</td>
+        <td><code>store.put(("profiles", uid), "profile", {...})</code></td>
+      </tr>
+      <tr>
+        <td><code>add_profile_fact()</code></td>
+        <td>fact, confidence</td>
+        <td>添加画像事实（Jaccard 去重）</td>
+        <td><code>store.put(("profiles", uid), "profile", {...})</code></td>
+      </tr>
+      <tr>
+        <td><code>save_session_summary()</code></td>
+        <td>summary, session_id</td>
+        <td>保存一日会话摘要（情节记忆）</td>
+        <td><code>store.put(("sessions", uid, date), session_id, {...})</code></td>
+      </tr>
+      <tr>
+        <td><code>set_agent_memory()</code></td>
+        <td>key, value</td>
+        <td>设置 Agent 自身记忆（类似 SOUL.md）</td>
+        <td><code>store.put(("agent", key), "current", value)</code></td>
+      </tr>
+      <tr>
+        <td><code>get_agent_memory()</code></td>
+        <td>key</td>
+        <td>获取 Agent 自身记忆</td>
+        <td><code>store.get(("agent", key), "current")</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- 八、升级路径                              -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title"><span class="num">8</span> 从演示到生产（代码无需改动）</div>
+
+    <table>
+      <tr><th>阶段</th><th>Store 后端</th><th>Checkpointer</th><th>切换方式</th></tr>
+      <tr>
+        <td><strong>1. 演示/测试</strong></td>
+        <td><code>InMemoryStore()</code></td>
+        <td><code>MemorySaver()</code></td>
+        <td>当前 demo.py</td>
+      </tr>
+      <tr>
+        <td><strong>2. 本地持久化</strong></td>
+        <td><code>SqliteStore</code></td>
+        <td><code>SqliteSaver</code></td>
+        <td>换两行 import</td>
+      </tr>
+      <tr>
+        <td><strong>3. 生产部署</strong></td>
+        <td><code>AsyncPostgresStore</code></td>
+        <td><code>AsyncPostgresSaver</code></td>
+        <td>换两行 import + 连接字符串</td>
+      </tr>
+    </table>
+
+    <div class="concept-box green">
+      <strong>关键设计原则：</strong> 图的构建代码（build_demo_graph）完全不感知底层存储。换 <code>InMemoryStore</code> → <code>AsyncPostgresStore</code> 后，所有记忆自动持久化到 PostgreSQL，图和节点函数<strong>零改动</strong>。
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────── -->
+  <footer class="footer">
+    <p>所有内容均来自 <code>5-Agent记忆分层与画像系统/</code> 目录下的实际 Python 代码。</p>
+    <p>文件：state.py · memory_store.py · memory_graph.py · profiles.py · demo.py</p>
+  </footer>
+
+</div>
+</body>
+</html>

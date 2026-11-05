@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>对象详情 — {{ object_id }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6fa; color: #2f3542; }
+  .header { background: #2f3542; color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+  .header a { color: #a4b0be; text-decoration: none; font-size: 14px; }
+  .header h1 { font-size: 18px; }
+  .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .card h2 { font-size: 15px; margin-bottom: 14px; color: #57606f; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; font-size: 14px; }
+  .info-grid .label { color: #a4b0be; font-size: 12px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+  .badge.normal  { background: #e8f8ef; color: #2ed573; }
+  .badge.warning { background: #fff4e0; color: #ffa502; }
+  .badge.fault   { background: #ffecec; color: #ff4757; }
+  .event { border-left: 3px solid #ff6b81; padding: 8px 12px; margin-bottom: 8px; background: #fff8f8; border-radius: 0 6px 6px 0; font-size: 13px; }
+  .event .lv { font-weight: 700; margin-right: 6px; }
+  .event .time { color: #a4b0be; font-size: 12px; }
+  .no-events { color: #2ed573; font-size: 14px; }
+  .agent-card { grid-column: 1 / -1; }
+  .agent-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .agent-buttons button { flex: 1; min-width: 200px; padding: 14px; border: none; border-radius: 10px; color: #fff; font-size: 14px; cursor: pointer; text-align: left; line-height: 1.5; }
+  .agent-buttons button small { display: block; opacity: .85; font-size: 12px; font-weight: 400; }
+  .btn-deepseek { background: #4b6bfb; }
+  .btn-dify { background: #12b76a; }
+  .btn-langchain { background: #9333ea; }
+  .btn-rag { background: #e8590c; }
+  .btn-difyrag { background: #0ca678; }
+  .agent-buttons button:disabled { opacity: .5; cursor: not-allowed; }
+  .question-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .question-row input { flex: 1; padding: 10px 14px; border: 1px solid #dcdde1; border-radius: 8px; font-size: 14px; }
+  .output { background: #1e1e2e; color: #d4e6d4; border-radius: 10px; padding: 16px; min-height: 180px; max-height: 420px; overflow-y: auto; font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+  .output .placeholder { color: #6c7086; }
+  .output .channel-tag { color: #89b4fa; font-weight: 700; }
+  .output .error { color: #f38ba8; }
+  .cursor { display: inline-block; width: 8px; height: 16px; background: #a6e3a1; vertical-align: -3px; animation: blink .8s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <a href="/">← 返回列表</a>
+    <h1 id="title">{{ object_id }}</h1>
+    <span id="statusBadge"></span>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h2>📋 基本信息与指标</h2>
+      <div class="info-grid" id="infoGrid">加载中…</div>
+    </div>
+
+    <div class="card">
+      <h2>⚠️ 异常事件</h2>
+      <div id="events">加载中…</div>
+    </div>
+
+    <div class="card agent-card">
+      <h2>🤖 Agent 分析（五条通道，统一 SSE 流式输出 · ①②③无知识库，④⑤是 Day2 加装的 RAG，同一问题可对比答案质量）</h2>
+      <div class="agent-buttons">
+        <button class="btn-deepseek" onclick="run('deepseek')">① DeepSeek 直连<small>原始 LLM API + 流式，平台喂数据</small></button>
+        <button class="btn-dify" onclick="run('dify')">② Dify Agent<small>低代码平台，streaming 转发</small></button>
+        <button class="btn-langchain" onclick="run('langchain')">③ LangChain ReAct<small>Agent 自己调工具查平台 API</small></button>
+        <button class="btn-rag" onclick="run('rag')">④ RAG Agent 🆕<small>Day2 代码版：知识库检索 + 窗口记忆（2.1~2.7）</small></button>
+        <button class="btn-difyrag" onclick="run('difyrag')">⑤ Dify RAG 🆕<small>Day2 低代码版：Dify 知识库 + 内置记忆（2.6）</small></button>
+      </div>
+      <div class="question-row">
+        <input id="question" value="请分析该对象当前状态，如有异常给出可能原因和处置建议">
+      </div>
+      <div class="output" id="output"><span class="placeholder">点击上方按钮触发 Agent，输出将在这里流式显示…（可开 F12 → Network 观察 SSE 帧）</span></div>
+    </div>
+  </div>
+
+<script>
+const OBJECT_ID = "{{ object_id }}";
+const ENDPOINTS = {
+  deepseek:  { url: "/gateway/chat",      label: "① DeepSeek 直连" },
+  dify:      { url: "/gateway/dify/chat", label: "② Dify Agent" },
+  langchain: { url: "/agent/single",      label: "③ LangChain ReAct" },
+  rag:       { url: "/agent/rag",         label: "④ RAG Agent（代码版）" },
+  difyrag:   { url: "/gateway/dify/chat", label: "⑤ Dify RAG（低代码版）", agent_id: "dify-rag" },
+};
+
+async function loadObject() {
+  const resp = await fetch(`/api/objects/${OBJECT_ID}`);
+  const data = await resp.json();
+  if (!data.found) { document.getElementById("infoGrid").textContent = "对象不存在"; return; }
+  const o = data.object;
+  const statusText = { normal: "正常", warning: "告警", fault: "故障" };
+  document.getElementById("title").textContent = `${o.id} · ${o.name}`;
+  document.getElementById("statusBadge").innerHTML = `<span class="badge ${o.status}">${statusText[o.status] || o.status}</span>`;
+
+  const fields = [["类别", o.category], ["厂商", o.vendor], ["型号", o.model], ["位置", o.site]];
+  const metrics = Object.entries(o.metrics || {});
+  document.getElementById("infoGrid").innerHTML =
+    fields.map(([k, v]) => `<div><div class="label">${k}</div>${v || "-"}</div>`).join("") +
+    metrics.map(([k, v]) => `<div><div class="label">${k}</div><b>${v}</b></div>`).join("");
+
+  document.getElementById("events").innerHTML = o.events.length
+    ? o.events.map(e => `<div class="event"><span class="lv">[${e.level}]</span>${e.type} — ${e.description}<div class="time">${e.time}</div></div>`).join("")
+    : `<div class="no-events">✅ 当前无异常事件</div>`;
+}
+
+// SSE 消费：fetch + ReadableStream（POST 场景不能用 EventSource）
+async function run(channel) {
+  const { url, label, agent_id } = ENDPOINTS[channel];
+  const question = document.getElementById("question").value.trim();
+  const output = document.getElementById("output");
+  const buttons = document.querySelectorAll(".agent-buttons button");
+  buttons.forEach(b => b.disabled = true);
+
+  const startTime = performance.now();
+  const ts = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  const channelMeta = {
+    deepseek:  { model: "deepseek-chat", endpoint: "POST /gateway/chat" },
+    dify:      { model: "Dify Chatflow", endpoint: "POST /gateway/dify/chat" },
+    langchain: { model: "deepseek-chat + LangGraph", endpoint: "POST /agent/single" },
+    rag:       { model: "text-embedding-v3 检索 + deepseek-chat", endpoint: "POST /agent/rag" },
+    difyrag:   { model: "Dify 知识库 + 内置记忆", endpoint: "POST /gateway/dify/chat (agent_id=dify-rag)" },
+  };
+  const meta = channelMeta[channel] || {};
+
+  output.innerHTML = [
+    `┌─ 请求信息 ──────────────────────────────`,
+    `│ 时间: ${ts}`,
+    `│ 通道: ${label}`,
+    `│ 端点: ${meta.endpoint || url}`,
+    `│ 模型: ${meta.model || "-"}`,
+    `│ 对象: ${OBJECT_ID}`,
+    `│ 问题: ${question.slice(0, 80)}${question.length > 80 ? "..." : ""}`,
+    `└──────────────────────────────────────────`,
+    ``,
+  ].join("\n");
+
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+  output.appendChild(cursor);
+
+  let charCount = 0, resp = null;
+  try {
+    resp = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(agent_id ? { question, object_id: OBJECT_ID, agent_id } : { question, object_id: OBJECT_ID }),
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop();
+      for (const frame of frames) {
+        if (!frame.startsWith("data:")) continue;
+        const payload = frame.slice(5).trim();
+        if (payload === "[DONE]") continue;
+        const data = JSON.parse(payload);
+        if (data.error) {
+          const err = document.createElement("span");
+          err.className = "error";
+          err.textContent = "\n┌─ 错误 ──\n│ " + data.error + "\n└────────";
+          output.insertBefore(err, cursor);
+        } else if (data.tool) {
+          const ev = document.createElement("span");
+          ev.style.cssText = "color:var(--green);font-size:11px;font-weight:600";
+          ev.textContent = "\n  > [" + data.tool + "] " + (data.content || "");
+          output.insertBefore(ev, cursor);
+        } else if (data.content) {
+          output.insertBefore(document.createTextNode(data.content), cursor);
+          charCount += data.content.length;
+        }
+        output.scrollTop = output.scrollHeight;
+      }
+    }
+  } catch (e) {
+    output.insertBefore(document.createTextNode("\n❌ 请求失败: " + e.message), cursor);
+  } finally {
+    cursor.remove();
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    output.insertBefore(document.createTextNode(
+      `\n\n┌─ 响应信息 ──────────────────────────────\n` +
+      `│ 总耗时: ${elapsed}s\n` +
+      `│ 输出字符: ${charCount}\n` +
+      `│ HTTP 状态: ${resp ? resp.status : "ERR"}\n` +
+      `└──────────────────────────────────────────\n`
+    ), null);
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+
+loadObject();
+</script>
+</body>
+</html>

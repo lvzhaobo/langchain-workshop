@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Day1 — Agent 平台参考实现</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#6b7280;--border:#e5e7eb;
+  --primary:#2563eb;--primary-bg:#eff6ff;--green:#059669;--green-bg:#ecfdf5;
+  --amber:#d97706;--amber-bg:#fffbeb;--purple:#7c3aed;--purple-bg:#f5f3ff;
+  --cyan:#0891b2;--cyan-bg:#ecfeff;--dark:#0f172a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:var(--bg);color:var(--text);padding:32px;line-height:1.7}
+.container{max-width:900px;margin:0 auto}
+h1{font-size:28px;margin-bottom:4px}
+h1 span{font-weight:400;color:var(--text2);font-size:16px}
+.subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--border)}
+h2{font-size:20px;margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;margin-bottom:8px}
+.tag{display:inline-block;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;margin-right:4px}
+.tag-ds{background:var(--primary-bg);color:var(--primary)}.tag-dify{background:var(--green-bg);color:var(--green)}
+.tag-lc{background:var(--amber-bg);color:var(--amber)}.tag-sse{background:var(--purple-bg);color:var(--purple)}
+pre{background:#0f172a;color:#e2e8f0;padding:14px 18px;border-radius:8px;font-size:12px;overflow-x:auto;line-height:1.6}
+code{font-family:'SF Mono','Fira Code',monospace;font-size:12px}
+p code,li code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:11.5px;color:var(--primary)}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:#f8fafc;font-weight:600;color:var(--text2);font-size:11px}
+.channels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.chan{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--c);border-radius:10px;padding:16px}
+.chan h4{font-size:14px;margin-bottom:6px}
+.chan p{font-size:12px;color:var(--text2)}
+.chan .api{font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:var(--primary);background:var(--primary-bg);padding:2px 8px;border-radius:4px;display:inline-block;margin-top:8px}
+.points{list-style:none}
+.points li{padding:4px 0;font-size:13px;color:var(--text2)}
+.points li::before{content:'· ';color:var(--primary);font-weight:900}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Day1 — Agent 平台参考实现 <span>| Sample · 16:00 发放</span></h1>
+<p class="subtitle">三条 Agent 通道 · 统一 SSE 协议 · 换场景只改 data/objects.json</p>
+
+<h2>这是什么</h2>
+<div class="card">
+  <p>一个<b>可独立运行的 Agent 平台</b>：Flask 后端 + 对象列表/详情页 + 三条 Agent 通道（DeepSeek 直连 / Dify / LangChain ReAct），全部走统一 SSE 流式协议。学员在 1.1-1.3 实验中自己搭，16:00 发这份参考实现对照订正。</p>
+</div>
+
+<h2>目录结构</h2>
+<pre>sample-4days/day1/
+├── app.py                Flask 入口（端口 8081）— 页面 + API + 三条 SSE 通道
+├── agents/
+│   ├── single_agent.py   ReAct Agent（纯 while 循环，无 langgraph 依赖）
+│   └── tools.py          @tool 回调平台 API，导出 TOOLS 列表
+├── data/objects.json     对象数据（换场景 = 替换这个文件 + 改 Prompt）
+├── scripts/gen_data.py   数据生成脚本
+├── templates/
+│   ├── index.html        列表页（筛选 + 搜索）
+│   └── detail.html       详情页 + 3 个 Agent 按钮 + SSE 打字机
+├── dify_agents.json      Dify Agent 注册表（课程统一地址，填 app-key 即可）
+├── requirements.txt      4 个包（flask / python-dotenv / requests / langchain-core / langchain-openai）
+├── .env.example          配置模板（填 DEEPSEEK_API_KEY）
+└── .gitignore            .env / .venv / __pycache__
+</pre>
+
+<h2>三条 Agent 通道（统一 SSE）</h2>
+<div class="channels">
+  <div class="chan" style="--c:#2563eb">
+    <h4>🔵 DeepSeek 直连</h4>
+    <p>原始 OpenAI 兼容 API + stream:true，平台把对象数据拼进 Prompt，requests 逐行解析 delta 转为 SSE 帧</p>
+    <span class="api">POST /gateway/chat</span>
+    <br><span class="tag tag-ds">通道 ①</span>
+  </div>
+  <div class="chan" style="--c:#059669">
+    <h4>🟢 Dify Agent</h4>
+    <p>转发 Dify chat-messages API，response_mode: streaming，逐 chunk 转为统一 SSE 帧</p>
+    <span class="api">POST /gateway/dify/chat</span>
+    <br><span class="tag tag-dify">通道 ②</span>
+  </div>
+  <div class="chan" style="--c:#d97706">
+    <h4>🦜 LangChain ReAct</h4>
+    <p>纯 while 循环替代 LangGraph StateGraph，Agent 自己决定调哪个工具，工具轨迹以特殊帧输出</p>
+    <span class="api">POST /agent/single</span>
+    <br><span class="tag tag-lc">通道 ③</span>
+  </div>
+</div>
+
+<h2>SSE 协议亮点</h2>
+<div class="card">
+  <pre>data: {"content":"光模块"}
+data: {"content":"功率异常"}
+data: {"tool":"query_object","content":"\n🔧 [query_object] OBJ-0001 …\n\n"}
+data: [DONE]</pre>
+  <p style="margin-top:10px;font-size:13px;color:var(--text2)">
+    <span class="tag tag-sse">关键</span> 三通道用同一套帧格式，前端一份 JS 代码消费三条通道。LangChain 通道额外发 tool 帧让学员在前端看到 Agent 的"思考轨迹"。错误帧 data: {"error":"…"} 不崩前端。
+  </p>
+</div>
+
+<h2>关键知识点</h2>
+<ul class="points">
+  <li><b>Agent 不是黑盒</b>：ReAct 通道的 while 循环只有 30 行——LLM 调用 → 有 tool_calls → 执行工具 → 喂回结果 → 继续，这就是全部</li>
+  <li><b>SSE 是 AI Gateway 的通用语言</b>：三通道走同一套帧格式，深意是「前端不关心 Agent 背后是什么」</li>
+  <li><b>@tool 形成闭环</b>：Agent 调工具 → 工具回调平台 API → 平台返回数据 → Agent 继续推理。Agent 不直接读文件，和真实运维系统一样走 HTTP</li>
+  <li><b>不用 langgraph 也能写 ReAct</b>：引入 langgraph 只为 10 行 StateGraph 太亏——纯 while 循环更直观，学员看得懂每一行</li>
+  <li><b>换场景 = 换数据 + 改两处 Prompt</b>：data/objects.json + SYSTEM_PROMPT + Gateway 的 system prompt。页面和接口不用动</li>
+</ul>
+
+<h2>快速启动</h2>
+<pre>cp .env.example .env          # 填 DEEPSEEK_API_KEY=sk-…
+# 编辑 dify_agents.json       # 填 Dify 应用 api_key（课程统一地址已配好）
+pip install -r requirements.txt
+python app.py                 # → http://localhost:8081</pre>
+
+<h2>学员对照清单（16:00 发放后）</h2>
+<div class="card">
+  <ol style="padding-left:20px;font-size:13px;color:var(--text2);line-height:2">
+    <li>SSE 生成器结构：你的 generate() 和 Sample 一样吗？</li>
+    <li>Dify 转发：逐 chunk 转 SSE 帧——你是怎么做的？</li>
+    <li>@tool 的 docstring：LLM 能不能靠你的描述选对工具？</li>
+    <li>前端分帧：按 \n\n 分帧了吗？留半帧了吗？</li>
+    <li>[DONE] 帧：你的前端靠什么判断流结束？</li>
+    <li>Prompt 差异：角色描述、约束条件、输出格式——你和 Sample 谁更好？</li>
+  </ol>
+</div>
+
+</div>
+</body>
+</html>

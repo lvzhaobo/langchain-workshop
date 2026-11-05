@@ -1,0 +1,14 @@
+[
+  {"id":"EP-B-001","name":"#1 主变压器","type":"变压器","region":"天河区","voltage":"220kV","status":"正常运行","lastCheck":"2026-07-10","checker":"张工","installDate":"2019-03-15","manufacturer":"特变电工","capacity":"180 MVA","coolingType":"油浸风冷 (ONAF)"},
+  {"id":"EP-B-002","name":"#2 主变压器","type":"变压器","region":"天河区","voltage":"220kV","status":"正常运行","lastCheck":"2026-07-09","checker":"张工","installDate":"2019-05-20","manufacturer":"特变电工","capacity":"180 MVA","coolingType":"油浸风冷 (ONAF)"},
+  {"id":"EP-B-003","name":"#3 备用变压器","type":"变压器","region":"海珠区","voltage":"110kV","status":"维护中","lastCheck":"2026-07-08","checker":"李工","installDate":"2020-01-10","manufacturer":"西电集团","capacity":"100 MVA","coolingType":"自然油冷 (ONAN)"},
+  {"id":"EP-B-004","name":"#4 主变压器","type":"变压器","region":"黄埔区","voltage":"220kV","status":"正常运行","lastCheck":"2026-07-10","checker":"张工","installDate":"2019-03-15","manufacturer":"特变电工","capacity":"180 MVA","coolingType":"油浸风冷 (ONAF)"},
+  {"id":"EP-D-001","name":"110kV 海珠断路器","type":"断路器","region":"海珠区","voltage":"110kV","status":"正常运行","lastCheck":"2026-07-10","checker":"王工","installDate":"2020-06-15","manufacturer":"ABB","capacity":"3150A","coolingType":"SF6"},
+  {"id":"EP-D-002","name":"220kV 天河断路器","type":"断路器","region":"天河区","voltage":"220kV","status":"异常","lastCheck":"2026-07-07","checker":"王工","installDate":"2019-08-20","manufacturer":"西门子","capacity":"4000A","coolingType":"SF6"},
+  {"id":"EP-T-001","name":"天河-海珠 I 回","type":"输电线路","region":"天河区","voltage":"220kV","status":"正常运行","lastCheck":"2026-07-05","checker":"赵工","installDate":"2018-11-01","manufacturer":"中天科技","capacity":"800A","coolingType":"架空线路"},
+  {"id":"EP-T-002","name":"天河-黄埔 II 回","type":"输电线路","region":"黄埔区","voltage":"110kV","status":"停机","lastCheck":"2026-06-28","checker":"赵工","installDate":"2019-03-15","manufacturer":"中天科技","capacity":"600A","coolingType":"架空线路"},
+  {"id":"EP-P-001","name":"天河站 10kV 配电柜 A","type":"配电柜","region":"天河区","voltage":"10kV","status":"正常运行","lastCheck":"2026-07-10","checker":"孙工","installDate":"2021-03-01","manufacturer":"正泰电器","capacity":"2000A","coolingType":"风冷"},
+  {"id":"EP-P-002","name":"海珠站 10kV 配电柜 B","type":"配电柜","region":"海珠区","voltage":"10kV","status":"异常","lastCheck":"2026-07-06","checker":"孙工","installDate":"2021-06-15","manufacturer":"正泰电器","capacity":"2000A","coolingType":"风冷"},
+  {"id":"EP-S-001","name":"天河站 35kV 开关柜","type":"开关柜","region":"天河区","voltage":"35kV","status":"正常运行","lastCheck":"2026-07-09","checker":"陈工","installDate":"2020-09-01","manufacturer":"施耐德","capacity":"1250A","coolingType":"风冷"},
+  {"id":"EP-S-002","name":"黄埔站 35kV 开关柜","type":"开关柜","region":"黄埔区","voltage":"35kV","status":"维护中","lastCheck":"2026-07-04","checker":"陈工","installDate":"2020-12-10","manufacturer":"施耐德","capacity":"1250A","coolingType":"风冷"}
+]

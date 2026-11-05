@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph 7 种 DAG 模式对比</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #e1e4eb; --muted: #9ca3af;
+    --blue: #3b82f6; --green: #22c55e; --yellow: #f59e0b;
+    --purple: #a855f7; --red: #ef4444; --cyan: #06b6d4;
+    --radius: 12px;
+  }
+  [data-theme="light"] {
+    --bg: #f8f9fa; --card: #fff; --border: #e2e8f0;
+    --text: #2c3e50; --muted: #5a6c7d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    transition: background .3s, color .3s;
+  }
+
+  /* ─── Top bar ─── */
+  .topbar {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top:0; z-index:100;
+  }
+  .topbar h1 { font-size:1.15rem; font-weight:700; }
+  .topbar .subtitle { font-size:.78rem; color:var(--muted); margin-left:12px; }
+  .topbar .right { display:flex; align-items:center; gap:12px; }
+  .theme-btn {
+    background: var(--border); border:none; border-radius:20px;
+    padding:6px 14px; font-size:.78rem; cursor:pointer; color:var(--text);
+  }
+
+  /* ─── Layout ─── */
+  .container { max-width:1200px; margin:0 auto; padding:32px 24px; }
+
+  /* ─── Overview cards ─── */
+  .overview-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 40px;
+  }
+  .overview-card {
+    background: var(--card); border:1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; text-align:center;
+    cursor: pointer; transition: all .25s; position:relative; overflow:hidden;
+  }
+  .overview-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  .overview-card .num {
+    width: 32px; height: 32px; border-radius: 8px; display: inline-flex;
+    align-items: center; justify-content: center; font-size: .85rem; font-weight: 800;
+    color: #fff; margin-bottom: 8px;
+  }
+  .overview-card .name { font-weight:700; font-size:.9rem; margin-bottom:4px; }
+  .overview-card .eng { font-size:.72rem; color:var(--muted); }
+
+  /* ─── Section ─── */
+  .section { margin-bottom: 48px; scroll-margin-top: 80px; }
+  .section-header {
+    display:flex; align-items:center; gap:12px; margin-bottom:20px;
+    padding-bottom:10px; border-bottom:2px solid var(--border);
+  }
+  .section-header .num {
+    width: 36px; height: 36px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; color: #fff;
+  }
+  .section-header h2 { font-size:1.2rem; }
+  .section-header .api-tag {
+    font-size:.7rem; padding:2px 10px; border-radius:10px;
+    font-family: "Fira Code", monospace; background:#1e293b; color:#93c5fd;
+  }
+
+  /* ─── Diagram area ─── */
+  .diagram-wrap {
+    background: var(--card); border:1px solid var(--border);
+    border-radius: var(--radius); padding:20px; margin-bottom:16px;
+    overflow-x: auto;
+  }
+  .diagram-wrap svg { display:block; margin:0 auto; }
+  .diagram-wrap figcaption {
+    text-align:center; font-size:.78rem; color:var(--muted); margin-top:8px;
+  }
+
+  /* ─── Info grid ─── */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-bottom: 16px;
+  }
+  @media(max-width:768px) { .info-grid { grid-template-columns: 1fr; } }
+
+  .info-card {
+    background: var(--card); border:1px solid var(--border);
+    border-radius: 8px; padding: 14px 18px;
+  }
+  .info-card .label {
+    font-size:.68rem; font-weight:700; color:var(--muted);
+    text-transform: uppercase; letter-spacing:.4px; margin-bottom:6px;
+  }
+  .info-card .value { font-size:.82rem; line-height:1.6; }
+  .info-card pre {
+    background: var(--bg); padding:10px; border-radius:6px;
+    font-size:.75rem; overflow-x:auto; margin-top:6px;
+    font-family: "Fira Code", "Cascadia Code", monospace; color: #a5d6ff;
+  }
+
+  /* ─── Comparison table ─── */
+  .compare-table { width:100%; border-collapse:collapse; font-size:.82rem; margin:24px 0; }
+  .compare-table th, .compare-table td {
+    padding:10px 14px; text-align:left; border-bottom:1px solid var(--border);
+  }
+  .compare-table th {
+    background: var(--bg); font-weight:700; font-size:.72rem;
+    color: var(--muted); text-transform:uppercase; letter-spacing:.3px;
+    position: sticky; top: 60px;
+  }
+  .compare-table td:first-child { font-weight:700; white-space:nowrap; }
+  .compare-table tr:hover td { background: rgba(255,255,255,.02); }
+  .check { color:var(--green); font-weight:700; }
+  .cross { color:var(--red); }
+  .partial { color:var(--yellow); }
+
+  /* ─── animation nodes ─── */
+  @keyframes pulse-edge {
+    0%,100% { opacity: .4; }
+    50% { opacity: 1; }
+  }
+  @keyframes flow-dash {
+    to { stroke-dashoffset: -24; }
+  }
+  .edge-animated {
+    animation: pulse-edge 1.8s ease-in-out infinite;
+  }
+
+  /* ─── Footer ─── */
+  .footer {
+    text-align:center; margin-top:60px; padding-top:24px;
+    border-top:1px solid var(--border); font-size:.78rem; color:var(--muted);
+  }
+
+  /* ─── Code toggle ─── */
+  .code-toggle {
+    font-size:.75rem; color:var(--blue); cursor:pointer; margin-top:8px; display:inline-block;
+    user-select:none;
+  }
+  .code-block { display:none; margin-top:8px; }
+  .code-block.show { display:block; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;">
+    <h1>📐 LangGraph 7 种 DAG 模式</h1>
+    <span class="subtitle">图拓扑 · API 映射 · 适用场景 · 完整对比</span>
+  </div>
+  <div class="right">
+    <button class="theme-btn" onclick="toggleTheme()">☀️/🌙 切换</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══════ 总览卡片 ══════ -->
+  <div class="overview-grid" id="overview"></div>
+
+  <!-- ══════ 总对比表 ══════ -->
+  <div class="section" style="margin-bottom:32px;">
+    <div class="section-header">
+      <span class="num" style="background:#6b7280;">📊</span>
+      <h2>7 种模式一览对比</h2>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="compare-table">
+        <tr>
+          <th>模式</th><th>拓扑结构</th><th>核心 API</th><th>并行</th><th>循环</th><th>人工介入</th><th>复杂度</th><th>典型场景</th>
+        </tr>
+        <tr><td>1. 线性链</td><td>A→B→C</td><td><code>add_edge</code></td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td>⭐</td><td>多阶段处理流水线</td></tr>
+        <tr><td>2. 条件分支</td><td>A→{B或C}</td><td><code>add_conditional_edges</code></td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td>⭐⭐</td><td>质量门禁、分发路由</td></tr>
+        <tr><td>3. 并行扇出/入</td><td>A→{B₁∥B₂∥B₃}→C</td><td><code>Send</code> + <code>Annotated[list,add]</code></td><td class="check">✓ 全部</td><td class="cross">✗</td><td class="cross">✗</td><td>⭐⭐⭐</td><td>多维度审查、Map-Reduce</td></tr>
+        <tr><td>4. 循环重试</td><td>A⇄B（条件回指）</td><td><code>add_conditional_edges</code> + 回指边</td><td class="cross">✗</td><td class="check">✓ 有限</td><td class="cross">✗</td><td>⭐⭐</td><td>质量不达标重写</td></tr>
+        <tr><td>5. Supervisor</td><td>S⇄{W₁,W₂,W₃}</td><td><code>add_conditional_edges</code> + LLM 路由</td><td class="partial">⚠ 逐次</td><td class="check">✓ 动态</td><td class="cross">✗</td><td>⭐⭐⭐⭐</td><td>多专家协作调度</td></tr>
+        <tr><td>6. Human-in-Loop</td><td>A→⏸→B</td><td><code>checkpointer</code> + <code>interrupt_before</code></td><td class="cross">✗</td><td class="cross">✗</td><td class="check">✓ 核心</td><td>⭐⭐⭐</td><td>高风险审批、人工校验</td></tr>
+        <tr><td>7. 子图嵌套</td><td>[父]→[子DAG]→[父]</td><td><code>add_node(name, sub_app)</code></td><td class="check">✓ 子图内</td><td class="check">✓ 子图内</td><td class="check">✓ 子图内</td><td>⭐⭐⭐⭐</td><td>分层模块化 Agent</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════ 各模式详细图解 ══════ -->
+  <div id="patterns"></div>
+
+</div>
+
+<footer class="footer">
+  所有图结构基于 LangGraph 实现 · 脚本位于 4-基于图的Agent/1~7_*.py
+</footer>
+
+<script>
+// ====== 模式定义 ======
+const PATTERNS = [
+  {
+    id: 1, name: "线性链", eng: "Linear Chain",
+    color: "#3b82f6", api: "add_edge",
+    desc: "最简单的 DAG。每个节点完成后，无条件进入下一个节点。图退化为一条链。",
+    why: "不需要分支或并行的多阶段处理。如：文本生成流水线 plan → write → polish。",
+    code: `builder.add_edge("planner", "writer")
+builder.add_edge("writer", "polisher")
+builder.add_edge("polisher", END)`,
+    svg: `<svg viewBox="0 0 420 80" width="100%" height="80"><defs><marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3b82f6"/></marker></defs><rect x="10" y="20" width="60" height="40" rx="6" fill="#1e3a5f"/><text x="40" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">🚀开始</text><line x1="70" y1="40" x2="105" y2="40" stroke="#3b82f6" stroke-width="2" marker-end="url(#a1)" class="edge-animated"/><rect x="110" y="20" width="80" height="40" rx="6" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/><text x="150" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">📋 Planner</text><line x1="190" y1="40" x2="225" y2="40" stroke="#3b82f6" stroke-width="2" marker-end="url(#a1)" class="edge-animated"/><rect x="230" y="20" width="80" height="40" rx="6" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/><text x="270" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">✍️ Writer</text><line x1="310" y1="40" x2="335" y2="40" stroke="#3b82f6" stroke-width="2" marker-end="url(#a1)" class="edge-animated"/><rect x="340" y="20" width="60" height="40" rx="6" fill="#1e3a5f"/><text x="370" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">🏁结束</text></svg>`
+  },
+  {
+    id: 2, name: "条件分支", eng: "Conditional Branch",
+    color: "#f59e0b", api: "add_conditional_edges",
+    desc: "在节点后插入路由函数，根据 State 内容动态选择下一个节点。",
+    why: "需要根据中间结果做不同处理。如：质量检查 → good跳过润色 / poor进入润色。",
+    code: `builder.add_conditional_edges(
+    "quality_checker",
+    quality_router,
+    {"good": END, "need_polish": "polisher"}
+)`,
+    svg: `<svg viewBox="0 0 420 130" width="100%" height="130"><defs><marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f59e0b"/></marker></defs><rect x="10" y="45" width="80" height="40" rx="6" fill="#1e3a5f" stroke="#f59e0b" stroke-width="1.5"/><text x="50" y="70" text-anchor="middle" font-size="12" fill="#fcd34d">✍️ Writer</text><line x1="90" y1="65" x2="125" y2="65" stroke="#f59e0b" stroke-width="2" marker-end="url(#a2)" class="edge-animated"/><rect x="130" y="45" width="90" height="40" rx="6" fill="#312e1b" stroke="#f59e0b" stroke-width="1.5"/><text x="175" y="70" text-anchor="middle" font-size="12" fill="#fcd34d">🔍 质量检查</text><path d="M220 55 Q250 25 280 20" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#a2)"/><text x="242" y="22" font-size="10" fill="#22c55e" font-weight="700">good</text><rect x="285" y="5" width="70" height="35" rx="6" fill="#1d4d2d"/><text x="320" y="28" text-anchor="middle" font-size="11" fill="#86efac">🏁 END</text><path d="M220 75 Q250 105 280 110" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#a2)"/><text x="242" y="118" font-size="10" fill="#ef4444" font-weight="700">poor</text><rect x="285" y="95" width="80" height="35" rx="6" fill="#3b1219" stroke="#ef4444" stroke-width="1.5"/><text x="325" y="118" text-anchor="middle" font-size="11" fill="#fca5a5">✨ 润色</text></svg>`
+  },
+  {
+    id: 3, name: "并行扇出/入", eng: "Fan-out / Fan-in",
+    color: "#22c55e", api: "Send + Annotated Reducer",
+    desc: "一个节点分发多个并行分支，所有分支完成后汇聚到一个汇总节点。LangGraph Send API 动态创建分支。",
+    why: "多个互不依赖的子任务。如：代码审查同时检查安全性、性能、风格三个维度。",
+    code: `def continue_to_reviewers(state):
+    return [Send("reviewer", {"dim": d}) for d in dims]
+
+builder.add_conditional_edges("dispatcher", continue_to_reviewers)
+builder.add_edge("reviewer", "aggregator")`,
+    svg: `<svg viewBox="0 0 420 170" width="100%" height="170"><defs><marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#22c55e"/></marker></defs><rect x="10" y="65" width="70" height="40" rx="6" fill="#1d4d2d" stroke="#22c55e" stroke-width="1.5"/><text x="45" y="90" text-anchor="middle" font-size="12" fill="#86efac">📦 分发</text><path d="M80 75 Q110 40 145 20" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#a3)" class="edge-animated"/><text x="100" y="48" font-size="10" fill="#22c55e" font-weight="700">Fan-out</text><path d="M80 85 Q110 85 145 85" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#a3)" class="edge-animated"/><path d="M80 95 Q110 130 145 150" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#a3)" class="edge-animated"/><rect x="150" y="5" width="85" height="35" rx="6" fill="#1d4d2d" stroke="#22c55e" stroke-width="1.5"/><text x="192" y="28" text-anchor="middle" font-size="11" fill="#86efac">🔒 安全审查</text><rect x="150" y="68" width="85" height="35" rx="6" fill="#1d4d2d" stroke="#22c55e" stroke-width="1.5"/><text x="192" y="91" text-anchor="middle" font-size="11" fill="#86efac">⚡ 性能审查</text><rect x="150" y="130" width="85" height="35" rx="6" fill="#1d4d2d" stroke="#22c55e" stroke-width="1.5"/><text x="192" y="153" text-anchor="middle" font-size="11" fill="#86efac">🎨 风格审查</text><path d="M235 22 Q270 40 300 75" fill="none" stroke="#a855f7" stroke-width="2" marker-end="url(#a3)"/><path d="M235 85 Q270 85 300 85" fill="none" stroke="#a855f7" stroke-width="2" marker-end="url(#a3)"/><path d="M235 148 Q270 130 300 95" fill="none" stroke="#a855f7" stroke-width="2" marker-end="url(#a3)"/><text x="260" y="55" font-size="10" fill="#a855f7" font-weight="700">Fan-in</text><rect x="305" y="63" width="75" height="45" rx="6" fill="#3b1f6e" stroke="#a855f7" stroke-width="1.5"/><text x="342" y="90" text-anchor="middle" font-size="12" fill="#c4b5fd">📊 汇总</text></svg>`
+  },
+  {
+    id: 4, name: "循环/重试", eng: "Loop / Retry",
+    color: "#ef4444", api: "add_conditional_edges + 回指",
+    desc: "条件边的 route_map 指向已执行过的节点，形成有限循环。通过 recursion_limit 防止无限循环。",
+    why: "质量不达标时自动重试。如：草稿质量检查不合格 → 回到 writer 重写，最多 3 次。",
+    code: `builder.add_conditional_edges(
+    "checker", router,
+    {"good": "polisher", "retry": "writer"}  // ← 回指！
+)
+# retry 路由回到 writer，构成循环`,
+    svg: `<svg viewBox="0 0 420 120" width="100%" height="120"><defs><marker id="a4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ef4444"/></marker></defs><rect x="10" y="40" width="70" height="40" rx="6" fill="#3b1219" stroke="#ef4444" stroke-width="1.5"/><text x="45" y="65" text-anchor="middle" font-size="12" fill="#fca5a5">✍️ Writer</text><line x1="80" y1="60" x2="120" y2="60" stroke="#ef4444" stroke-width="2" marker-end="url(#a4)" class="edge-animated"/><rect x="125" y="40" width="85" height="40" rx="6" fill="#312e1b" stroke="#f59e0b" stroke-width="1.5"/><text x="167" y="65" text-anchor="middle" font-size="12" fill="#fcd34d">🔍 检查</text><path d="M210 50 Q240 25 280 25" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#a4)"/><text x="238" y="22" font-size="10" fill="#22c55e" font-weight="700">good</text><rect x="285" y="10" width="70" height="35" rx="6" fill="#1d4d2d"/><text x="320" y="33" text-anchor="middle" font-size="11" fill="#86efac">✨ 润色</text><path d="M125 55 Q100 25 80 25" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#a4)" class="edge-animated"/><text x="95" y="20" font-size="10" fill="#ef4444" font-weight="700">retry ↺</text></svg>`
+  },
+  {
+    id: 5, name: "Supervisor 路由", eng: "Supervisor / Orchestrator",
+    color: "#a855f7", api: "LLM 路由 + Worker 循环",
+    desc: "一个 Supervisor 节点（LLM 驱动）分析任务状态，决定下一步调用哪个 Worker。Worker 完成后回到 Supervisor 继续决策。",
+    why: "任务类型多样，需要中心化智能决策。如：项目审查中动态决定先查代码还是先查文档。",
+    code: `# Supervisor → 各 Worker 或 FINISH
+builder.add_conditional_edges(
+    "supervisor", router,
+    {"code": "code_reviewer", "doc": "doc_reviewer", "FINISH": END}
+)
+# 每个 Worker → 回到 Supervisor
+builder.add_edge("code_reviewer", "supervisor")`,
+    svg: `<svg viewBox="0 0 420 170" width="100%" height="170"><defs><marker id="a5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#a855f7"/></marker></defs><rect x="160" y="65" width="100" height="45" rx="10" fill="#3b1f6e" stroke="#a855f7" stroke-width="2"/><text x="210" y="93" text-anchor="middle" font-size="13" font-weight="700" fill="#c4b5fd">👑 Supervisor</text><path d="M160 75 Q110 45 65 20" fill="none" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a5)" class="edge-animated"/><rect x="5" y="5" width="80" height="35" rx="6" fill="#1e3a5f"/><text x="45" y="28" text-anchor="middle" font-size="11" fill="#93c5fd">🔒 Code审查</text><path d="M45 40 Q45 65 155 80" fill="none" stroke="#a855f7" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a5)"/><path d="M160 88 Q110 88 65 88" fill="none" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a5)" class="edge-animated"/><rect x="5" y="72" width="80" height="35" rx="6" fill="#1e3a5f"/><text x="45" y="95" text-anchor="middle" font-size="11" fill="#93c5fd">📄 文档审查</text><path d="M45 107 Q45 88 155 88" fill="none" stroke="#a855f7" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a5)"/><path d="M160 100 Q110 130 65 150" fill="none" stroke="#a855f7" stroke-width="1.5" marker-end="url(#a5)" class="edge-animated"/><rect x="5" y="138" width="80" height="35" rx="6" fill="#1e3a5f"/><text x="45" y="161" text-anchor="middle" font-size="11" fill="#93c5fd">🧪 测试审查</text><path d="M45 158 Q45 108 155 100" fill="none" stroke="#a855f7" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a5)"/><path d="M260 88 Q310 88 340 88" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#a5)"/><text x="300" y="80" font-size="10" fill="#22c55e" font-weight="700">FINISH</text><rect x="345" y="72" width="55" height="35" rx="6" fill="#1d4d2d"/><text x="372" y="95" text-anchor="middle" font-size="11" fill="#86efac">🏁 END</text></svg>`
+  },
+  {
+    id: 6, name: "人工介入", eng: "Human-in-the-Loop",
+    color: "#ec4899", api: "checkpointer + interrupt_before",
+    desc: "通过 Checkpoint 保存状态，在指定节点前暂停执行，等待人工输入后恢复。状态历史可回溯。",
+    why: "高风险决策需要人工审核。如：代码审查发现严重安全漏洞 → 暂停，等待人工确认。",
+    code: `checkpointer = MemorySaver()
+app = builder.compile(
+    checkpointer=checkpointer,
+    interrupt_before=["human_review"]  // 暂停点
+)
+result = app.invoke(state, config)     // 暂停
+app.invoke(Command(resume={...}), config) // 恢复`,
+    svg: `<svg viewBox="0 0 420 80" width="100%" height="80"><defs><marker id="a6" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ec4899"/></marker></defs><rect x="10" y="20" width="70" height="40" rx="6" fill="#1e3a5f"/><text x="45" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">✍️ Writer</text><line x1="80" y1="40" x2="115" y2="40" stroke="#ec4899" stroke-width="2" marker-end="url(#a6)" class="edge-animated"/><rect x="120" y="5" width="22" height="70" rx="11" fill="#3b1219" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,2"/><text x="131" y="50" text-anchor="middle" font-size="9" fill="#f9a8d4">⏸</text><line x1="142" y1="40" x2="180" y2="40" stroke="#ec4899" stroke-width="2" marker-end="url(#a6)" class="edge-animated"/><rect x="185" y="20" width="90" height="40" rx="6" fill="#5c1a3a" stroke="#ec4899" stroke-width="1.5"/><text x="230" y="45" text-anchor="middle" font-size="12" fill="#f9a8d4">👤 人工审核</text><line x1="275" y1="40" x2="310" y2="40" stroke="#ec4899" stroke-width="2" marker-end="url(#a6)"/><rect x="315" y="20" width="55" height="40" rx="6" fill="#1e3a5f"/><text x="342" y="45" text-anchor="middle" font-size="12" fill="#93c5fd">🏁 END</text><text x="260" y="80" text-anchor="middle" font-size="10" fill="#f9a8d4">interrupt_before 在此暂停</text></svg>`
+  },
+  {
+    id: 7, name: "子图嵌套", eng: "Subgraph Nesting",
+    color: "#06b6d4", api: "add_node(name, sub_app)",
+    desc: "将已编译的子 DAG 作为父图的一个节点。子图内部有自己的拓扑、状态空间，对父图是黑盒。",
+    why: "复杂 Agent 的分层设计。如：父图编排"内容生成流水线"和"分析流水线"两个子图。",
+    code: `sub_app_a = sub_a.compile()  // 子图A
+sub_app_b = sub_b.compile()  // 子图B
+
+parent.add_node("pipeline_a", sub_app_a)  // 嵌入
+parent.add_node("pipeline_b", sub_app_b)
+parent.add_edge("pipeline_a", "pipeline_b")`,
+    svg: `<svg viewBox="0 0 420 140" width="100%" height="140"><defs><marker id="a7" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#06b6d4"/></marker></defs><rect x="5" y="5" width="410" height="130" rx="10" fill="none" stroke="#374151" stroke-width="1" stroke-dasharray="5,3"/><text x="15" y="22" font-size="10" fill="#6b7280" font-family="monospace">父图 ParentGraph</text><rect x="10" y="40" width="70" height="40" rx="6" fill="#1e3a5f"/><text x="45" y="65" text-anchor="middle" font-size="12" fill="#93c5fd">🏠 入口</text><line x1="80" y1="60" x2="120" y2="60" stroke="#06b6d4" stroke-width="2" marker-end="url(#a7)" class="edge-animated"/><rect x="125" y="30" width="120" height="60" rx="8" fill="#164e63" stroke="#06b6d4" stroke-width="2"/><text x="185" y="50" text-anchor="middle" font-size="11" fill="#67e8f9" font-weight="700">📦 子图A</text><text x="185" y="68" text-anchor="middle" font-size="9" fill="#67e8f9">plan→write→polish</text><text x="185" y="82" text-anchor="middle" font-size="8" fill="#a5f3fc">(3节点流水线)</text><line x1="245" y1="60" x2="285" y2="60" stroke="#06b6d4" stroke-width="2" marker-end="url(#a7)" class="edge-animated"/><rect x="290" y="30" width="120" height="60" rx="8" fill="#164e63" stroke="#06b6d4" stroke-width="2"/><text x="350" y="50" text-anchor="middle" font-size="11" fill="#67e8f9" font-weight="700">📊 子图B</text><text x="350" y="68" text-anchor="middle" font-size="9" fill="#67e8f9">analyze→evaluate</text><text x="350" y="82" text-anchor="middle" font-size="8" fill="#a5f3fc">(2节点流水线)</text></svg>`
+  }
+];
+
+// ====== 渲染总览卡片 ======
+const overview = document.getElementById('overview');
+PATTERNS.forEach(p => {
+  overview.innerHTML += `
+    <div class="overview-card" onclick="document.getElementById('p${p.id}').scrollIntoView({behavior:'smooth'})">
+      <div class="num" style="background:${p.color}">${p.id}</div>
+      <div class="name">${p.name}</div>
+      <div class="eng">${p.eng}</div>
+    </div>`;
+});
+
+// ====== 渲染详细图解 ======
+const patternsDiv = document.getElementById('patterns');
+PATTERNS.forEach(p => {
+  patternsDiv.innerHTML += `
+    <div class="section" id="p${p.id}">
+      <div class="section-header">
+        <span class="num" style="background:${p.color}">${p.id}</span>
+        <h2>${p.name}</h2>
+        <span class="api-tag">${p.api}</span>
+        <span style="font-size:.8rem;color:var(--muted);">${p.eng}</span>
+      </div>
+
+      <div class="diagram-wrap">
+        ${p.svg}
+        <figcaption>图${p.id}：${p.name} 的 DAG 拓扑结构 — 箭头方向 = 状态流转方向</figcaption>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="label">💡 原理</div>
+          <div class="value">${p.desc}</div>
+        </div>
+        <div class="info-card">
+          <div class="label">🎯 何时使用</div>
+          <div class="value">${p.why}</div>
+        </div>
+        <div class="info-card" style="grid-column:1/-1">
+          <div class="label">📝 核心代码 <span class="code-toggle" onclick="toggleCode(this)">展开 ▸</span></div>
+          <div class="code-block"><pre>${escapeHtml(p.code)}</pre></div>
+        </div>
+      </div>
+    </div>`;
+});
+
+// ====== Helpers ======
+function toggleCode(el) {
+  const block = el.parentElement.parentElement.querySelector('.code-block');
+  block.classList.toggle('show');
+  el.textContent = block.classList.contains('show') ? '收起 ▾' : '展开 ▸';
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+</script>
+</body>
+</html>

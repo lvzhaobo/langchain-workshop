@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph 图编排 — 逐步骤讲解</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #e1e4eb; --muted: #9ca3af;
+    --blue: #3b82f6; --green: #22c55e; --yellow: #f59e0b;
+    --purple: #a855f7; --red: #ef4444;
+    --radius: 10px;
+  }
+  [data-theme="light"] {
+    --bg: #f8f9fa; --card: #fff; --border: #e2e8f0;
+    --text: #2c3e50; --muted: #5a6c7d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    transition: background .3s, color .3s;
+  }
+
+  /* ─── 顶部栏 ─── */
+  .topbar {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar h1 { font-size: 1.1rem; font-weight: 700; }
+  .mode-badge {
+    font-size: .75rem; padding: 4px 12px; border-radius: 20px; font-weight: 600;
+  }
+  .mode-bailian { background: #1d4ed8; color: #93c5fd; }
+  .mode-mock { background: #713f12; color: #fde68a; }
+
+  /* ─── 主布局 ─── */
+  .layout { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ─── 输入区 ─── */
+  .input-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 24px;
+  }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1; padding: 11px 15px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: .95rem; outline: none;
+  }
+  .input-row input:focus { border-color: var(--blue); }
+  .btn {
+    padding: 11px 22px; border: none; border-radius: 8px;
+    font-size: .95rem; font-weight: 700; cursor: pointer; transition: .2s;
+  }
+  .btn-go { background: var(--blue); color: #fff; }
+  .btn-go:hover { background: #2563eb; }
+  .btn-go:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+  /* ─── DAG 图区 ─── */
+  .dag-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px 16px 16px; margin-bottom: 24px;
+  }
+  .dag-section .title {
+    font-size: .8rem; color: var(--muted); margin-bottom: 8px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .dag-svg-wrap { overflow-x: auto; }
+  .dag-svg-wrap svg { display: block; margin: 0 auto; }
+
+  /* ─── 步骤卡片 ─── */
+  .step-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+  .step-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    opacity: .3; transform: translateY(8px);
+    transition: all .5s ease;
+  }
+  .step-card.revealed { opacity: 1; transform: translateY(0); }
+  .step-card.active { border-color: var(--green); box-shadow: 0 0 20px rgba(34,197,94,.15); }
+  .step-card.done { border-color: var(--blue); }
+
+  .step-card .header {
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .step-card .header:hover { background: rgba(255,255,255,.02); }
+  .step-num {
+    width: 34px; height: 34px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: .85rem; font-weight: 800;
+    color: #fff; flex-shrink: 0;
+  }
+  .step-meta .name { font-weight: 700; font-size: .95rem; }
+  .step-meta .desc { font-size: .78rem; color: var(--muted); }
+  .step-status {
+    margin-left: auto; font-size: .75rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 12px;
+  }
+  .status-waiting { background: #1f2937; color: #6b7280; }
+  .status-running { background: #1d4d2d; color: #86efac; animation: pulse-text 1s infinite; }
+  .status-done { background: #1e3a5f; color: #93c5fd; }
+  @keyframes pulse-text { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .step-card .body { padding: 0; display: none; }
+  .step-card .body.open { display: block; }
+
+  .step-card .body .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  }
+  @media(max-width:700px) { .info-grid { grid-template-columns: 1fr; } }
+
+  .info-block {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .info-block:nth-child(even) { border-right: none; }
+  .info-block .label {
+    font-size: .7rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px;
+  }
+  .info-block .value { font-size: .85rem; line-height: 1.6; }
+
+  .edge-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #1e293b; border: 1px solid #334155;
+    padding: 6px 12px; border-radius: 6px; font-size: .82rem;
+    font-family: "Fira Code", monospace;
+  }
+  .edge-badge .arrow { color: var(--yellow); font-weight: 700; }
+  .edge-badge .tag {
+    font-size: .68rem; padding: 1px 7px; border-radius: 10px;
+    background: #312e1b; color: #fbbf24;
+  }
+
+  .output-block {
+    padding: 16px 20px; border-top: 1px solid var(--border);
+  }
+  .output-block .label { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .output-block .content {
+    font-size: .85rem; line-height: 1.7; color: #d1d5db;
+    white-space: pre-wrap; max-height: 260px; overflow-y: auto;
+    background: var(--bg); padding: 14px; border-radius: 6px;
+  }
+
+  /* ─── API 调用追踪卡 ─── */
+  .api-trace {
+    padding: 16px 20px; border-top: 1px solid var(--border);
+    background: #0d1117;
+  }
+  .api-trace .label {
+    font-size: .7rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px;
+  }
+  .api-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .api-item {
+    background: #161b22; border: 1px solid #21262d;
+    border-radius: 6px; padding: 8px 12px;
+  }
+  .api-item .k {
+    font-size: .68rem; color: #8b949e; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .3px; margin-bottom: 2px;
+  }
+  .api-item .v {
+    font-size: .8rem; color: #e6edf3;
+    font-family: "Fira Code", "Cascadia Code", monospace;
+    word-break: break-all;
+  }
+  .api-item .v.timestamp { color: #7ee787; }
+  .api-item .v.model-name { color: #79c0ff; }
+  .api-item .v.token-count { color: #d2a8ff; }
+  .api-item .v.latency { color: #f0883e; }
+  .api-item .v.url { color: #a5d6ff; font-size: .7rem; }
+  .api-item .v.mock-badge { color: #d2991d; }
+
+  /* ─── 最终结果 ─── */
+  .final-card {
+    background: linear-gradient(135deg, #1a1d27 0%, #1e2233 100%);
+    border: 2px solid var(--purple); border-radius: var(--radius);
+    padding: 24px; margin-top: 24px; display: none;
+  }
+  .final-card.show { display: block; animation: slideUp .5s ease; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .final-card h3 { color: var(--purple); font-size: 1rem; margin-bottom: 12px; }
+  .final-card .meta { font-size: .78rem; color: var(--muted); margin-bottom: 12px; }
+  .final-card .content { font-size: .9rem; line-height: 1.8; white-space: pre-wrap; }
+
+  /* ─── 底部复盘 ─── */
+  .recap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-top: 24px; display: none;
+  }
+  .recap.show { display: block; }
+  .recap h3 { font-size: .95rem; margin-bottom: 10px; }
+  .recap pre {
+    background: var(--bg); padding: 14px; border-radius: 6px;
+    font-size: .8rem; line-height: 1.7; overflow-x: auto;
+    font-family: "Fira Code", monospace; color: var(--muted);
+  }
+
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--border);
+    border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚡ LangGraph 图编排 — 逐步骤 DAG 讲解</h1>
+  <span id="modeBadge" class="mode-badge mode-mock">加载中...</span>
+</div>
+
+<div class="layout">
+
+  <!-- ══════ 输入区 ══════ -->
+  <div class="input-box">
+    <div class="input-row">
+      <input id="topicInput" value="AI Agent 如何改变软件开发的未来"
+             placeholder="输入写作主题..." onkeydown="if(event.key==='Enter')run()">
+      <button class="btn btn-go" id="runBtn" onclick="run()">▶ 执行图并讲解</button>
+    </div>
+  </div>
+
+  <!-- ══════ DAG 图 ══════ -->
+  <div class="dag-section">
+    <div class="title">📐 DAG 拓扑图 — 实时执行追踪</div>
+    <div class="dag-svg-wrap">
+      <svg id="dagSvg" viewBox="0 0 760 100" width="100%" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#4b5563"/>
+          </marker>
+          <marker id="arr-active" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#22c55e"/>
+          </marker>
+          <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- 节点 -->
+        <rect id="svg-start"  x="15" y="27" width="70" height="46" rx="8" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+        <text x="50" y="56" text-anchor="middle" font-size="13" fill="#9ca3af">🚀 开始</text>
+        <line id="edge-1" x1="85" y1="50" x2="140" y2="50" stroke="#4b5563" stroke-width="2" marker-end="url(#arr)"/>
+        <rect id="svg-planner" x="145" y="27" width="115" height="46" rx="8" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+        <text x="202" y="56" text-anchor="middle" font-size="13" fill="#9ca3af">📋 计划节点</text>
+        <line id="edge-2" x1="260" y1="50" x2="315" y2="50" stroke="#4b5563" stroke-width="2" marker-end="url(#arr)"/>
+        <rect id="svg-writer" x="320" y="27" width="115" height="46" rx="8" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+        <text x="377" y="56" text-anchor="middle" font-size="13" fill="#9ca3af">✍️ 写作节点</text>
+        <line id="edge-3" x1="435" y1="50" x2="490" y2="50" stroke="#4b5563" stroke-width="2" marker-end="url(#arr)"/>
+        <rect id="svg-polisher" x="495" y="27" width="115" height="46" rx="8" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+        <text x="552" y="56" text-anchor="middle" font-size="13" fill="#9ca3af">✨ 润色节点</text>
+        <line id="edge-4" x1="610" y1="50" x2="665" y2="50" stroke="#4b5563" stroke-width="2" marker-end="url(#arr)"/>
+        <rect id="svg-end" x="670" y="27" width="70" height="46" rx="8" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+        <text x="705" y="56" text-anchor="middle" font-size="13" fill="#9ca3af">🏁 结束</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ══════ 步骤卡片 ══════ -->
+  <div class="step-list" id="stepList">
+    <!-- Step 1: 计划 -->
+    <div class="step-card" id="card-planner">
+      <div class="header" onclick="this.parentElement.querySelector('.body').classList.toggle('open')">
+        <div class="step-num" style="background:#3b82f6;">1</div>
+        <div class="step-meta">
+          <div class="name">📋 计划节点</div>
+          <div class="desc">根据主题生成写作大纲</div>
+        </div>
+        <span class="step-status status-waiting" id="status-planner">等待上游</span>
+      </div>
+      <div class="body">
+        <div class="info-grid">
+          <div class="info-block">
+            <div class="label">🔗 触发边</div>
+            <div class="value" id="edge-planner">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">❓ 为什么此时执行</div>
+            <div class="value" id="why-planner">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📥 输入 State 字段</div>
+            <div class="value" id="stateIn-planner">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📤 输出 State 字段</div>
+            <div class="value" id="stateOut-planner">—</div>
+          </div>
+        </div>
+        <div class="output-block">
+          <div class="label">📝 节点输出</div>
+          <div class="content" id="output-planner">等待执行...</div>
+        </div>
+        <div class="api-trace" id="trace-planner" style="display:none;">
+          <div class="label">🔬 API 调用详情</div>
+          <div class="api-grid" id="traceGrid-planner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: 写作 -->
+    <div class="step-card" id="card-writer">
+      <div class="header" onclick="this.parentElement.querySelector('.body').classList.toggle('open')">
+        <div class="step-num" style="background:#10b981;">2</div>
+        <div class="step-meta">
+          <div class="name">✍️ 写作节点</div>
+          <div class="desc">根据大纲撰写正文</div>
+        </div>
+        <span class="step-status status-waiting" id="status-writer">等待上游</span>
+      </div>
+      <div class="body">
+        <div class="info-grid">
+          <div class="info-block">
+            <div class="label">🔗 触发边</div>
+            <div class="value" id="edge-writer">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">❓ 为什么此时执行</div>
+            <div class="value" id="why-writer">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📥 输入 State 字段</div>
+            <div class="value" id="stateIn-writer">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📤 输出 State 字段</div>
+            <div class="value" id="stateOut-writer">—</div>
+          </div>
+        </div>
+        <div class="output-block">
+          <div class="label">📝 节点输出</div>
+          <div class="content" id="output-writer">等待执行...</div>
+        </div>
+        <div class="api-trace" id="trace-writer" style="display:none;">
+          <div class="label">🔬 API 调用详情</div>
+          <div class="api-grid" id="traceGrid-writer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: 润色 -->
+    <div class="step-card" id="card-polisher">
+      <div class="header" onclick="this.parentElement.querySelector('.body').classList.toggle('open')">
+        <div class="step-num" style="background:#f59e0b;">3</div>
+        <div class="step-meta">
+          <div class="name">✨ 润色节点</div>
+          <div class="desc">润色正文，修正语法与用词</div>
+        </div>
+        <span class="step-status status-waiting" id="status-polisher">等待上游</span>
+      </div>
+      <div class="body">
+        <div class="info-grid">
+          <div class="info-block">
+            <div class="label">🔗 触发边</div>
+            <div class="value" id="edge-polisher">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">❓ 为什么此时执行</div>
+            <div class="value" id="why-polisher">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📥 输入 State 字段</div>
+            <div class="value" id="stateIn-polisher">—</div>
+          </div>
+          <div class="info-block">
+            <div class="label">📤 输出 State 字段</div>
+            <div class="value" id="stateOut-polisher">—</div>
+          </div>
+        </div>
+        <div class="output-block">
+          <div class="label">📝 节点输出</div>
+          <div class="content" id="output-polisher">等待执行...</div>
+        </div>
+        <div class="api-trace" id="trace-polisher" style="display:none;">
+          <div class="label">🔬 API 调用详情</div>
+          <div class="api-grid" id="traceGrid-polisher"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 最终结果 ══════ -->
+  <div class="final-card" id="finalCard">
+    <h3>✨ 最终润色稿</h3>
+    <div class="meta" id="finalMeta"></div>
+    <div class="content" id="finalContent"></div>
+  </div>
+
+  <!-- ══════ 复盘：DAG 全貌 ══════ -->
+  <div class="recap" id="recap">
+    <h3>🔍 DAG 执行复盘</h3>
+    <pre id="recapCode"></pre>
+  </div>
+
+</div>
+
+<script>
+// ====== 页面初始化 ======
+fetch('/api/graph-info')
+  .then(r => r.json())
+  .then(d => {
+    const badge = document.getElementById('modeBadge');
+    badge.textContent = d.mode === 'bailian' ? '🟢 百炼 Qwen-Plus'
+                      : d.mode === 'openai'  ? '🟢 OpenAI'
+                      : '🟡 Mock 模式';
+    badge.className = `mode-badge mode-${d.mode}`;
+  });
+
+// ====== 节点颜色映射 ======
+const NODE_COLORS = { planner: '#3b82f6', writer: '#10b981', polisher: '#f59e0b' };
+const NODE_ICONS  = { planner: '📋', writer: '✍️', polisher: '✨' };
+
+const EDGE_IDS = {
+  'planner':  'edge-1',   // __start__ → planner
+  'writer':   'edge-2',   // planner → writer
+  'polisher': 'edge-3',   // writer → polisher
+};
+
+const SVG_NODES = {
+  'planner':  'svg-planner',
+  'writer':   'svg-writer',
+  'polisher': 'svg-polisher',
+  '__start__': 'svg-start',
+  '__end__':  'svg-end',
+};
+
+// ====== SVG 高亮工具函数 ======
+function resetSvg() {
+  document.querySelectorAll('#dagSvg rect').forEach(r => {
+    r.setAttribute('fill', '#1a1d27');
+    r.setAttribute('stroke', '#2a2d3a');
+    r.removeAttribute('filter');
+  });
+  document.querySelectorAll('#dagSvg line').forEach(l => {
+    l.setAttribute('stroke', '#4b5563');
+    l.setAttribute('marker-end', 'url(#arr)');
+  });
+}
+
+function highlightNode(nodeId) {
+  const rect = document.getElementById(SVG_NODES[nodeId]);
+  if (!rect) return;
+  const color = NODE_COLORS[nodeId] || '#3b82f6';
+  rect.setAttribute('stroke', color);
+  rect.setAttribute('fill', color + '22');
+  rect.setAttribute('filter', 'url(#glow)');
+}
+
+function highlightEdge(nodeId) {
+  const edgeId = EDGE_IDS[nodeId];
+  if (!edgeId) return;
+  const line = document.getElementById(edgeId);
+  if (!line) return;
+  line.setAttribute('stroke', '#22c55e');
+  line.setAttribute('marker-end', 'url(#arr-active)');
+  line.setAttribute('stroke-width', '2.5');
+}
+
+// ====== 渲染 API 调用追踪 ======
+function renderApiTrace(nodeId, trace) {
+  if (!trace || Object.keys(trace).length === 0) return;
+  const traceDiv = document.getElementById(`trace-${nodeId}`);
+  const gridDiv = document.getElementById(`traceGrid-${nodeId}`);
+  if (!traceDiv || !gridDiv) return;
+
+  traceDiv.style.display = 'block';
+
+  const items = [];
+  const add = (key, value, cls) => {
+    if (value === null || value === undefined || value === '') return;
+    items.push({key, value: String(value), cls: cls || ''});
+  };
+
+  add('⏰ 请求时间', trace.timestamp, 'timestamp');
+  add('📡 API 端点', trace.base_url, 'url');
+  add('🤖 模型', trace.model, 'model-name');
+  add('📤 Prompt 长度', trace.prompt_length + ' 字符');
+
+  if (trace.token_usage) {
+    const u = trace.token_usage;
+    add('🔢 输入 Token', u.prompt_tokens, 'token-count');
+    add('🔢 输出 Token', u.completion_tokens, 'token-count');
+    add('🔢 总 Token', u.total_tokens, 'token-count');
+  }
+
+  add('⏱️ API 延迟', trace.latency_ms + ' ms', 'latency');
+
+  if (trace.request_id) {
+    add('🆔 Request ID', trace.request_id, 'url');
+  }
+
+  if (trace.is_mock) {
+    add('⚠️ 模式', 'Mock 模拟（无真实 API 调用）', 'mock-badge');
+  }
+
+  gridDiv.innerHTML = items.map(i =>
+    `<div class="api-item"><div class="k">${i.key}</div><div class="v ${i.cls}">${escapeHtml(i.value)}</div></div>`
+  ).join('');
+}
+
+// Update LLM info badge at page load
+fetch('/api/llm-info')
+  .then(r => r.json())
+  .then(d => {
+    const badge = document.getElementById('modeBadge');
+    if (d.mode === 'bailian') {
+      badge.innerHTML = `🟢 ${d.provider} · ${d.model} · <span style="font-size:.7rem;opacity:.7">${d.base_url}</span>`;
+    } else if (d.mode === 'mock') {
+      badge.innerHTML = '🟡 Mock 模式（无 API Key）';
+    } else {
+      badge.innerHTML = `🟢 ${d.provider} · ${d.model}`;
+    }
+    badge.className = `mode-badge mode-${d.mode}`;
+  });
+
+function markNodeDone(nodeId) {
+  const rect = document.getElementById(SVG_NODES[nodeId]);
+  if (!rect) return;
+  const color = NODE_COLORS[nodeId] || '#3b82f6';
+  rect.setAttribute('stroke', color);
+  rect.setAttribute('fill', color + '18');
+  rect.removeAttribute('filter');
+}
+
+// ====== 主流程 ======
+async function run() {
+  const topic = document.getElementById('topicInput').value.trim();
+  if (!topic) return;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 执行中...';
+
+  // 重置 UI
+  resetSvg();
+  document.getElementById('finalCard').classList.remove('show');
+  document.getElementById('recap').classList.remove('show');
+  ['planner','writer','polisher'].forEach(id => {
+    const card = document.getElementById(`card-${id}`);
+    card.classList.remove('active','done','revealed');
+    document.getElementById(`status-${id}`).textContent = '等待上游';
+    document.getElementById(`status-${id}`).className = 'step-status status-waiting';
+    document.getElementById(`output-${id}`).textContent = '等待执行...';
+    document.getElementById(`edge-${id}`).innerHTML = '—';
+    document.getElementById(`why-${id}`).textContent = '—';
+    document.getElementById(`stateIn-${id}`).textContent = '—';
+    document.getElementById(`stateOut-${id}`).textContent = '—';
+    card.querySelector('.body').classList.remove('open');
+  });
+
+  try {
+    const resp = await fetch('/api/generate-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6));
+            handleEvent(event);
+          } catch(e) {}
+        }
+      }
+    }
+  } catch(err) {
+    alert('连接失败: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '▶ 执行图并讲解';
+  }
+}
+
+function handleEvent(event) {
+  switch(event.type) {
+    case 'init':
+      // 显示模式
+      const badge = document.getElementById('modeBadge');
+      badge.textContent = event.mode === 'bailian' ? '🟢 百炼 Qwen-Plus'
+                        : event.mode === 'openai'  ? '🟢 OpenAI'
+                        : '🟡 Mock 模式';
+      badge.className = `mode-badge mode-${event.mode}`;
+      break;
+
+    case 'node_start': {
+      const n = event.node;
+      const card = document.getElementById(`card-${n.id}`);
+      if (!card) return;
+
+      card.classList.add('revealed', 'active');
+      card.querySelector('.body').classList.add('open');
+
+      const status = document.getElementById(`status-${n.id}`);
+      status.textContent = '⚡ 执行中...';
+      status.className = 'step-status status-running';
+
+      // SVG 高亮
+      highlightNode(n.id);
+      highlightEdge(n.id);
+
+      // 填充触发边信息
+      if (event.edge) {
+        const edgeHtml = `
+          <div class="edge-badge">
+            <span class="tag">${event.edge.type}</span>
+            <span>${event.edge.from_label}</span>
+            <span class="arrow">→</span>
+            <span><strong>${n.name}</strong></span>
+          </div>
+          <div style="margin-top:8px;font-size:.8rem;color:var(--muted);">${event.edge.explanation}</div>
+        `;
+        document.getElementById(`edge-${n.id}`).innerHTML = edgeHtml;
+      }
+      break;
+    }
+
+    case 'node_done': {
+      const n = event.node;
+      const card = document.getElementById(`card-${n.id}`);
+      if (!card) return;
+
+      card.classList.remove('active'); card.classList.add('done');
+      markNodeDone(n.id);
+
+      const status = document.getElementById(`status-${n.id}`);
+      status.textContent = `✅ 完成 (${n.elapsed_ms}ms)`;
+      status.className = 'step-status status-done';
+
+      // 填充解释
+      document.getElementById(`why-${n.id}`).textContent = n.why_now || '';
+      document.getElementById(`stateIn-${n.id}`).textContent = (n.state_in || []).join(', ') || '(空)';
+      document.getElementById(`stateOut-${n.id}`).textContent = (n.state_out || []).join(', ') || '(空)';
+      document.getElementById(`output-${n.id}`).textContent = n.output || '(无输出)';
+
+      // 渲染 API 调用追踪详情
+      if (n.api_trace) {
+        renderApiTrace(n.id, n.api_trace);
+      }
+
+      // 若还未填充触发边（node_start 没发 edge），补填
+      if (n.incoming_edge) {
+        const edgeEl = document.getElementById(`edge-${n.id}`);
+        if (edgeEl && edgeEl.innerHTML === '—') {
+          edgeEl.innerHTML = `
+            <div class="edge-badge">
+              <span class="tag">${n.incoming_edge.type}</span>
+              <span>${n.incoming_edge.from_label}</span>
+              <span class="arrow">→</span>
+              <span><strong>${n.name}</strong></span>
+            </div>
+            <div style="margin-top:8px;font-size:.8rem;color:var(--muted);">${n.incoming_edge.explanation}</div>
+          `;
+        }
+      }
+      break;
+    }
+
+    case 'done': {
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').innerHTML = '▶ 执行图并讲解';
+
+      // 最终结果
+      const fc = document.getElementById('finalCard');
+      fc.classList.add('show');
+      document.getElementById('finalMeta').textContent =
+        `总耗时 ${event.total_elapsed_ms}ms · 共 ${event.total_steps || 3} 个节点`;
+      document.getElementById('finalContent').textContent = event.final || '';
+
+      // 复盘
+      const recap = document.getElementById('recap');
+      recap.classList.add('show');
+      document.getElementById('recapCode').textContent =
+`# 这个 DAG 的完整代码（来自 simple_graph.py）:
+builder = StateGraph(ArticleState)
+builder.add_node("planner", planner_node)
+builder.add_node("writer", writer_node)
+builder.add_node("polisher", polisher_node)
+
+builder.set_entry_point("planner")          # 入口边
+builder.add_edge("planner", "writer")       # 边1: 直接边
+builder.add_edge("writer", "polisher")      # 边2: 直接边
+builder.add_edge("polisher", END)           # 边3: 结束边
+
+app = builder.compile()
+result = app.invoke({"topic": "..."})
+
+# 5 行代码定义 4 条边。
+# LangGraph 自动处理拓扑排序、状态传递、执行顺序。`;
+      break;
+    }
+
+    case 'error':
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').innerHTML = '▶ 执行图并讲解';
+      alert('执行出错: ' + event.error);
+      break;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain 全家桶 CheatSheet — 打印版</title>
+<style>
+  @media print {
+    body { font-size: 10px; }
+    .page-break { page-break-before: always; }
+    pre { font-size: 8px; white-space: pre-wrap; }
+    table { font-size: 9px; }
+    h2 { font-size: 14px; }
+    h3 { font-size: 12px; }
+    .no-print { display: none; }
+  }
+  :root {
+    --bg: #fff; --text: #1a1a2e; --text2: #4b5563; --border: #e5e7eb;
+    --primary: #2563eb; --code-bg: #f8fafc;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+    max-width: 960px; margin: 0 auto; padding: 24px 32px;
+  }
+  h1 { font-size: 24px; border-bottom: 3px solid var(--primary); padding-bottom: 8px; margin-bottom: 4px; }
+  h1 span { font-weight: 400; color: var(--text2); font-size: 14px; }
+  h2 { font-size: 18px; margin: 28px 0 12px; padding: 6px 0; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 14px; margin: 16px 0 8px; color: var(--primary); }
+  p { margin: 8px 0; font-size: 13px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 16px; font-size: 11px; overflow-x: auto; line-height: 1.5;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+  code { font-family: "SF Mono", "Fira Code", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--code-bg); font-weight: 600; color: var(--text2); font-size: 11px; }
+  ul, ol { margin: 8px 0; padding-left: 20px; font-size: 13px; }
+  li { margin: 3px 0; }
+  blockquote {
+    border-left: 3px solid var(--primary); padding: 8px 14px; margin: 12px 0;
+    background: #eff6ff; border-radius: 0 6px 6px 0; font-size: 13px;
+  }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    margin-right: 4px; background: #eff6ff; color: #2563eb;
+  }
+  .no-print { text-align: center; color: #9ca3af; margin: 20px 0; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>LangChain 全家桶 CheatSheet <span>— 打印版</span></h1>
+<p style="color:var(--text2);font-size:12px;margin-bottom:24px">来源：官方文档、社区整理、知乎/CSDN/掘金 · 2025-2026 · 最后更新：2026-07-26</p>
+
+<p class="no-print">💡 此页面为打印优化版。按 <kbd>Cmd+P</kbd> 即可打印。</p>
+
+<!-- ═══════════════ 1. 生态全景 ═══════════════ -->
+<h2>一、生态全景：三层架构</h2>
+<pre>┌─────────────────────────────────────┐
+│ LangChain Core     "零件层"          │
+│ ChatModel · Prompt · Tool · Message │
+├─────────────────────────────────────┤
+│ LangGraph          "编排层"          │
+│ StateGraph · Node · Edge · HITL    │
+├─────────────────────────────────────┤
+│ LangSmith          "观测层"          │
+│ Tracing · Evaluation · Monitoring  │
+├─────────────────────────────────────┤
+│ LangServe          "部署层"          │
+│ REST API · Playground              │
+├─────────────────────────────────────┤
+│ LangFlow           可视化拖拽        │
+└─────────────────────────────────────┘</pre>
+<p><strong>协作关系</strong>：LangChain 提供零件（模型、工具、消息），LangGraph 用这些零件搭图（节点+边+State），LangSmith 观测每一步的执行过程。三层独立但可以无缝衔接。</p>
+
+<!-- ═══════════════ 2. Core ═══════════════ -->
+<div class="page-break"></div>
+<h2>二、LangChain Core — 完整 API</h2>
+
+<h3>2.1 ChatModel</h3>
+<p>所有模型调用的统一入口。不管后端是 OpenAI、DeepSeek 还是 Ollama 本地模型，对外都是一个 <code>invoke()</code>。支持批量、流式、容错降级。</p>
+<pre><code>from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4.1", temperature=0, streaming=True)
+
+response = llm.invoke("Hello")              # 单条
+responses = llm.batch(["q1", "q2", "q3"])  # 批量
+for chunk in llm.stream("Hello"): ...       # 流式
+
+# 容错：主模型挂了切备用
+model = ChatOpenAI(model="gpt-4.1").with_fallbacks([ChatOpenAI(model="gpt-4o-mini")])</code></pre>
+
+<h3>2.2 Prompt Template</h3>
+<p>把 System Prompt 和用户输入分开管理。支持对话历史占位、Few-shot 示例注入。</p>
+<pre><code>from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "你是{role}，专攻{domain}。"),
+    MessagesPlaceholder("history"),    # 对话历史占位
+    ("human", "{question}"),
+])</code></pre>
+
+<h3>2.3 LCEL — 管道语法 <code>|</code></h3>
+<p>LangChain 最核心的表达方式：用 <code>|</code> 把组件串成链条。每个组件的输出自动成为下一个组件的输入。支持串行、并行、分支。</p>
+<pre><code># 基础管道
+chain = prompt | llm | StrOutputParser()
+
+# 并行：同时跑三条链，结果合并
+chain = RunnableParallel(
+    summary=summary_prompt | llm | StrOutputParser(),
+    keywords=keywords_prompt | llm | StrOutputParser(),
+)
+
+# 透传 + 动态赋值
+chain = (RunnablePassthrough.assign(extra=lambda x: "value") | prompt | llm | parser)
+
+# 分支：根据条件走不同链
+chain = RunnableBranch(
+    (lambda x: "math" in x["topic"], math_chain),
+    (lambda x: "code" in x["topic"], code_chain),
+    general_chain  # 都不匹配走这条
+)</code></pre>
+
+<h3>2.4 @tool 工具</h3>
+<p>把一个 Python 函数变成 LLM 能调用的工具。LLM 输出 function call JSON，LangChain 自动解析、执行函数、把结果返回给 LLM。</p>
+<pre><code>from langchain_core.tools import tool
+from pydantic import BaseModel, Field
+
+# 简单工具
+@tool
+def query_device(device_id: str) -> str:
+    """查询 5G 基站设备详情"""
+    return f"{device_id}: 华为 AAU5613, 在线"
+
+# 结构化参数（Pydantic 校验）
+class SearchInput(BaseModel):
+    query: str = Field(description="搜索关键词")
+    max_results: int = Field(default=5)
+
+@tool(args_schema=SearchInput)
+def search_kb(query: str, max_results: int = 5) -> str:
+    """搜索知识库"""
+    return f"找到 {max_results} 条结果"
+
+# 绑定到 LLM
+llm_with_tools = llm.bind_tools([query_device, search_kb])</code></pre>
+
+<h3>2.5 Structured Output</h3>
+<p>强制 LLM 返回符合 Pydantic Schema 的结构化 JSON，代码可靠解析。解决"LLM 输出格式不稳定"的问题。</p>
+<pre><code>class Diagnosis(BaseModel):
+    device_id: str
+    root_cause: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+structured_llm = llm.with_structured_output(Diagnosis)
+result: Diagnosis = structured_llm.invoke("DEV-0001 光模块告警")</code></pre>
+
+<h3>2.6 Messages 四种类型</h3>
+<table>
+  <tr><th>类型</th><th>含义</th><th>谁产生的</th></tr>
+  <tr><td><code>HumanMessage</code></td><td>用户说的话</td><td>前端用户</td></tr>
+  <tr><td><code>AIMessage</code></td><td>LLM 的回复（可能含 tool_calls）</td><td>LLM</td></tr>
+  <tr><td><code>SystemMessage</code></td><td>系统指令/角色设定</td><td>开发者</td></tr>
+  <tr><td><code>ToolMessage</code></td><td>工具执行返回的结果</td><td>ToolNode</td></tr>
+</table>
+
+<h3>2.7 Memory（LangChain 经典版）</h3>
+<p>四种策略对应不同场景：短对话全记、实时监控只记最近、长对话自动压缩、生产环境预算内保留。</p>
+<table>
+  <tr><th>策略</th><th>代码</th><th>Token</th><th>适合</th></tr>
+  <tr><td>Buffer</td><td><code>ConversationBufferMemory()</code></td><td>线性增长</td><td>短对话</td></tr>
+  <tr><td>Window</td><td><code>ConversationBufferWindowMemory(k=4)</code></td><td>恒定</td><td>实时监控</td></tr>
+  <tr><td>Summary</td><td><code>ConversationSummaryMemory(llm=llm)</code></td><td>阶梯式</td><td>长对话</td></tr>
+  <tr><td>SummaryBuffer</td><td><code>ConversationSummaryBufferMemory(max_token_limit=2000)</code></td><td>预算内平缓</td><td>生产首选</td></tr>
+</table>
+
+<h3>2.8 废弃 → 现代替代</h3>
+<table>
+  <tr><th>旧 API（不要用了）</th><th>现代替代</th></tr>
+  <tr><td><code>LLMChain</code></td><td><code>prompt | llm | parser</code></td></tr>
+  <tr><td><code>SequentialChain</code></td><td><code>step1 | step2 | step3</code></td></tr>
+  <tr><td><code>initialize_agent()</code></td><td><code>create_react_agent()</code> from langgraph</td></tr>
+  <tr><td><code>chain.run()</code></td><td><code>chain.invoke()</code></td></tr>
+  <tr><td><code>AgentExecutor</code></td><td>LangGraph StateGraph</td></tr>
+</table>
+
+<!-- ═══════════════ 3. RAG ═══════════════ -->
+<div class="page-break"></div>
+<h2>三、LangChain RAG — 完整技术栈</h2>
+
+<h3>3.1 标准 RAG Pipeline</h3>
+<p>六步把文档变成能回答问题的知识库：加载文档 → 切割成块 → 每块算向量 → 存入向量库 → 用户问题检索 → LLM 基于检索结果生成回答。</p>
+<pre><code># 1. 加载
+docs = TextLoader("knowledge.txt").load()
+
+# 2. 切割（块大小 800 字，重叠 100 避免语义截断）
+chunks = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(docs)
+
+# 3. 向量化（文本 → 1536 维向量）
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+# 4. 存入 FAISS（内存向量索引，百万级毫秒检索）
+vectorstore = FAISS.from_documents(chunks, embeddings)
+
+# 5. 检索器（取最相似的 3 个文档块）
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+# 6. RAG Chain：检索 → 填 Prompt → LLM → 输出
+rag_chain = (
+    {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    | prompt | llm | StrOutputParser()
+)</code></pre>
+
+<h3>3.2 RAG 优化四象限</h3>
+<table>
+  <tr><th>方向</th><th>技术手段</th></tr>
+  <tr><td>查询优化</td><td>Query Rewrite（口语→精确）、HyDE（先猜答案再搜）、Multi-Query（多查询去重）</td></tr>
+  <tr><td>检索优化</td><td>MMR 最大边际相关去重、Cross-Encoder 重排序、混合检索（向量 + BM25 关键词）</td></tr>
+  <tr><td>生成优化</td><td>引用来源标注、拒答机制（"我不知道"）、上下文压缩</td></tr>
+  <tr><td>评估</td><td>RAGAS：忠实度 + 相关性 + 上下文精确度 + 召回率</td></tr>
+</table>
+
+<!-- ═══════════════ 4. LangGraph ═══════════════ -->
+<div class="page-break"></div>
+<h2>四、LangGraph — 完整 API 参考</h2>
+
+<h3>4.1 StateGraph 三要素 + Reducer</h3>
+<p>State 是图的共享内存，所有节点通过它通信。Reducer 解决"多个节点写同一个字段怎么合并"的问题——默认覆盖、<code>operator.add</code> 追加、<code>add_messages</code> 消息专用。</p>
+<pre><code>class State(TypedDict):
+    messages: Annotated[list, add_messages]  # 消息追加+去重
+    results:  Annotated[list, operator.add]  # 列表累加
+    counter:  Annotated[int, operator.add]   # 数字累加
+    flags:    Annotated[bool, operator.or_]  # 任一 True 则 True</code></pre>
+
+<h3>4.2 Reducer 全集</h3>
+<table>
+  <tr><th>Reducer</th><th>行为</th><th>State 写法</th></tr>
+  <tr><td>默认（无）</td><td>后者覆盖前者</td><td><code>name: str</code></td></tr>
+  <tr><td><code>operator.add</code></td><td>累加 / 列表拼接</td><td><code>Annotated[int, operator.add]</code></td></tr>
+  <tr><td><code>operator.or_</code></td><td>任一 True 则 True</td><td><code>Annotated[bool, operator.or_]</code></td></tr>
+  <tr><td><code>add_messages</code></td><td>消息追加 + 同名去重</td><td><code>Annotated[list, add_messages]</code></td></tr>
+  <tr><td>自定义</td><td>任意合并逻辑</td><td><code>Annotated[T, custom_func]</code></td></tr>
+</table>
+
+<h3>4.3 Nodes — 三种签名</h3>
+<pre><code># 签 1: 只读 state
+def node(state: State): return {"key": val}
+
+# 签 2: state + config（拿 thread_id 等配置）
+def node(state: State, config: RunnableConfig):
+    tid = config["configurable"]["thread_id"]
+
+# 签 3: state + runtime（读写 Store 长期记忆）
+def node(state: State, runtime: Runtime):
+    runtime.store.put(["ns"], "key", {"data": "val"})</code></pre>
+
+<h3>4.4 Edges 四种方式</h3>
+<p><strong>固定边</strong>：A 之后永远去 B。适合线性流程。<br>
+<strong>条件边</strong>：根据 State 动态决定去 A 还是 B。适合分类、路由。<br>
+<strong>Command</strong>：节点内部决定下一步，写数据+定方向一举完成。适合每个节点自己判断去向。<br>
+<strong>Send</strong>：并行扇出，一个上游变成 N 条下游同时跑。适合批量处理。</p>
+<pre><code># 固定边
+builder.add_edge(START, "node_a")
+
+# 条件边
+def router(state) -> Literal["a", "b"]: return "a" if state["flag"] else "b"
+builder.add_conditional_edges("node", router, ["a", "b"])
+
+# Command — 节点内决定下一步
+from langgraph.types import Command
+def node(state) -> Command[Literal["a", "b"]]:
+    return Command(update={"key": val}, goto="a")
+
+# Send — 并行 Fan-out
+from langgraph.types import Send
+def dispatcher(state):
+    return [Send("worker", {"task": t}) for t in state["tasks"]]</code></pre>
+
+<h3>4.5 Checkpoint 持久化</h3>
+<p>每跑完一个 Superstep（一波可并发的节点），LangGraph 自动把 State 存一份快照。不加 Checkpoint 则 invoke 结束后 State 消失。加了之后可以断点续跑、时间旅行、多会话隔离。</p>
+<pre><code>from langgraph.checkpoint.memory import MemorySaver
+graph = builder.compile(checkpointer=MemorySaver())
+
+config = {"configurable": {"thread_id": "session-1"}}
+graph.invoke(input, config)
+
+state = graph.get_state(config)                     # 读当前状态
+for snap in graph.getStateHistory(config): ...      # 遍历历史快照
+fork_config = graph.updateState(old_config, {"key": "new"})  # 时间旅行</code></pre>
+<table>
+  <tr><th>Checkpointer</th><th>存储</th><th>适用</th></tr>
+  <tr><td>MemorySaver</td><td>内存 dict</td><td>测试/Demo</td></tr>
+  <tr><td>SqliteSaver</td><td>SQLite 文件</td><td>本地开发</td></tr>
+  <tr><td>PostgresSaver</td><td>PostgreSQL</td><td>生产环境</td></tr>
+</table>
+
+<h3>4.6 Stream — 7 种模式</h3>
+<p><code>invoke()</code> 一口气跑完才出结果，<code>stream()</code> 逐步暴露执行过程。开发调式看 <code>updates</code>，用户端看 <code>messages</code>（打字机效果），排查问题看 <code>debug</code>。</p>
+<table>
+  <tr><th>模式</th><th>输出内容</th><th>场景</th></tr>
+  <tr><td><code>values</code></td><td>每步完整 State</td><td>调式，看全局状态</td></tr>
+  <tr><td><code>updates</code></td><td>每步节点更新 diff</td><td>看节点间数据流转</td></tr>
+  <tr><td><code>messages</code></td><td>逐 token 打字机</td><td>用户端实时显示</td></tr>
+  <tr><td><code>custom</code></td><td>自定义事件</td><td>进度条、状态通知</td></tr>
+  <tr><td><code>checkpoints</code></td><td>checkpoint 元数据</td><td>监控存档行为</td></tr>
+  <tr><td><code>tasks</code></td><td>任务调度信息</td><td>看 Superstep 内部</td></tr>
+  <tr><td><code>debug</code></td><td>所有信息汇总</td><td>深度排查</td></tr>
+</table>
+
+<h3>4.7 HITL 人工审批</h3>
+<p>Agent 不能自己决定重启核心设备。在高风险操作前插一个审批点：<code>interrupt()</code> 暂停，State 自动存档到 Checkpoint；人做决定后 <code>Command(resume=...)</code> 从暂停点继续。节点函数从 <code>interrupt</code> 那一行接着往下执行。</p>
+<pre><code>from langgraph.types import interrupt, Command
+
+def approval_node(state):
+    decision = interrupt(f"是否批准: {state['action']}?")
+    return {"approved": decision}  # 这行在 resume 之后才执行
+
+graph.invoke(input, config)                  # 跑到 interrupt → 暂停
+graph.invoke(Command(resume=True), config)   # 人批准 → 继续</code></pre>
+
+<h3>4.8 Subgraph 子图嵌套</h3>
+<p>把编译好的图当成父图的一个节点。父图把子图当作黑盒——只关心输入输出，不关心里面怎么跑。这是多 Agent 的基础：每个 Worker 可以是一个独立编译的子图，挂到 Supervisor 的编排图中。</p>
+<pre><code>child_graph = child_builder.compile()
+parent_builder.add_node("child_agent", child_graph)  # 子图作为父图节点</code></pre>
+
+<h3>4.9 Long-Term Memory — Store API</h3>
+<p>Checkpoint 存的是"这次对话跑到哪了"，Store 存的是"跨对话学到的知识"。按命名空间组织记忆，支持语义检索。新会话启动时检索相关记忆注入 System Prompt。</p>
+<pre><code>store = InMemoryStore()
+graph = builder.compile(store=store)
+
+def my_node(state, runtime: Runtime):
+    runtime.store.put(["user_123"], "mem_1", {"data": "..."})
+    results = runtime.store.search(["user_123"], query="relevant", limit=3)</code></pre>
+
+<!-- ═══════════════ 5. Agent 模式 ═══════════════ -->
+<div class="page-break"></div>
+<h2>五、Agent 模式全集</h2>
+<p>六种模式按复杂度递增。ReAct 是基础，Supervisor 是 Day3 核心，HITL 是企业级刚需。</p>
+<table>
+  <tr><th>模式</th><th>核心思路</th><th>怎么跑</th><th>示例</th></tr>
+  <tr><td>ReAct</td><td>思考→行动→观察→再思考</td><td>LLM 和 Tool 反复跳，直到 LLM 觉得够了</td><td>sample-6</td></tr>
+  <tr><td>Supervisor</td><td>中央调度 + N 个 Worker</td><td>Supervisor 看 State → 派 Worker → 回来 → 再看 → FINISH</td><td>sample-12</td></tr>
+  <tr><td>Map-Reduce</td><td>拆成 N 份并行处理，汇总</td><td>Send 扇出 N 条分支 → 各跑各的 → collector 收</td><td>sample-3</td></tr>
+  <tr><td>Plan-Execute</td><td>先列步骤，逐条执行，对照</td><td>Plan→Step1→Step2→Check→Done</td><td>—</td></tr>
+  <tr><td>Reflection</td><td>生成→批评→改进→再生成</td><td>Write→Critique→Rewrite，直到满意</td><td>—</td></tr>
+  <tr><td>HITL</td><td>高风险前暂停等人审批</td><td>interrupt() 中断 → 人操作 → resume 继续</td><td>sample-8</td></tr>
+</table>
+
+<!-- ═══════════════ 6. 速查 ═══════════════ -->
+<h2>六、快速参考速查表</h2>
+<table>
+  <tr><th>概念</th><th>Python 写法</th></tr>
+  <tr><td>图</td><td><code>StateGraph(State)</code></td></tr>
+  <tr><td>编译</td><td><code>.compile(checkpointer=MemorySaver())</code></td></tr>
+  <tr><td>运行</td><td><code>.invoke(input, config)</code></td></tr>
+  <tr><td>流式</td><td><code>.stream(input, stream_mode="messages")</code></td></tr>
+  <tr><td>固定边</td><td><code>.add_edge(START, "node")</code></td></tr>
+  <tr><td>条件边</td><td><code>.add_conditional_edges("node", router, ["a","b"])</code></td></tr>
+  <tr><td>路由+更新</td><td><code>Command(update={}, goto="x")</code></td></tr>
+  <tr><td>并行派发</td><td><code>Send("worker", {"arg": val})</code></td></tr>
+  <tr><td>暂停</td><td><code>interrupt("提示")</code></td></tr>
+  <tr><td>恢复</td><td><code>Command(resume=value)</code></td></tr>
+  <tr><td>读状态</td><td><code>.get_state(config)</code></td></tr>
+  <tr><td>消息追加</td><td><code>Annotated[list, add_messages]</code></td></tr>
+  <tr><td>工具</td><td><code>@tool</code> + <code>.bind_tools()</code></td></tr>
+  <tr><td>RAG</td><td><code>retriever | prompt | llm | parser</code></td></tr>
+</table>
+
+<!-- ═══════════════ 7. 框架对比 ═══════════════ -->
+<h2>七、多 Agent 框架对比</h2>
+<table>
+  <tr><th>维度</th><th>LangGraph</th><th>CrewAI</th><th>AutoGen</th><th>AgentScope</th></tr>
+  <tr><td>核心抽象</td><td>状态机 Graph</td><td>角色 Role</td><td>对话</td><td>Actor 模型</td></tr>
+  <tr><td>状态管理</td><td>Checkpoint 持久化</td><td>内存字典</td><td>平台托管</td><td>独立管理</td></tr>
+  <tr><td>流程控制</td><td>显式 Node/Edge</td><td>预定义 Flow</td><td>内置循环</td><td>消息路由</td></tr>
+  <tr><td>HITL</td><td>Interrupt 原语</td><td>手动实现</td><td>内置 Approval</td><td>实时介入</td></tr>
+  <tr><td>生产成熟度</td><td>★★★★★</td><td>★★★</td><td>★★★★</td><td>★★★★</td></tr>
+</table>
+
+<!-- ═══════════════ 8. 学习路线 ═══════════════ -->
+<h2>八、9 Phase 学习路线</h2>
+<pre>Phase 1: LangChain 核心（Runnable / LCEL / ChatModel / Prompt）
+Phase 2: RAG 全流程（Loader → Split → Embed → FAISS → Retrieve → Generate）
+Phase 3: Agent + Tools（@tool / bind_tools / ReAct / 结构化输出）
+Phase 4: LangGraph 基础（StateGraph / Node / Edge / 条件路由）
+Phase 5: 复杂工作流（循环迭代 / 错误恢复 / Supervisor / MCP）
+Phase 6: 进阶特性（Checkpoint / HITL / Streaming / Subgraph / Store）
+Phase 7: 可观测性（LangSmith / OpenTelemetry）
+Phase 8: 评估体系（RAGAS / 自定义 Eval / CI 集成）
+Phase 9: 生产部署（langgraph.json / Docker / LangGraph Cloud）</pre>
+
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "base_url": "http://47.243.217.196/v1",
+  "agents": [
+    {
+      "id": "device-detector",
+      "name": "5G基站设备检测 Agent",
+      "description": "接收5G基站设备信息与告警，输出检测结论（风险等级/是否需要处置）",
+      "api_key": "app-IYVad78A2DI3XfHCqo2Bp539"
+    },
+    {
+      "id": "object-analyzer",
+      "name": "Dify 对象分析 Agent",
+      "description": "接收对象信息与异常，输出分析结论。api_key 填你在 Dify 上创建的应用的 API 密钥（app-开头）",
+      "api_key": "app-IYVad78A2DI3XfHCqo2Bp539"
+    },
+    {
+      "id": "dify-rag",
+      "name": "Dify RAG（知识库版，Day2 实验 2.6）",
+      "description": "在 Dify 控制台：创建知识库→上传 day2/data/knowledge 的 7 篇 MD→创建聊天应用并关联该知识库→开启对话记忆→把 app-开头的 API 密钥填到这里",
+      "api_key": ""
+    }
+  ]
+}

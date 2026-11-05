@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验 25 · 可观测 — Trace/Span 模型 · span 栈 · Langfuse</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#4b5563;--text3:#9ca3af;
+  --pink:#db2777;--pink-bg:#fdf2f8;--blue:#2563eb;--blue-bg:#eff6ff;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--orange:#ea580c;--orange-bg:#fff7ed;
+  --green:#16a34a;--green-bg:#f0fdf4;--cyan:#0891b2;--cyan-bg:#ecfeff;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --dark:#0f172a;--dark2:#1e293b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 8px 24px rgba(0,0,0,.09);
+  --mono:'SF Mono','Fira Code',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px 70px}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .chip{display:inline-block;font-size:12px;font-weight:700;color:var(--cyan);background:var(--cyan-bg);border:1px solid #a5f3fc;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.hero h1{font-size:38px;font-weight:900;margin:18px 0 12px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,#0891b2,#2563eb 55%,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:15px;color:var(--text2);max-width:740px;margin:0 auto}
+.hero .stats{display:flex;justify-content:center;gap:36px;margin-top:26px;flex-wrap:wrap}
+.hero .stat b{font-size:22px;font-weight:900;display:block}
+.hero .stat span{font-size:11px;color:var(--text3);letter-spacing:1px}
+.quicknav{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 12px}
+.qn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-decoration:none;color:var(--text);box-shadow:var(--shadow);transition:.2s;display:flex;gap:10px;align-items:center}
+.qn:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--c)}
+.qn .ic{width:36px;height:36px;border-radius:10px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.qn b{font-size:12.5px;display:block}
+.qn span{font-size:10.5px;color:var(--text3)}
+.section{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-top:26px;overflow:hidden}
+.sec-head{padding:26px 34px 0;display:flex;align-items:center;gap:13px}
+.sec-head .ic{width:46px;height:46px;border-radius:12px;background:var(--cb);color:var(--c);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:var(--mono);flex-shrink:0}
+.sec-head h2{font-size:21px;font-weight:900}
+.sec-head .sub{font-size:11.5px;color:var(--text3);font-family:var(--mono)}
+.sec-body{padding:18px 34px 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px}
+.sec-body.single{grid-template-columns:1fr}
+.p-block{margin-top:12px}
+.p-block:first-child{margin-top:0}
+.p-block h4{font-size:12px;font-weight:800;color:var(--c);letter-spacing:1.5px;margin-bottom:6px}
+.p-block p,.p-block li{font-size:13px;color:var(--text2)}
+.p-block b{color:var(--text)}
+.p-block code{font-family:var(--mono);font-size:11.5px;background:var(--bg);padding:1px 7px;border-radius:5px;color:var(--c)}
+.dot-list{list-style:none}
+.dot-list li{padding:3px 0 3px 20px;position:relative}
+.dot-list li::before{content:'—';position:absolute;left:2px;color:var(--c);font-size:11px;font-weight:900}
+.codebox{background:var(--dark);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md)}
+.codebox+.codebox{margin-top:12px}
+.codebox .cb-hd{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--dark2);font-size:10.5px;color:#94a3b8;font-family:var(--mono)}
+.codebox .cb-hd .d{width:8px;height:8px;border-radius:50%}
+.codebox pre{padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:#e2e8f0;overflow-x:auto}
+.c-k{color:#c084fc}.c-s{color:#86efac}.c-f{color:#7dd3fc}.c-c{color:#64748b}.c-n{color:#fbbf24}.c-r{color:#fca5a5}.c-g{color:#6ee7b7}
+.lab-chip{display:inline-block;font-size:10px;font-weight:700;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:9px;margin:2px 3px 0 0}
+/* 图示画布 */
+.gcanvas{background:linear-gradient(145deg,var(--cb),#fff 130%);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.g-row{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.g-node{background:#fff;border:2px solid var(--c);border-radius:12px;padding:8px 15px;font-size:12px;font-weight:800;color:var(--c);text-align:center;box-shadow:var(--shadow)}
+.g-node small{display:block;font-weight:400;font-size:9.5px;color:var(--text3)}
+.g-node.alt{border-color:var(--orange);color:var(--orange)}
+.g-node.ok{border-color:var(--green);color:var(--green)}
+.g-node.stop{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.g-node.dim{border-style:dashed;border-color:var(--text3);color:var(--text2)}
+.g-arr{color:var(--text3);font-weight:900;font-size:15px}
+.g-tag{font-size:10px;font-weight:800;background:var(--cb);color:var(--c);padding:2px 10px;border-radius:10px;border:1px dashed var(--c);font-family:var(--mono)}
+/* 演进时间轴 */
+.evo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px}
+.evo-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative}
+.evo-card.cur{border-color:var(--cyan);background:var(--cyan-bg)}
+.evo-card .no{font-size:10px;font-weight:900;font-family:var(--mono);color:var(--text3);letter-spacing:1px}
+.evo-card.cur .no{color:var(--cyan)}
+.evo-card b{font-size:13.5px;display:block;margin:2px 0 4px}
+.evo-card p{font-size:11px;color:var(--text2);line-height:1.55}
+.evo-card .how{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+/* 卡片组 */
+.ch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+.ch-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:var(--bg)}
+.ch-card .tag{font-size:10px;font-weight:900;font-family:var(--mono);letter-spacing:1px;padding:2px 9px;border-radius:8px;display:inline-block}
+.ch-card b{font-size:14px;display:block;margin:8px 0 5px}
+.ch-card p{font-size:11.5px;color:var(--text2);line-height:1.6}
+.ch-card .who{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:8px;padding-top:7px;border-top:1px dashed var(--border)}
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tbl th{background:#f8fafc;text-align:left;padding:9px 14px;font-size:11px;color:var(--text3);letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:var(--text2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text)}
+.tbl code{font-family:var(--mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:4px}
+.pick{font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px;white-space:nowrap}
+/* 步骤路线 */
+.route{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.rt{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.rt .no{width:26px;height:26px;border-radius:8px;background:var(--c);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.rt b{font-size:12px;display:block}
+.rt span{font-size:10.5px;color:var(--text3)}
+/* 检查清单 */
+.check-list{list-style:none;margin-top:6px}
+.check-list li{padding:5px 0 5px 26px;position:relative;font-size:13px;color:var(--text2)}
+.check-list li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:900;font-size:13px}
+/* 警示 / 提示条 */
+.warn{background:var(--red-bg);border:1px solid #fecaca;border-left:4px solid var(--red);border-radius:10px;padding:12px 16px;margin-top:14px}
+.warn b{font-size:12.5px;color:#991b1b;display:block;margin-bottom:3px}
+.warn p{font-size:12px;color:#7f1d1d}
+.warn code{font-family:var(--mono);font-size:11px;background:#fff;padding:1px 6px;border-radius:4px;color:#991b1b}
+.note{background:var(--blue-bg);border:1px solid #bfdbfe;border-left:4px solid var(--blue);border-radius:10px;padding:12px 16px;margin-top:14px}
+.note b{font-size:12.5px;color:#1e3a8a;display:block;margin-bottom:3px}
+.note p{font-size:12px;color:#1e40af}
+.note code{font-family:var(--mono);font-size:11px;background:#fff;padding:1px 6px;border-radius:4px;color:#1e3a8a}
+.good{background:var(--green-bg);border:1px solid #bbf7d0;border-left:4px solid var(--green);border-radius:10px;padding:12px 16px;margin-top:14px}
+.good b{font-size:12.5px;color:#14532d;display:block;margin-bottom:3px}
+.good p{font-size:12px;color:#166534}
+.good code{font-family:var(--mono);font-size:11px;background:#fff;padding:1px 6px;border-radius:4px;color:#14532d}
+.cta{margin-top:40px;background:linear-gradient(120deg,#164e63,#1e3a8a 55%,#4c1d95);border-radius:18px;padding:30px 36px;color:#fff;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{font-size:20px;font-weight:900}
+.cta p{font-size:12.5px;opacity:.85;margin-top:4px}
+.cta .btns{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);transition:.2s}
+.cta a:hover{background:rgba(255,255,255,.26)}
+.footer{margin-top:44px;text-align:center;font-size:11.5px;color:var(--text3)}
+.footer code{font-family:var(--mono);background:var(--card);border:1px solid var(--border);padding:1px 8px;border-radius:5px}
+@media(max-width:900px){
+  .sec-body{grid-template-columns:1fr}
+  .quicknav{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .evo,.ch-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <span class="chip">LAB 3.6 · OBSERVABILITY · TRACE &amp; SPAN</span>
+    <h1>可观测 <span class="grad">链路追踪</span></h1>
+    <p>3.2 到 3.5 建起了一条会自己跑、会停下来问人、会拦危险请求的流水线。但现在有人问你「昨天那次排障为什么花了 8 秒」，你答不上来——因为没有任何记录。本实验给流水线装上<b>每一步都留痕</b>的能力：谁调的、花了多久、烧了多少 token、嵌套在谁下面。</p>
+    <div class="stats">
+      <div class="stat"><b>1 : N</b><span>TRACE : SPAN</span></div>
+      <div class="stat"><b>栈</b><span>而非单变量</span></div>
+      <div class="stat"><b>650</b><span>TOKEN 应采集数</span></div>
+      <div class="stat"><b>顶层</b><span>耗时累加口径</span></div>
+      <div class="stat"><b>0</b><span>外部依赖</span></div>
+    </div>
+  </div>
+
+  <!-- ===== 快速导航 ===== -->
+  <div class="quicknav">
+    <a class="qn" href="#evo" style="--c:#0891b2;--cb:#ecfeff"><span class="ic">00</span><span><b>为什么要留痕</b><span>黑盒的代价</span></span></a>
+    <a class="qn" href="#ts" style="--c:#2563eb;--cb:#eff6ff"><span class="ic">TS</span><span><b>Trace / Span</b><span>数据模型</span></span></a>
+    <a class="qn" href="#stack" style="--c:#dc2626;--cb:#fef2f2"><span class="ic">STK</span><span><b>span 栈</b><span>本实验核心 bug</span></span></a>
+    <a class="qn" href="#viz" style="--c:#7c3aed;--cb:#f5f3ff"><span class="ic">VIZ</span><span><b>统计与可视化</b><span>树序 · 耗时口径</span></span></a>
+    <a class="qn" href="#lf" style="--c:#ea580c;--cb:#fff7ed"><span class="ic">LF</span><span><b>Langfuse</b><span>生产级面板</span></span></a>
+    <a class="qn" href="#run" style="--c:#16a34a;--cb:#f0fdf4"><span class="ic">RUN</span><span><b>动手跑</b><span>步骤 · 标准 · 排坑</span></span></a>
+  </div>
+
+  <!-- ===== 00 为什么要留痕 ===== -->
+  <div class="section" id="evo" style="--c:#0891b2;--cb:#ecfeff">
+    <div class="sec-head"><span class="ic">00</span><div><h2>为什么要留痕：前五个实验共同欠下的债</h2><div class="sub">FROM BLACK BOX TO TRACE</div></div></div>
+    <div class="sec-body single">
+      <div class="evo">
+        <div class="evo-card"><div class="no">3.3</div><b>流水线跑通了</b><p>但哪个 Agent 最慢？哪次 FAISS 检索空手而归？只有一堆 print。</p><div class="how">看不见内部</div></div>
+        <div class="evo-card"><div class="no">3.4</div><b>审批加进去了</b><p>但这次审批等了多久？谁批的？重跑了几遍节点？没记录。</p><div class="how">审批链无凭据</div></div>
+        <div class="evo-card"><div class="no">3.5</div><b>护栏拦住了</b><p>但拦在哪一层、命中哪条规则、误杀率多少？<code>layer</code> 字段无人收集。</p><div class="how">拦截无统计</div></div>
+        <div class="evo-card cur"><div class="no">3.6 当前</div><b>全链路留痕</b><p>一次请求一条 Trace，每步一个 Span，耗时 / token / 父子关系全在。</p><div class="how">LocalTracer + Langfuse</div></div>
+      </div>
+
+      <div class="p-block" style="margin-top:20px">
+        <h4>可观测要回答的三个问题</h4>
+        <div class="ch-grid">
+          <div class="ch-card">
+            <span class="tag" style="background:var(--blue-bg);color:var(--blue)">慢在哪</span>
+            <b>耗时归因</b>
+            <p>总共 900ms，是 detector 慢还是 FAISS 检索慢？ASCII 柱状图一眼看出占比。</p>
+            <div class="who">elapsed_ms per span</div>
+          </div>
+          <div class="ch-card">
+            <span class="tag" style="background:var(--orange-bg);color:var(--orange)">花了多少</span>
+            <b>Token 成本</b>
+            <p>一次排障 650 token，乘上日均调用量就是账单。不采集就没法优化。</p>
+            <div class="who">total_tokens</div>
+          </div>
+          <div class="ch-card">
+            <span class="tag" style="background:var(--purple-bg);color:var(--purple)">谁调了谁</span>
+            <b>调用结构</b>
+            <p>faiss_search 是 diagnoser 内部调的，不是独立步骤。父子关系决定了归因是否正确。</p>
+            <div class="who">parent_span_id + depth</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TS Trace/Span 模型 ===== -->
+  <div class="section" id="ts" style="--c:#2563eb;--cb:#eff6ff">
+    <div class="sec-head"><span class="ic">TS</span><div><h2>Trace / Span 数据模型</h2><div class="sub">一次请求 = 一条 Trace；每个子步骤 = 一个 Span</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>两个概念，一条规则</h4>
+          <ul class="dot-list">
+            <li><b>Trace</b>——一次完整的用户请求。有 <code>trace_id</code>、名字、输入、总耗时、总 token</li>
+            <li><b>Span</b>——请求内部的一个可计时片段。有 <code>span_id</code>、类型（agent / tool / llm）、耗时、token</li>
+            <li><b>规则</b>——Span 可以嵌套。Agent 内部调工具，工具的 Span 就是 Agent Span 的儿子</li>
+          </ul>
+        </div>
+        <div class="p-block">
+          <h4>三种 span_type 的意义</h4>
+          <p>本实验用 <code>agent</code> / <code>tool</code> / <code>llm</code> 三类。分类不是为了好看——生产上要按类型聚合：<b>llm 类看 token 和成本，tool 类看外部依赖的稳定性，agent 类看业务编排的整体延迟</b>。混在一起统计就失去了意义。</p>
+        </div>
+        <div class="p-block">
+          <h4>手工埋点的三行范式</h4>
+          <p><code>start_span</code> → 执行业务 → <code>end_span</code>。<code>end_span</code> 时才知道耗时和 token，所以输出和用量都在结束时补录。这个成对调用的纪律一旦破了（漏一次 <code>end_span</code>），整条 Trace 的结构就错。</p>
+        </div>
+        <div class="note">
+          <b>为什么先手写再上 Langfuse</b>
+          <p>Langfuse 的 <code>CallbackHandler</code> 一行就自动采集，但学员不会知道它在背后做了什么。先手写 <code>LocalTracer</code>，把 span 栈、父子关系、耗时口径这些坑踩一遍，再看自动方案才知道它替你解决了什么。</p>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;埋点范式</div>
+<pre><span class="c-k">from</span> trace_demo <span class="c-k">import</span> LocalTracer
+
+tracer = LocalTracer()
+tracer.start_trace(<span class="c-s">"排障流水线-DEV-0001"</span>, {<span class="c-s">"device_id"</span>: <span class="c-s">"DEV-0001"</span>})
+
+tracer.start_span(<span class="c-s">"detector"</span>, <span class="c-s">"agent"</span>)
+<span class="c-c"># ... 业务逻辑 ...</span>
+tracer.end_span(output={<span class="c-s">"alarms_found"</span>: <span class="c-n">2</span>}, tokens=<span class="c-n">150</span>)
+
+trace = tracer.end_trace()</pre>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;嵌套：diagnoser 里套 faiss_search</div>
+<pre><span class="c-k">def</span> <span class="c-f">simulate_diagnoser</span>(tracer, device_id):
+    tracer.start_span(<span class="c-s">"diagnoser"</span>, <span class="c-s">"agent"</span>)   <span class="c-c"># 父</span>
+    tracer.start_span(<span class="c-s">"faiss_search"</span>, <span class="c-s">"tool"</span>)  <span class="c-c"># 子</span>
+    time.sleep(<span class="c-n">0.15</span>)
+    tracer.end_span(output={<span class="c-s">"hits"</span>: <span class="c-n">3</span>}, tokens=<span class="c-n">80</span>)   <span class="c-c"># 关子</span>
+    time.sleep(<span class="c-n">0.2</span>)
+    tracer.end_span(output={<span class="c-s">"root_cause"</span>: <span class="c-s">"SCTP配置错误"</span>},
+                    tokens=<span class="c-n">200</span>)                       <span class="c-c"># 关父</span></pre>
+        </div>
+        <div class="p-block" style="margin-top:14px">
+          <h4>目标结构（实验文档的期望）</h4>
+          <div class="codebox">
+            <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;一条 Trace 的树形结构</div>
+<pre>排障流水线-DEV-0001
+├─ detector          305ms  <span class="c-g">██████░░░░░░░░</span>  [agent]  150 tok
+├─ diagnoser         358ms  <span class="c-g">███████░░░░░░░</span>  [agent]  200 tok
+   └─ faiss_search   155ms  <span class="c-g">███░░░░░░░░░░░</span>  [tool ]   80 tok
+├─ decider           151ms  <span class="c-g">███░░░░░░░░░░░</span>  [agent]  100 tok
+└─ executor          105ms  <span class="c-g">██░░░░░░░░░░░░</span>  [agent]  120 tok
+────────────────────────────────
+总耗时 919ms | 总 Token <span class="c-n">650</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STK span 栈 ===== -->
+  <div class="section" id="stack" style="--c:#dc2626;--cb:#fef2f2">
+    <div class="sec-head"><span class="ic">STK</span><div><h2>核心考点：span 必须用栈，不能用单变量</h2><div class="sub">本实验修复的真实 bug — 200 token 凭空蒸发</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>错误实现：一个 _current_span</h4>
+          <p>最直觉的写法是拿一个变量记「当前 span」。单层调用完全正常，一旦嵌套就崩：<code>start_span("diagnoser")</code> 之后紧接 <code>start_span("faiss_search")</code>，第二次赋值把 diagnoser <b>整个覆盖掉</b>——它从此不存在了。</p>
+        </div>
+        <div class="p-block">
+          <h4>崩坏的连锁反应</h4>
+          <ul class="dot-list">
+            <li>第一次 <code>end_span</code> 关掉的是 faiss_search，<code>_current_span</code> 变成 <code>None</code></li>
+            <li>第二次 <code>end_span</code> 发现 <code>None</code>，直接 <code>return</code>——本该记给 diagnoser 的 <b>200 token 蒸发</b></li>
+            <li>diagnoser 这个 span 从未入列，报告里看不到它，也不知道它慢</li>
+            <li>总 token 从应有的 650 变成 450，而且<b>没有任何报错</b></li>
+          </ul>
+        </div>
+        <div class="warn">
+          <b>这类 bug 为什么最危险</b>
+          <p>它不抛异常、不崩程序，只是安静地少统计。你拿着「总耗时 450 token」的报告去做成本核算，误差 30% 却毫不知情。可观测系统自己出错，是最难发现的一类错——因为你本来就是靠它来发现别的错。</p>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;修复前：单变量被覆盖</div>
+<pre><span class="c-k">def</span> <span class="c-f">__init__</span>(self):
+    self._current_span = <span class="c-k">None</span>          <span class="c-c"># 只能记一个</span>
+
+<span class="c-k">def</span> <span class="c-f">start_span</span>(self, name, span_type=<span class="c-s">"agent"</span>):
+    self._current_span = {...}            <span class="c-c"># 直接覆盖！</span>
+
+<span class="c-k">def</span> <span class="c-f">end_span</span>(self, output=<span class="c-k">None</span>, tokens=<span class="c-n">0</span>):
+    <span class="c-k">if not</span> self._current_span: <span class="c-k">return</span>   <span class="c-c"># 静默丢数据</span>
+    ...
+
+<span class="c-c"># 实测结果</span>
+<span class="c-r">采集到的 span: ['detector','faiss_search','decider','executor']</span>
+<span class="c-r">总 token: 450        ← diagnoser 与它的 200 token 全丢</span></pre>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;修复后：span 栈 + 父子关系</div>
+<pre><span class="c-k">def</span> <span class="c-f">__init__</span>(self):
+    <span class="c-c"># span 必须用栈而不是单个变量：嵌套调用（agent 里套</span>
+    <span class="c-c"># tool）时，单变量会被子 span 覆盖，父 span 永久丢失</span>
+    self._span_stack: <span class="c-k">List</span>[<span class="c-k">Dict</span>] = []
+
+<span class="c-k">def</span> <span class="c-f">start_span</span>(self, name, span_type=<span class="c-s">"agent"</span>) -&gt; <span class="c-k">str</span>:
+    parent = self._span_stack[-<span class="c-n">1</span>] <span class="c-k">if</span> self._span_stack <span class="c-k">else</span> <span class="c-k">None</span>
+    self._span_stack.append({
+        <span class="c-s">"span_id"</span>: sid, <span class="c-s">"name"</span>: name, <span class="c-s">"type"</span>: span_type,
+        <span class="c-s">"parent_span_id"</span>: parent[<span class="c-s">"span_id"</span>] <span class="c-k">if</span> parent <span class="c-k">else</span> <span class="c-k">None</span>,
+        <span class="c-s">"depth"</span>: <span class="c-k">len</span>(self._span_stack),
+        <span class="c-s">"start"</span>: time.time(),
+    })
+    <span class="c-k">return</span> sid
+
+<span class="c-k">def</span> <span class="c-f">end_span</span>(self, output=<span class="c-k">None</span>, tokens=<span class="c-n">0</span>):
+    <span class="c-k">if not</span> self._span_stack: <span class="c-k">return</span>
+    span = self._span_stack.pop()          <span class="c-c"># 后进先出，配对准确</span>
+    ...</pre>
+        </div>
+        <div class="good">
+          <b>修复后实测</b>
+          <p><code>总token: 650 | 顶层总耗时: 915 ms</code>，diagnoser 回归，faiss_search 正确挂在它下面。与实验文档第一步画的期望结构完全对齐。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VIZ 统计与可视化 ===== -->
+  <div class="section" id="viz" style="--c:#7c3aed;--cb:#f5f3ff">
+    <div class="sec-head"><span class="ic">VIZ</span><div><h2>统计口径与树形可视化</h2><div class="sub">两个容易算错的地方</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>坑一：总耗时不能把所有 span 加起来</h4>
+          <p>faiss_search 的 155ms 已经<b>包含在</b> diagnoser 的 358ms 里了。全部相加会重复计算，得出比真实墙钟时间更长的总耗时。正确口径是<b>只累加顶层 span</b>（<code>parent_span_id is None</code>）。</p>
+        </div>
+        <div class="p-block">
+          <h4>坑二：token 反过来，必须全加</h4>
+          <p>耗时是区间包含关系，token 是独立消耗——diagnoser 自己烧了 200，faiss_search 另外烧了 80，两者不重叠。所以 <code>total_tokens</code> 在每次 <code>end_span</code> 时无条件累加，和耗时的处理正好相反。这个不对称是最容易搞混的点。</p>
+        </div>
+        <div class="p-block">
+          <h4>坑三：入列顺序不是显示顺序</h4>
+          <p>因为子 span 先结束，<code>spans</code> 列表里 faiss_search 排在 diagnoser <b>前面</b>。直接按列表顺序打印加缩进，faiss_search 就会显示在 detector 底下——挂错父亲。必须按 <code>parent_span_id</code> 重建树序再输出。</p>
+        </div>
+      </div>
+      <div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;耗时：只累加顶层</div>
+<pre><span class="c-k">def</span> <span class="c-f">end_trace</span>(self) -&gt; <span class="c-k">Dict</span>:
+    <span class="c-c"># 只累加顶层 span 的耗时，子 span 已含在父区间内，</span>
+    <span class="c-c"># 否则重复计算</span>
+    total_ms = <span class="c-k">sum</span>(s.get(<span class="c-s">"elapsed_ms"</span>, <span class="c-n">0</span>)
+                   <span class="c-k">for</span> s <span class="c-k">in</span> trace[<span class="c-s">"spans"</span>]
+                   <span class="c-k">if</span> s.get(<span class="c-s">"parent_span_id"</span>) <span class="c-k">is</span> <span class="c-k">None</span>)</pre>
+        </div>
+        <div class="codebox">
+          <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;显示：按父子关系重建树序</div>
+<pre><span class="c-k">def</span> <span class="c-f">_tree_order</span>(spans: <span class="c-k">List</span>[<span class="c-k">Dict</span>]):
+    <span class="c-s">"""把按结束时间入列的 spans 重排为树形顺序：</span>
+<span class="c-s">    父在前，紧跟其子。返回 (span, is_last)。"""</span>
+    by_parent: <span class="c-k">Dict</span> = {}
+    <span class="c-k">for</span> s <span class="c-k">in</span> spans:
+        by_parent.setdefault(s.get(<span class="c-s">"parent_span_id"</span>), []).append(s)
+
+    out = []
+    <span class="c-k">def</span> <span class="c-f">walk</span>(parent_id):
+        children = by_parent.get(parent_id, [])
+        <span class="c-k">for</span> i, s <span class="c-k">in</span> <span class="c-k">enumerate</span>(children):
+            out.append((s, i == <span class="c-k">len</span>(children) - <span class="c-n">1</span>))
+            walk(s[<span class="c-s">"span_id"</span>])          <span class="c-c"># 深度优先</span>
+    walk(<span class="c-k">None</span>)
+    <span class="c-k">return</span> out</pre>
+        </div>
+        <div class="note">
+          <b>柱状图的分母也要小心</b>
+          <p><code>_bar()</code> 用 <code>span耗时 / trace总耗时</code> 算占比。既然总耗时只算顶层，子 span 的柱长表达的是「占整次请求的比例」，而不是「占父 span 的比例」——读图时要清楚分母是什么。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LF Langfuse ===== -->
+  <div class="section" id="lf" style="--c:#ea580c;--cb:#fff7ed">
+    <div class="sec-head"><span class="ic">LF</span><div><h2>从本地 Tracer 到 Langfuse</h2><div class="sub">trace_langfuse.py · SmartTracer 三级降级</div></div></div>
+    <div class="sec-body single">
+      <div class="p-block">
+        <h4>为什么选 Langfuse 而不是 LangSmith</h4>
+        <table class="tbl">
+          <thead><tr><th style="width:110px">维度</th><th>LangSmith</th><th>Langfuse</th></tr></thead>
+          <tbody>
+            <tr><td><b>出身</b></td><td>LangChain 官方，同一家公司</td><td>德国独立公司，开源</td></tr>
+            <tr><td><b>部署</b></td><td>仅 SaaS —— 数据出境</td><td><b>自托管 Docker</b> 或 Cloud 二选一</td></tr>
+            <tr><td><b>内网可用</b></td><td>需要海外网络</td><td><code>docker compose up -d</code> 即可</td></tr>
+            <tr><td><b>结论</b></td><td colspan="2"><b>运营商场景选 Langfuse</b>——排障数据不出机房，开源无调用上限。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.05fr .95fr;gap:26px;margin-top:20px">
+        <div>
+          <div class="p-block">
+            <h4>SmartTracer：装不装都能跑</h4>
+            <p>课堂上不能假设所有人都起了 Docker。<code>trace_langfuse.py</code> 用一个 <code>SmartTracer</code> 做三级降级——<b>密钥没配 → langfuse 没装 → 连接失败</b>，任一情况都自动回落到 <code>LocalTracer</code>，只打印提示不报错。同一份代码，配了密钥的人看 Web 面板，没配的人看控制台。</p>
+          </div>
+          <div class="p-block">
+            <h4>判断密钥是否为占位符</h4>
+            <p>默认值就是 <code>"pk-lf-..."</code> 这种占位串，所以启用条件不是「环境变量存在」而是「值不等于占位符」。这个细节决定了没配密钥的人不会拿着假密钥去连接然后超时卡住。</p>
+          </div>
+          <div class="p-block">
+            <h4>接入方式：Callback 一行</h4>
+            <p>Langfuse 的 <code>CallbackHandler</code> 挂进 <code>config={"callbacks":[...]}</code> 后，LangChain 内部的每次 LLM 调用、Tool 调用、Agent 决策都会自动上报——<b>不需要手写 start_span / end_span</b>。它自动帮你处理的正是本实验手动踩过的 span 栈和父子关系。</p>
+          </div>
+          <div class="warn">
+            <b>别忘了 flush()</b>
+            <p>Langfuse 是异步批量上报。短脚本跑完就退出，缓冲区里的数据来不及发送就丢了。所以脚本结尾必须 <code>tracer.flush()</code>——本地模式下它是空操作，无副作用。</p>
+          </div>
+        </div>
+        <div>
+          <div class="codebox">
+            <div class="cb-hd"><span class="d" style="background:#f87171"></span><span class="d" style="background:#fbbf24"></span><span class="d" style="background:#4ade80"></span>&nbsp;trace_langfuse.py · 三级降级</div>
+<pre><span class="c-n">LANGFUSE_ENABLED</span> = (
+    <span class="c-n">LANGFUSE_PUBLIC_KEY</span> <span class="c-k">not in</span> (<span class="c-s">""</span>, <span class="c-s">"pk-lf-..."</span>)
+    <span class="c-k">and</span> <span class="c-n">LANGFUSE_SECRET_KEY</span> <span class="c-k">not in</span> (<span class="c-s">""</span>, <span class="c-s">"sk-lf-..."</span>)
+)
+
+<span class="c-k">if</span> <span class="c-n">LANGFUSE_ENABLED</span>:
+    <span class="c-k">try</span>:
+        <span class="c-k">from</span> langfuse.langchain <span class="c-k">import</span> CallbackHandler
+        self._handler = CallbackHandler(...)
+        self._mode = <span class="c-s">"langfuse"</span>
+    <span class="c-k">except</span> <span class="c-k">ImportError</span>:
+        <span class="c-c"># langfuse 未安装 → 降级</span>
+    <span class="c-k">except</span> <span class="c-k">Exception</span>:
+        <span class="c-c"># 连接失败 → 降级</span>
+
+<span class="c-k">if</span> self._mode == <span class="c-s">"local"</span>:            <span class="c-c"># 兜底</span>
+    <span class="c-k">from</span> trace_demo <span class="c-k">import</span> LocalTracer
+    self._local_tracer = LocalTracer()</pre>
+          </div>
+          <div class="p-block">
+            <h4>两条路线怎么选</h4>
+            <table class="tbl">
+              <thead><tr><th></th><th>LocalTracer</th><th>Langfuse</th></tr></thead>
+              <tbody>
+                <tr><td><b>接入</b></td><td>手写 span 对</td><td>Callback 一行</td></tr>
+                <tr><td><b>数据</b></td><td>本次运行</td><td>永久，可搜索聚合</td></tr>
+                <tr><td><b>门槛</b></td><td>零依赖</td><td>Docker + 5 分钟</td></tr>
+                <tr><td><b>定位</b></td><td><span class="pick" style="background:var(--green-bg);color:var(--green)">Day3 标准路径</span></td><td><span class="pick" style="background:var(--orange-bg);color:var(--orange)">进阶 / Day4</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RUN 动手跑 ===== -->
+  <div class="section" id="run" style="--c:#16a34a;--cb:#f0fdf4">
+    <div class="sec-head"><span class="ic">RUN</span><div><h2>动手跑：步骤 · 标准 · 排坑</h2><div class="sub">python trace_demo.py</div></div></div>
+    <div class="sec-body">
+      <div>
+        <div class="p-block">
+          <h4>六步路线</h4>
+          <div class="route">
+            <div class="rt"><span class="no">1</span><div><b>跑基线</b><span>cd labs/31-可观测 &amp;&amp; python trace_demo.py（零外部依赖）</span></div></div>
+            <div class="rt"><span class="no">2</span><div><b>核对总数</b><span>确认总 Token = 650、五个 span 全在、faiss_search 缩进在 diagnoser 下</span></div></div>
+            <div class="rt"><span class="no">3</span><div><b>手动复现 bug</b><span>把 _span_stack 改回单变量，观察 diagnoser 消失、token 掉到 450 且不报错</span></div></div>
+            <div class="rt"><span class="no">4</span><div><b>验证耗时口径</b><span>改成全部 span 相加，看总耗时如何被 faiss_search 重复计入而虚高</span></div></div>
+            <div class="rt"><span class="no">5</span><div><b>持久化</b><span>调 to_json() 落 traces.json，检查 parent_span_id / depth 字段是否正确</span></div></div>
+            <div class="rt"><span class="no">6</span><div><b>进阶（可选）</b><span>起 Docker + Langfuse，跑 trace_langfuse.py，在 Web 面板看同一条链路</span></div></div>
+          </div>
+        </div>
+        <div class="p-block">
+          <h4>完成标准</h4>
+          <ul class="check-list">
+            <li>能记录 ≥ 3 条 Trace，每条 ≥ 2 个 Span</li>
+            <li>ASCII 柱状图能看出各 Span 的耗时占比</li>
+            <li><code>traces.json</code> 持久化成功且父子字段完整</li>
+            <li>能解释为什么 span 要用栈，说出单变量方案丢了什么</li>
+            <li>能解释耗时只加顶层、token 全加的不对称原因</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="p-block">
+          <h4>坑位表</h4>
+          <table class="tbl">
+            <thead><tr><th style="width:150px">现象</th><th>原因与处理</th></tr></thead>
+            <tbody>
+              <tr><td><b>某个 span 不见了</b></td><td>用单变量存 current span，嵌套时被子 span 覆盖。必须用栈。</td></tr>
+              <tr><td><b>token 总数偏小</b></td><td>同上——父 span 的 <code>end_span</code> 因为栈空提前 return，token 没累加。</td></tr>
+              <tr><td><b>总耗时虚高</b></td><td>把子 span 耗时也加进去了。只累加 <code>parent_span_id is None</code> 的。</td></tr>
+              <tr><td><b>子 span 挂错父亲</b></td><td>直接按 <code>spans</code> 列表顺序打印。子 span 先结束先入列，必须走 <code>_tree_order()</code>。</td></tr>
+              <tr><td><b>漏调 end_span</b></td><td>栈不平衡，后续 span 全部挂在这个未关闭的 span 下。埋点必须严格成对。</td></tr>
+              <tr><td><b>Langfuse 面板没数据</b></td><td>脚本退出太快，异步上报未完成。结尾加 <code>tracer.flush()</code>。</td></tr>
+              <tr><td><b>连接 localhost:3000 超时</b></td><td>Docker 没起，或用了占位密钥。<code>SmartTracer</code> 会自动降级，看提示行确认当前 mode。</td></tr>
+              <tr><td><b>以为要装 langchain</b></td><td><code>trace_demo.py</code> 只用标准库。装了 langchain 会额外启用 <code>LangChainTracer</code> 回调类，不装也能跑。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="p-block">
+          <h4>相关文件</h4>
+          <span class="lab-chip">trace_demo.py · 本地 Tracer</span>
+          <span class="lab-chip">trace_langfuse.py · SmartTracer</span>
+          <span class="lab-chip">langfuse_setup.md · Docker 部署</span>
+          <span class="lab-chip">实验文档.md</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CTA ===== -->
+  <div class="cta">
+    <div>
+      <h2>链路能看见了，用户还在等</h2>
+      <p>Trace 解决的是「事后能查」。但一次排障要跑 900ms，用户盯着空白屏幕不知道在干什么——下一站 3.7 流式输出，把思考过程实时推给前端。</p>
+    </div>
+    <div class="btns">
+      <a href="../30-安全护栏/实验讲解.html">上一站 · 3.5 安全护栏</a>
+      <a href="../32-流式输出/实验讲解.html">下一站 · 3.7 流式输出</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    实验 25 · 可观测 &nbsp;|&nbsp; 运行：<code>python trace_demo.py</code> &nbsp;|&nbsp; 进阶：<code>python trace_langfuse.py</code> + Docker
+  </div>
+
+</div>
+</body>
+</html>

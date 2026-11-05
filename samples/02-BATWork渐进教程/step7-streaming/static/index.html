@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAT Work Agent</title>
+<style>
+/* ═══════════════════════════════════════════════
+   BAT Work Style — Dark & Light Theme
+   ═══════════════════════════════════════════════ */
+:root {
+  --bg-primary: #0d0d1a;
+  --bg-secondary: #151528;
+  --bg-tertiary: #1c1c35;
+  --bg-card: #222240;
+  --bg-hover: #2a2a48;
+  --bg-overlay: rgba(0,0,0,0.6);
+  --border: #333358;
+  --border-light: #3d3d60;
+  --accent: #7c5cfc;
+  --accent-glow: rgba(124, 92, 252, 0.25);
+  --accent-dim: rgba(124, 92, 252, 0.12);
+  --blue: #4dabf7;
+  --green: #51cf66;
+  --orange: #ffa94d;
+  --red: #ff6b6b;
+  --yellow: #ffd43b;
+  --text-primary: #e4e4ed;
+  --text-secondary: #9898b0;
+  --text-muted: #6a6a80;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e8ed;
+  --bg-card: #f0f0f5;
+  --bg-hover: #e2e2ea;
+  --bg-overlay: rgba(0,0,0,0.3);
+  --border: #dcdce0;
+  --border-light: #e8e8ed;
+  --accent: #6c4ce0;
+  --accent-glow: rgba(108, 76, 224, 0.15);
+  --accent-dim: rgba(108, 76, 224, 0.08);
+  --text-primary: #1d1d2b;
+  --text-secondary: #5c5c70;
+  --text-muted: #9090a0;
+  --shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: background .3s, color .3s;
+}
+
+/* ── 顶部标题栏 ── */
+.header {
+  height: 48px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  transition: background .3s;
+}
+.header .logo-svg { flex-shrink: 0; }
+.header .title {
+  font-size: 14px; font-weight: 600; letter-spacing: -.01em;
+}
+.header .header-actions {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 6px;
+  -webkit-app-region: no-drag;
+}
+.theme-toggle {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  color: var(--text-secondary);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.theme-toggle svg { transition: transform .3s; }
+.header .model-badge {
+  font-size: 11px; color: var(--text-muted);
+  background: var(--bg-tertiary); padding: 3px 10px; border-radius: 20px;
+}
+
+/* ── 主布局 ── */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── 左侧边栏 ── */
+.sidebar-left {
+  width: 240px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  transition: background .3s;
+}
+.sidebar-left::-webkit-scrollbar { width: 4px; }
+.sidebar-left::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.side-section {
+  border-bottom: 1px solid var(--border);
+}
+.side-section:last-child { border-bottom: none; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 6px;
+}
+.section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  color: var(--text-muted); letter-spacing: .05em;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-title svg { opacity: .6; }
+
+/* 文件列表 */
+.file-list { padding: 0 8px 8px; }
+.file-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  font-size: 12.5px; color: var(--text-secondary);
+  cursor: default; transition: background .15s;
+}
+.file-item:hover { background: var(--bg-hover); }
+.file-item .f-icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+.file-item .f-size { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+.file-item.empty { color: var(--text-muted); font-style: italic; cursor: default; }
+
+/* Skill 列表 */
+.skill-list { padding: 0 8px 10px; }
+.skill-card {
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: all .15s;
+  cursor: default;
+}
+.skill-card:hover { border-color: var(--accent); background: var(--bg-hover); }
+.skill-card .sk-name {
+  font-size: 12.5px; font-weight: 500; color: var(--text-primary);
+  margin-bottom: 3px;
+}
+.skill-card .sk-tags {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
+.skill-card .sk-tag {
+  font-size: 10px; padding: 1px 7px; border-radius: 10px;
+  background: var(--accent-dim); color: var(--accent);
+  border: 1px solid var(--accent-glow);
+}
+.skill-card .sk-meta {
+  font-size: 10.5px; color: var(--text-muted); margin-top: 3px;
+}
+.skill-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 8px;
+  font-weight: 500;
+}
+.skill-badge.free { background: rgba(81,207,102,.15); color: var(--green); }
+.skill-badge.premium { background: rgba(255,169,77,.15); color: var(--orange); }
+
+.add-skill-btn {
+  display: flex; align-items: center; gap: 4px;
+  margin: 0 8px 10px; padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px; cursor: pointer;
+  transition: all .15s;
+}
+.add-skill-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* Skill Market Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg-overlay);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  animation: fadeIn .2s ease;
+}
+.modal-overlay.hidden { display: none; }
+.market-modal {
+  width: 520px; max-height: 70vh;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.market-modal .mm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.market-modal .mm-header h3 { font-size: 15px; font-weight: 600; }
+.market-modal .mm-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: none; background: transparent;
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.market-modal .mm-close:hover { background: var(--bg-hover); }
+.market-modal .mm-body {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.market-skill-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  transition: all .15s;
+}
+.market-skill-item:hover { border-color: var(--accent); }
+.market-skill-item .ms-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.market-skill-item .ms-info { flex: 1; min-width: 0; }
+.market-skill-item .ms-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.market-skill-item .ms-desc { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+.market-skill-item .ms-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.market-skill-item .ms-trigger {
+  font-size: 10px; padding: 1px 7px; border-radius: 8px;
+  background: var(--bg-tertiary); color: var(--text-secondary);
+}
+.market-skill-item .ms-install {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: transparent; color: var(--accent);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  flex-shrink: 0; transition: all .15s;
+  white-space: nowrap;
+}
+.market-skill-item .ms-install:hover { background: var(--accent); color: #fff; }
+.market-skill-item .ms-install.installed {
+  border-color: var(--green); color: var(--green);
+  cursor: default;
+}
+.market-skill-item .ms-install.installed:hover { background: transparent; }
+
+/* ── 中间：对话区 ── */
+.chat-area {
+  flex: 1;
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex; flex-direction: column;
+  gap: 16px;
+}
+.chat-messages::-webkit-scrollbar { width: 5px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.welcome {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; gap: 10px;
+  color: var(--text-muted);
+}
+.welcome .big-logo { margin-bottom: 4px; opacity: .6; }
+.welcome h2 { font-size: 18px; font-weight: 500; color: var(--text-secondary); }
+.welcome .hints { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.welcome .hint {
+  background: var(--bg-card); border: 1px solid var(--border);
+  padding: 8px 14px; border-radius: 20px; font-size: 12px;
+  cursor: pointer; transition: all .15s; color: var(--text-secondary);
+}
+.welcome .hint:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+.message { display: flex; gap: 10px; max-width: 85%; animation: fadeIn .25s ease; }
+.message.user { align-self: flex-end; flex-direction: row-reverse; }
+.message.agent { align-self: flex-start; }
+.message .avatar {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+.message.user .avatar { background: var(--accent); color: #fff; }
+.message.agent .avatar { background: var(--bg-card); border: 1px solid var(--border); }
+.message .bubble {
+  padding: 10px 16px; border-radius: var(--radius);
+  font-size: 13.5px; line-height: 1.6;
+  word-break: break-word;
+}
+.message.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 2px; }
+.message.agent .bubble { background: var(--bg-card); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+.message .bubble pre { background: var(--bg-primary); padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 6px 0; }
+.message .bubble code { font-size: 12px; background: var(--accent-dim); padding: 1px 5px; border-radius: 3px; }
+.message.user .bubble pre { background: rgba(0,0,0,.2); }
+.message.user .bubble code { background: rgba(255,255,255,.15); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.cursor-blink { animation: blink 0.8s infinite; color: var(--accent); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* 输入区 */
+.input-bar {
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: center;
+  transition: background .3s;
+}
+.input-bar input {
+  flex: 1; background: var(--bg-tertiary); border: 1px solid var(--border);
+  border-radius: 24px; padding: 10px 18px; font-size: 13.5px;
+  color: var(--text-primary); outline: none;
+  transition: border-color .2s;
+}
+.input-bar input:focus { border-color: var(--accent); }
+.input-bar input::placeholder { color: var(--text-muted); }
+.input-bar button {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+.input-bar button svg { width: 16px; height: 16px; }
+.input-bar button:hover { background: #9370ff; transform: scale(1.05); }
+.input-bar button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.input-bar button.loading { background: var(--border); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+/* ── 右侧面板：Tab 切换 ── */
+.sidebar-right {
+  width: 300px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.right-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.right-tab {
+  flex: 1;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 12px; font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+  background: none;
+}
+.right-tab:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.right-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.right-tab-content { flex: 1; overflow-y: auto; display: none; }
+.right-tab-content.active { display: flex; flex-direction: column; }
+.right-tab-content::-webkit-scrollbar { width: 4px; }
+.right-tab-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* 执行追踪 */
+.trace-list { padding: 0 8px 16px; }
+.trace-item {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  margin-bottom: 6px; font-size: 12.5px;
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+.trace-item .step-header {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 500; margin-bottom: 4px;
+}
+.trace-item .step-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.trace-item.pending { opacity: .4; background: transparent; }
+.trace-item.pending .step-dot { background: var(--text-muted); }
+.trace-item.running { background: var(--accent-dim); border-color: var(--accent); }
+.trace-item.running .step-dot { background: var(--accent); animation: pulse 1s infinite; }
+.trace-item.done { background: transparent; border-color: var(--border-light); }
+.trace-item.done .step-dot { background: var(--green); }
+.trace-item .step-output {
+  color: var(--text-muted); font-size: 11.5px;
+  margin-top: 6px; max-height: 120px; overflow-y: auto;
+  word-break: break-word; line-height: 1.5;
+  display: none;
+}
+.trace-item.done .step-output, .trace-item.running .step-output { display: block; }
+.trace-item.error .step-dot { background: var(--red); }
+.trace-item.error { background: rgba(255,107,107,.08); border-color: rgba(255,107,107,.3); }
+
+/* 定时任务面板 */
+.scheduler-header {
+  padding: 12px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.scheduler-status {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  color: var(--text-muted); letter-spacing: .05em;
+  display: flex; align-items: center; gap: 6px;
+}
+.scheduler-status .status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+}
+.scheduler-status .status-dot.on { background: var(--green); }
+.scheduler-status .status-dot.off { background: var(--red); }
+.task-list { padding: 0 8px 16px; }
+.task-card {
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: all .15s;
+}
+.task-card:hover { border-color: var(--accent); background: var(--bg-hover); }
+.task-card .task-name {
+  font-size: 13px; font-weight: 500; color: var(--text-primary);
+  margin-bottom: 4px;
+  display: flex; align-items: center; gap: 6px;
+}
+.task-card .task-name .task-badge {
+  font-size: 9.5px; padding: 1px 7px; border-radius: 8px;
+  font-weight: 600;
+}
+.task-card .task-name .task-badge.cron { background: rgba(77,171,247,.15); color: var(--blue); }
+.task-card .task-name .task-badge.interval { background: rgba(81,207,102,.15); color: var(--green); }
+.task-card .task-schedule {
+  font-size: 11px; color: var(--text-muted);
+  margin-bottom: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.task-card .task-prompt {
+  font-size: 11.5px; color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-card .task-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10.5px; color: var(--text-muted);
+}
+.task-card .task-footer .task-meta {
+  display: flex; gap: 12px;
+}
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  width: 36px; height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 20px;
+  transition: .2s;
+}
+.toggle-switch .slider::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px;
+  left: 2px; top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: .2s;
+}
+.toggle-switch input:checked + .slider { background: var(--accent); }
+.toggle-switch input:checked + .slider::before { transform: translateX(16px); }
+.scheduler-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Toast 提示 */
+.toast {
+  position: fixed; top: 56px; right: 20px;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  font-size: 13px; z-index: 200;
+  animation: slideIn .3s ease;
+  box-shadow: var(--shadow);
+  border: 1px solid;
+}
+.toast.success { background: rgba(81,207,102,.15); color: var(--green); border-color: var(--green); }
+.toast.error { background: rgba(255,107,107,.15); color: var(--red); border-color: var(--red); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .sidebar-left, .sidebar-right { display: none; }
+  .market-modal { width: 94vw; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── 顶部标题栏 ── -->
+<div class="header">
+  <!-- Logo SVG -->
+  <svg class="logo-svg" width="28" height="28" viewBox="0 0 28 28" fill="none">
+    <defs><linearGradient id="lg" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#7c5cfc"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+    <rect width="28" height="28" rx="7" fill="url(#lg)"/>
+    <path d="M7.5 14.5l5 5 8-10" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="title">BAT Work Agent</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle" title="切换主题" onclick="toggleTheme()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path id="themeIconDark" d="M12 8.5A5 5 0 016.5 3 5 5 0 1012 8.5z"/>
+        <circle id="themeIconLight" cx="8" cy="8" r="3.5" style="display:none"/>
+        <path id="themeIconLightRays" d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.9 11.9l1.06 1.06M3.05 12.95l1.06-1.06M11.9 4.1l1.06-1.06" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="display:none"/>
+      </svg>
+    </button>
+    <span class="model-badge" id="modelBadge">--</span>
+  </div>
+</div>
+
+<!-- ── 主布局 ── -->
+<div class="main-layout">
+
+  <!-- 左侧：文件浏览器 + Skills -->
+  <aside class="sidebar-left">
+    <!-- 文件区 -->
+    <div class="side-section">
+      <div class="section-header">
+        <span class="section-title">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 2.5h4l1.5 1.5h4v7h-9.5z" stroke-linejoin="round"/></svg>
+          工作区文件
+        </span>
+      </div>
+      <div class="file-list" id="fileList">
+        <div class="file-item empty">加载中…</div>
+      </div>
+    </div>
+
+    <!-- Skills 区 -->
+    <div class="side-section" style="flex: 1;">
+      <div class="section-header">
+        <span class="section-title">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="10" height="10" rx="2"/><path d="M4.5 6.5l1.5 1.5 2.5-2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Skills
+        </span>
+        <span style="font-size:10px;color:var(--text-muted)" id="skillCount">0</span>
+      </div>
+      <div class="skill-list" id="skillList">
+        <div class="file-item empty">无已安装 Skill</div>
+      </div>
+      <button class="add-skill-btn" onclick="openMarketplace()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
+        获取更多 Skill
+      </button>
+    </div>
+  </aside>
+
+  <!-- 中间：对话区 -->
+  <main class="chat-area">
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome" id="welcome">
+        <div class="big-logo">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+            <rect width="56" height="56" rx="14" fill="var(--accent)" opacity=".15"/>
+            <path d="M15 29l10 10 16-20" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2>BAT Work Agent</h2>
+        <p style="color:var(--text-muted);font-size:13px">基于 LangGraph 的 AI 任务助手</p>
+        <div class="hints">
+          <span class="hint" onclick="sendHint(this.textContent)">列出当前目录的文件</span>
+          <span class="hint" onclick="sendHint(this.textContent)">分析 sales.csv 的销售数据</span>
+          <span class="hint" onclick="sendHint(this.textContent)">帮我生成月度经营分析报告</span>
+        </div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <input type="text" id="msgInput" placeholder="输入你的任务…" onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button id="sendBtn" onclick="sendMessage()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="2" x2="8" y2="14"/><polyline points="4 6 8 2 12 6"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- 右侧：Tab 面板 -->
+  <aside class="sidebar-right">
+    <div class="right-tabs">
+      <button class="right-tab active" onclick="switchRightTab('trace')">执行追踪</button>
+      <button class="right-tab" onclick="switchRightTab('scheduler')">定时任务</button>
+    </div>
+    <!-- 执行追踪 -->
+    <div class="right-tab-content active" id="tab-trace">
+      <div class="trace-list" id="traceList">
+        <div class="trace-item pending" data-node="understand_intent">
+          <div class="step-header"><span class="step-dot"></span> 意图理解</div>
+        </div>
+        <div class="trace-item pending" data-node="enrich_context">
+          <div class="step-header"><span class="step-dot"></span> 上下文补齐</div>
+        </div>
+        <div class="trace-item pending" data-node="plan_tasks">
+          <div class="step-header"><span class="step-dot"></span> 任务规划</div>
+        </div>
+        <div class="trace-item pending" data-node="execute_tool">
+          <div class="step-header"><span class="step-dot"></span> 工具执行</div>
+        </div>
+        <div class="trace-item pending" data-node="validate_result">
+          <div class="step-header"><span class="step-dot"></span> 结果校验</div>
+        </div>
+        <div class="trace-item pending" data-node="generate_output">
+          <div class="step-header"><span class="step-dot"></span> 产物生成</div>
+        </div>
+      </div>
+    </div>
+    <!-- 定时任务 -->
+    <div class="right-tab-content" id="tab-scheduler">
+      <div class="scheduler-header">
+        <span class="scheduler-status">
+          <span class="status-dot off" id="schedulerStatusDot"></span>
+          <span id="schedulerStatusText">调度器</span>
+        </span>
+        <span style="font-size:11px;color:var(--text-muted)" id="schedulerTaskCount"></span>
+      </div>
+      <div class="task-list" id="taskList">
+        <div class="scheduler-empty">加载中…</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- Skill 市场弹窗 -->
+<div class="modal-overlay hidden" id="marketOverlay" onclick="if(event.target===this) closeMarketplace()">
+  <div class="market-modal">
+    <div class="mm-header">
+      <h3>Skill 市场</h3>
+      <button class="mm-close" onclick="closeMarketplace()">✕</button>
+    </div>
+    <div class="mm-body" id="marketBody">
+      <div style="text-align:center;padding:40px;color:var(--text-muted)">加载中…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   WebSocket + Theme + Skills + Streaming
+   ═══════════════════════════════════════════════ */
+
+const NODE_LABELS = {
+  understand_intent: '意图理解',
+  enrich_context: '上下文补齐',
+  plan_tasks: '任务规划',
+  execute_tool: '工具执行',
+  validate_result: '结果校验',
+  generate_output: '产物生成',
+  handle_error: '兜底处理'
+};
+
+// SVG Icons
+const ICON_USER = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="4.5" r="2.5"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke-linecap="round"/></svg>';
+const ICON_AGENT = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5"/><path d="M5 7l1.5 1.5 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const FILE_ICONS = {
+  csv: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="3" y1="5" x2="10" y2="5"/><line x1="3" y1="8" x2="10" y2="8"/></svg>',
+  md: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="3" y1="5" x2="10" y2="5"/><line x1="3" y1="8" x2="7" y2="8"/></svg>',
+  py: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><text x="4.5" y="10" font-size="7" fill="currentColor" stroke="none">&lt;/&gt;</text></svg>',
+  json: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><text x="4" y="10" font-size="6.5" fill="currentColor" stroke="none">{ }</text></svg>',
+  default: '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="4" y1="4" x2="9" y2="4"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="10" x2="7" y2="10"/></svg>',
+};
+
+let ws = null;
+let isProcessing = false;
+
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => console.log('WebSocket connected');
+  ws.onclose = () => { console.log('WebSocket disconnected, reconnecting in 5s...'); setTimeout(connect, 5000); };
+  ws.onerror = () => ws.close();
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    handleMessage(msg);
+  };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'start': onAgentStart(msg.query); break;
+    case 'node_update': onNodeUpdate(msg.node, msg.data); break;
+    case 'stream_start': onStreamStart(); break;
+    case 'token': onStreamToken(msg.content); break;
+    case 'stream_end': onStreamEnd(); break;
+    case 'done': onAgentDone(); break;
+    case 'error': onAgentError(msg.message); break;
+  }
+}
+
+function onAgentStart(query) {
+  isProcessing = true;
+  document.getElementById('welcome')?.remove();
+  addMessage('user', query);
+  document.querySelectorAll('.trace-item').forEach(el => {
+    el.className = 'trace-item pending';
+    el.querySelector('.step-output')?.remove();
+  });
+  const btn = document.getElementById('sendBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+}
+
+function onNodeUpdate(nodeName, data) {
+  const el = document.querySelector(`.trace-item[data-node="${nodeName}"]`);
+  if (!el) return;
+  let found = false;
+  document.querySelectorAll('.trace-item').forEach(item => {
+    if (item.dataset.node === nodeName) found = true;
+    if (!found) item.className = 'trace-item done';
+    else if (item.dataset.node === nodeName) item.className = 'trace-item running';
+  });
+  let existing = el.querySelector('.step-output');
+  if (!existing) {
+    existing = document.createElement('div');
+    existing.className = 'step-output';
+    el.appendChild(existing);
+  }
+  const preview = formatNodeData(nodeName, data);
+  existing.textContent = preview;
+  if (nodeName === 'generate_output' && data.final_output) {
+    addMessage('agent', data.final_output);
+  }
+  existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function onAgentDone() {
+  isProcessing = false;
+  const btn = document.getElementById('sendBtn');
+  btn.classList.remove('loading');
+  btn.disabled = false;
+  document.querySelectorAll('.trace-item').forEach(el => {
+    el.className = 'trace-item done';
+  });
+  loadFiles();
+}
+
+let streamingBubble = null;
+let streamingContent = '';
+
+function onStreamStart() {
+  streamingContent = '';
+  streamingBubble = addStreamingBubble();
+}
+
+function onStreamToken(content) {
+  streamingContent += content;
+  if (streamingBubble) {
+    const bubbleEl = streamingBubble.querySelector('.bubble');
+    if (bubbleEl) bubbleEl.innerHTML = renderMarkdown(streamingContent);
+    const container = document.getElementById('chatMessages');
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function onStreamEnd() {
+  if (streamingBubble) {
+    const bubbleEl = streamingBubble.querySelector('.bubble');
+    if (bubbleEl) bubbleEl.innerHTML = renderMarkdown(streamingContent);
+    streamingBubble = null;
+    streamingContent = '';
+  }
+}
+
+function addStreamingBubble() {
+  const container = document.getElementById('chatMessages');
+  document.getElementById('welcome')?.remove();
+  const div = document.createElement('div');
+  div.className = 'message agent streaming';
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.innerHTML = ICON_AGENT;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<span class="cursor-blink">▌</span>';
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function renderMarkdown(content) {
+  let html = escapeHtml(content)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)/gm, '<h4 style="margin:8px 0 4px">$1</h4>')
+    .replace(/^## (.+)/gm, '<h3 style="margin:10px 0 4px;font-size:15px">$1</h3>')
+    .replace(/^- (.+)/gm, '<li style="margin-left:16px">$1</li>')
+    .replace(/\n/g, '<br>');
+  html += '<span class="cursor-blink">▌</span>';
+  return html;
+}
+
+function onAgentError(message) {
+  isProcessing = false;
+  const btn = document.getElementById('sendBtn');
+  btn.classList.remove('loading');
+  btn.disabled = false;
+  addMessage('agent', `Execution error: ${message}`);
+}
+
+function addMessage(role, content) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.innerHTML = role === 'user' ? ICON_USER : ICON_AGENT;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  let html = escapeHtml(content)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)/gm, '<h4 style="margin:8px 0 4px">$1</h4>')
+    .replace(/^## (.+)/gm, '<h3 style="margin:10px 0 4px;font-size:15px">$1</h3>')
+    .replace(/^- (.+)/gm, '<li style="margin-left:16px">$1</li>')
+    .replace(/\n/g, '<br>');
+  bubble.innerHTML = html;
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+  return text.replace(/[&<>"]/g, c => map[c] || c);
+}
+
+function sendMessage() {
+  if (isProcessing) return;
+  const input = document.getElementById('msgInput');
+  const query = input.value.trim();
+  if (!query) return;
+  ws.send(JSON.stringify({ query }));
+  input.value = '';
+}
+
+function sendHint(text) {
+  document.getElementById('msgInput').value = text;
+  sendMessage();
+}
+
+function formatNodeData(nodeName, data) {
+  switch (nodeName) {
+    case 'understand_intent': return data.intent || '';
+    case 'enrich_context': return data.enriched_context?.split('\n').slice(0, 5).join('\n') || '';
+    case 'plan_tasks': {
+      const plan = data.plan || [];
+      if (plan.length === 0) return 'No tools needed';
+      return plan.map(p => `Step ${p.step}: ${p.action}(${p.target})`).join('\n');
+    }
+    case 'execute_tool': {
+      const results = data.tool_results || [];
+      if (results.length === 0) return '';
+      const last = results[results.length - 1];
+      return `${last.success ? '✓' : '✗'} ${last.action}: ${(last.output || '').slice(0, 200)}`;
+    }
+    case 'validate_result': return data.validation_passed ? '✓ Passed' : `✗ ${data.validation_feedback || 'Failed'}`;
+    case 'generate_output': return (data.final_output || '').slice(0, 300) + '…';
+    case 'handle_error': return 'Fallback processing…';
+    default: return JSON.stringify(data).slice(0, 300);
+  }
+}
+
+/* ── 文件列表 ── */
+async function loadFiles() {
+  try {
+    const resp = await fetch('/api/files');
+    const data = await resp.json();
+    const container = document.getElementById('fileList');
+    if (data.files.length === 0) {
+      container.innerHTML = '<div class="file-item empty">(empty)</div>';
+    } else {
+      container.innerHTML = data.files.map(f => {
+        const ext = f.name.split('.').pop();
+        const icon = FILE_ICONS[ext] || FILE_ICONS.default;
+        const size = f.size > 1024 ? `${(f.size/1024).toFixed(0)}KB` : `${f.size}B`;
+        return `<div class="file-item"><span class="f-icon">${icon}</span>${f.name}<span class="f-size">${size}</span></div>`;
+      }).join('');
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/* ═══════════════════════════════════════════════
+   Theme Toggle
+   ═══════════════════════════════════════════════ */
+
+function getTheme() {
+  const saved = localStorage.getItem('wb-theme');
+  if (saved) return saved;
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('wb-theme', theme);
+  const darkIcon = document.getElementById('themeIconDark');
+  const lightIcon = document.getElementById('themeIconLight');
+  const lightRays = document.getElementById('themeIconLightRays');
+  if (theme === 'light') {
+    if (darkIcon) darkIcon.style.display = 'none';
+    if (lightIcon) lightIcon.style.display = '';
+    if (lightRays) lightRays.style.display = '';
+  } else {
+    if (darkIcon) darkIcon.style.display = '';
+    if (lightIcon) lightIcon.style.display = 'none';
+    if (lightRays) lightRays.style.display = 'none';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+/* ═══════════════════════════════════════════════
+   Skills Panel
+   ═══════════════════════════════════════════════ */
+
+async function loadSkills() {
+  try {
+    const resp = await fetch('/api/skills');
+    const data = await resp.json();
+    const container = document.getElementById('skillList');
+    document.getElementById('skillCount').textContent = data.count;
+    if (data.count === 0) {
+      container.innerHTML = '<div class="file-item empty">No installed skills</div>';
+    } else {
+      container.innerHTML = data.skills.map(s => {
+        const stepsCount = s.steps ? s.steps.length : 0;
+        const tagsHTML = (s.triggers || []).slice(0, 3).map(t => `<span class="sk-tag">${escapeHtml(t)}</span>`).join('');
+        return `<div class="skill-card">
+          <div class="sk-name">${escapeHtml(s.name)}</div>
+          <div class="sk-tags">${tagsHTML}</div>
+          <div class="sk-meta">${stepsCount} steps · ${(s.constraints || []).length} constraints</div>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/* ═══════════════════════════════════════════════
+   Skill Marketplace
+   ═══════════════════════════════════════════════ */
+
+async function openMarketplace() {
+  const overlay = document.getElementById('marketOverlay');
+  const body = document.getElementById('marketBody');
+  overlay.classList.remove('hidden');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Loading…</div>';
+
+  try {
+    const resp = await fetch('/api/skills/marketplace');
+    const data = await resp.json();
+    const catIcons = {
+      '数据分析': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="10" width="3" height="5" rx=".5" fill="var(--accent)" opacity=".7"/><rect x="5" y="6" width="3" height="9" rx=".5" fill="var(--accent)" opacity=".85"/><rect x="9" y="3" width="3" height="12" rx=".5" fill="var(--accent)"/></svg>',
+      '市场研究': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2" opacity=".5"/><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>',
+      '办公效率': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="11" rx="1" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" stroke-width="1"/><line x1="4" y1="7" x2="10" y2="7" stroke="currentColor" stroke-width="1"/></svg>',
+      '数据可视化': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polyline points="1,13 5,7 8,9 12,3 15,5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+      '开发工具': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 3L1 8l4 5M11 3l4 5-4 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    };
+
+    body.innerHTML = data.skills.map(s => {
+      const tagsHTML = (s.triggers || []).slice(0, 3).map(t => `<span class="ms-trigger">${escapeHtml(t)}</span>`).join('');
+      const badge = s.premium ? '<span class="skill-badge premium">Premium</span>' : '<span class="skill-badge free">Free</span>';
+      const btnClass = s.installed ? 'ms-install installed' : 'ms-install';
+      const btnText = s.installed ? 'Installed' : 'Install';
+      return `<div class="market-skill-item">
+        <div class="ms-icon">${catIcons[s.category] || catIcons['办公效率']}</div>
+        <div class="ms-info">
+          <div class="ms-name">${escapeHtml(s.name)} ${badge}</div>
+          <div class="ms-desc">${escapeHtml(s.description)}</div>
+          <div class="ms-tags">${tagsHTML}</div>
+        </div>
+        <button class="${btnClass}" onclick="installSkill('${s.id}', this)" ${s.installed ? 'disabled' : ''}>${btnText}</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Failed to load marketplace</div>';
+  }
+}
+
+function closeMarketplace() {
+  document.getElementById('marketOverlay').classList.add('hidden');
+}
+
+async function installSkill(skillId, btn) {
+  btn.textContent = 'Installing…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`/api/skills/install/${skillId}`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      btn.textContent = 'Installed';
+      btn.classList.add('installed');
+      showToast(data.message, 'success');
+      loadSkills();
+      // refresh marketplace after 1s
+      setTimeout(openMarketplace, 1000);
+    } else {
+      btn.textContent = 'Install';
+      btn.disabled = false;
+      showToast(data.error, 'error');
+    }
+  } catch (e) {
+    btn.textContent = 'Install';
+    btn.disabled = false;
+    showToast('Network error', 'error');
+  }
+}
+
+function showToast(message, type) {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+/* ═══════════════════════════════════════════════
+   Right Panel Tab 切换
+   ═══════════════════════════════════════════════ */
+
+function switchRightTab(tabName) {
+  document.querySelectorAll('.right-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.right-tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tabName).classList.add('active');
+  if (tabName === 'scheduler') loadSchedulerStatus();
+}
+
+/* ═══════════════════════════════════════════════
+   定时任务面板
+   ═══════════════════════════════════════════════ */
+
+async function loadSchedulerStatus() {
+  const taskList = document.getElementById('taskList');
+  const statusDot = document.getElementById('schedulerStatusDot');
+  const statusText = document.getElementById('schedulerStatusText');
+  const taskCount = document.getElementById('schedulerTaskCount');
+
+  try {
+    const resp = await fetch('/api/scheduler/status');
+    const data = await resp.json();
+
+    if (!data.running) {
+      statusDot.className = 'status-dot off';
+      statusText.textContent = '调度器未启用';
+      taskCount.textContent = '';
+      taskList.innerHTML = `
+        <div class="scheduler-empty">
+          <div style="margin-bottom:8px;font-size:28px;opacity:.5">⏰</div>
+          调度器未启用<br>
+          <span style="font-size:11px;color:var(--text-muted)">启动时添加 --enable-scheduler 参数</span>
+        </div>`;
+      return;
+    }
+
+    statusDot.className = 'status-dot on';
+    statusText.textContent = '调度器运行中';
+    taskCount.textContent = data.task_count + ' 个任务';
+
+    if (data.task_count === 0) {
+      taskList.innerHTML = '<div class="scheduler-empty">暂无定时任务</div>';
+      return;
+    }
+
+    taskList.innerHTML = data.tasks.map(task => {
+      const badgeClass = task.task_type === 'cron' ? 'cron' : 'interval';
+      const badgeText = task.task_type === 'cron' ? 'Cron' : '间隔';
+      const lastRun = task.last_run ? new Date(task.last_run).toLocaleString('zh-CN') : '从未';
+      const checked = task.enabled ? 'checked' : '';
+      return `
+        <div class="task-card" style="${task.enabled ? '' : 'opacity:.5'}">
+          <div class="task-name">
+            ${escapeHtml(task.name)}
+            <span class="task-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="task-schedule">⏱ ${escapeHtml(task.schedule)}</div>
+          <div class="task-prompt" title="${escapeHtml(task.prompt)}">${escapeHtml(task.prompt)}</div>
+          <div class="task-footer">
+            <div class="task-meta">
+              <span>最近: ${lastRun}</span>
+              <span>执行 ${task.run_count} 次</span>
+            </div>
+            <label class="toggle-switch" title="${task.enabled ? '禁用' : '启用'}">
+              <input type="checkbox" ${checked} onchange="toggleTask('${escapeHtml(task.name)}', this)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    statusDot.className = 'status-dot off';
+    statusText.textContent = '调度器离线';
+    taskList.innerHTML = '<div class="scheduler-empty">无法连接调度器</div>';
+  }
+}
+
+async function toggleTask(taskName, checkbox) {
+  const wasChecked = checkbox.checked;
+  try {
+    const resp = await fetch('/api/scheduler/toggle/' + encodeURIComponent(taskName), { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      showToast(`任务 "${taskName}" 已${data.enabled ? '启用' : '禁用'}`, 'success');
+      setTimeout(loadSchedulerStatus, 500);
+    } else {
+      checkbox.checked = !wasChecked;
+      showToast(data.error || '操作失败', 'error');
+    }
+  } catch (e) {
+    checkbox.checked = !wasChecked;
+    showToast('网络错误', 'error');
+  }
+}
+
+/* ── Init ── */
+applyTheme(getTheme());
+connect();
+loadFiles();
+loadSkills();
+loadSchedulerStatus();
+</script>
+
+</body>
+</html>
