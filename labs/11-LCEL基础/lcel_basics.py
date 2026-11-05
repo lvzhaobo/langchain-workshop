@@ -26,12 +26,22 @@ API_KEY = os.getenv("AGENT_API_KEY", "REPLACE_ME_NO_KEY")
 API_BASE = os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1")
 MODEL = os.getenv("AGENT_MODEL", "deepseek-chat")
 
-llm = ChatOpenAI(
-    model=MODEL,
-    temperature=0,
-    api_key=API_KEY,
-    base_url=API_BASE,
-)
+from _mock_llm import scripted, use_mock
+
+_ANSWER = ("设备 DEV-0001（华为 AAU5613，望京SOHO）状态：告警。"
+           "挂 2 条告警，最高 P0 基站退服（SCTP 链路中断）。建议先查链路。")
+
+if use_mock():
+    print("⚠️  没检测到 AGENT_API_KEY —— 用预设回复跑通 LCEL 各部分（零 Key 模式）")
+    print("   想看真模型：填好 .env 里的 AGENT_API_KEY 再跑，代码不用改。\n")
+    llm = scripted([(_ANSWER, None)] * 20)   # 够用即可，多余的不会被消费
+else:
+    llm = ChatOpenAI(
+        model=MODEL,
+        temperature=0,
+        api_key=API_KEY,
+        base_url=API_BASE,
+    )
 
 
 # ═══ 获取设备数据（复用 1.1 平台，带兜底） ═══
@@ -101,14 +111,22 @@ parallel_chain = RunnableParallel(
 # ═══════════════════════════════════════════════════════════════
 
 # 故意配一个坏模型模拟"主模型故障"（错误的 api_key）
-broken_llm = ChatOpenAI(
-    model=MODEL,
-    temperature=0,
-    api_key="sk-invalid-key-to-simulate-outage",
-    base_url=API_BASE,
-    max_retries=0,      # 不重试，快速失败
-    timeout=15,
-)
+if use_mock():
+    from langchain_core.runnables import RunnableLambda
+
+    def _boom(_):
+        raise RuntimeError("模拟主模型故障（零 Key 模式）")
+
+    broken_llm = RunnableLambda(_boom)
+else:
+    broken_llm = ChatOpenAI(
+        model=MODEL,
+        temperature=0,
+        api_key="sk-invalid-key-to-simulate-outage",
+        base_url=API_BASE,
+        max_retries=0,      # 不重试，快速失败
+        timeout=15,
+    )
 
 # 备用模型 = 正常配置（真实场景里是另一个厂商/另一个部署）
 backup_llm = llm

@@ -11,10 +11,33 @@ from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptT
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(
-    model=os.getenv("AGENT_MODEL", "deepseek-chat"),
-    temperature=0,
-    api_key=os.getenv("AGENT_API_KEY"),
+from _mock_llm import scripted, use_mock
+
+if use_mock():
+    print("⚠️  没检测到 AGENT_API_KEY —— 用预设回复跑通三版对比（零 Key 模式）")
+    print("   想看真模型：填好 .env 里的 AGENT_API_KEY 再跑，代码不用改。\n")
+    # 5 次调用：v1 / v2 / v3 各一次，幻觉探针 v1 / v2 各一次
+    llm = scripted([
+        # v1 裸问：没角色没约束，输出随缘
+        ("该设备有告警，可能是光模块或者天线的问题，建议检查一下。", None),
+        # v2 角色+约束：有风险等级、有升级条件
+        ("【风险等级】高危\n【现象】AAU5613 上报射频单元驻波比异常（major）。\n"
+         "【处置建议】1) 检查天馈接头是否松动；2) 复测驻波比，>1.5 时更换跳线。\n"
+         "【升级条件】30 分钟内未恢复，升级至省级值班并启动周边小区负载分担。", None),
+        # v3 Few-shot：同样结构化，格式更稳
+        ("【风险等级】高危\n【现象】射频单元驻波比异常（major）。\n"
+         "【处置建议】1) 现场检查天馈接头；2) 复测驻波比。\n"
+         "【升级条件】30 分钟未恢复即升级省级值班。", None),
+        # 探针 v1：编造了 IP 和型号
+        ("该设备管理 IP 是 10.0.0.1，软件版本 V100R002C10，建议直接登录查看。", None),
+        # 探针 v2：承认数据里没有
+        ("以上数据中未提供管理 IP 与软件版本，无法给出具体值；建议通过网管查询后再判断。", None),
+    ])
+else:
+    llm = ChatOpenAI(
+        model=os.getenv("AGENT_MODEL", "deepseek-chat"),
+        temperature=0,
+        api_key=os.getenv("AGENT_API_KEY"),
     base_url=os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1"),
 )
 

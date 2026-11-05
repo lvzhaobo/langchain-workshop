@@ -68,6 +68,8 @@ class SimpleLLMCache:
 # ═══ 带缓存的 LLM 调用 ═══
 from langchain_openai import ChatOpenAI
 
+from _mock_llm import scripted, use_mock
+
 API_KEY = os.getenv("AGENT_API_KEY", "REPLACE_ME_NO_KEY")
 API_BASE = os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1")
 MODEL = os.getenv("AGENT_MODEL", "deepseek-chat")
@@ -86,16 +88,31 @@ def ask_llm_with_cache(user_message: str, model: str = MODEL) -> tuple:
     if cached is not None:
         return cached, True
 
-    llm = ChatOpenAI(
-        model=model,
-        temperature=0,
-        api_key=API_KEY,
-        base_url=API_BASE,
-    )
+    if use_mock():
+        llm = scripted([(_mock_reply(user_message), None)])
+    else:
+        llm = ChatOpenAI(
+            model=model,
+            temperature=0,
+            api_key=API_KEY,
+            base_url=API_BASE,
+        )
     response = llm.invoke(user_message)
     result = response.content
     cache.set(model, messages, result)
     return result, False
+
+
+def _mock_reply(prompt: str) -> str:
+    """零 Key 模式下的预设答复：按设备给对应排障步骤。"""
+    if "DEV-0001" in prompt:
+        return ("排查步骤：① 检查 SCTP 偶联状态与对端 IP 可达性；"
+                "② 核对 VLAN 与路由；③ 重启 SCTP 偶联；④ 30 分钟未恢复升级省级值班。")
+    if "DEV-0002" in prompt:
+        return ("光功率 -28dBm 低于门限：① 检查尾纤与光模块端面是否脏污；"
+                "② 复测收光功率；③ 仍偏低则更换光模块或跳线。")
+    return ("① 核对设备与告警详情；② 按告警类型定位可能原因；"
+            "③ 执行对应处置步骤；④ 未恢复则升级。")
 
 
 # ═══ 演示 ═══

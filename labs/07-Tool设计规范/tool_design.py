@@ -22,6 +22,8 @@ try:
     from langchain_core.tools import tool
     from langchain_core.messages import SystemMessage, HumanMessage
     from langchain_openai import ChatOpenAI
+
+    from _mock_llm import scripted, use_mock
 except ImportError:
     print("❌ 请先安装：pip install langchain langchain-openai")
     sys.exit(1)
@@ -145,12 +147,29 @@ TEST_QUESTIONS = [
 
 def run_comparison(label: str, tools: list, questions: list, quick: bool = False):
     """跑对比实验：同一个 LLM + 同一个问题，只是工具不同。"""
-    llm = ChatOpenAI(
-        model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-        api_key=os.getenv("DEEPSEEK_API_KEY"),
-        base_url=os.getenv("DEEPSEEK_BASE_URL"),
-        temperature=0,  # 固定温度 0，排除随机性
-    ).bind_tools(tools)
+    if use_mock():
+        # 坏工具：参数名没区分度、没有过滤参数 → LLM 传错/传不全
+        bad = [
+            ("", [{"name": "bad_query_device", "args": {"device": "DEV-0001 温度"}, "id": "c1"}]),
+            ("", [{"name": "bad_query_alarms", "args": {"device": "ENB-HW-001"}, "id": "c2"}]),
+            ("", [{"name": "bad_recommend_action", "args": {"device": "DEV-0001"}, "id": "c3"}]),
+        ]
+        # 好工具：参数名有区分度、支持筛选 → LLM 传得准
+        good = [
+            ("", [{"name": "good_query_device", "args": {"device_id": "DEV-0001"}, "id": "g1"}]),
+            ("", [{"name": "good_query_alarms",
+                   "args": {"device_id": "ENB-HW-001", "severity": "P0"}, "id": "g2"}]),
+            ("", [{"name": "good_recommend_action",
+                   "args": {"device_id": "DEV-0001", "diagnosis": "光模块老化导致退服"}, "id": "g3"}]),
+        ]
+        llm = scripted(bad if "坏" in label else good).bind_tools(tools)
+    else:
+        llm = ChatOpenAI(
+            model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            base_url=os.getenv("DEEPSEEK_BASE_URL"),
+            temperature=0,  # 固定温度 0，排除随机性
+        ).bind_tools(tools)
 
     tool_names = [t.name for t in tools]
 
@@ -269,9 +288,12 @@ def run_full():
 
 
 if __name__ == "__main__":
-    if not os.getenv("DEEPSEEK_API_KEY"):
+    if not os.getenv("DEEPSEEK_API_KEY") and not use_mock():
         print("❌ 请先配置 .env 中的 DEEPSEEK_API_KEY")
         sys.exit(1)
+    if use_mock():
+        print("⚠️  没检测到 DEEPSEEK_API_KEY —— 用预设回复跑通对比（零 Key 模式）")
+        print("   想看真模型：填好 .env 里的 DEEPSEEK_API_KEY 再跑，代码不用改。\n")
 
     if "--quick" in sys.argv:
         run_quick()

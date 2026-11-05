@@ -9,6 +9,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
+
+from _mock_llm import scripted, use_mock
 from langchain_core.tools import tool
 from langchain.agents import create_agent
 
@@ -39,12 +41,25 @@ def get_alarms(device_id: str) -> str:
 
 
 if __name__ == "__main__":
-    llm = ChatOpenAI(
-        model=os.getenv("AGENT_MODEL", "deepseek-chat"),
-        temperature=0,
-        api_key=os.getenv("AGENT_API_KEY"),
-        base_url=os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1"),
-    )
+    if use_mock():
+        print("⚠️  没检测到 AGENT_API_KEY —— 用预设回复跑通结构化输出（零 Key 模式）")
+        print("   想看真模型：填好 .env 里的 AGENT_API_KEY 再跑，代码不用改。\n")
+        llm = scripted([
+            ("", [{"name": "query_device", "args": {"device_id": "DEV-0001"}, "id": "c1"}]),
+            ("", [{"name": "get_alarms", "args": {"device_id": "DEV-0001"}, "id": "c2"}]),
+            # 故意在 JSON 外面包了话 —— 这正是「光靠 Prompt 约束不够」的地方
+            ("好的，分析结果如下：\n```json\n"
+             '{"severity": "critical", "root_cause": "SCTP 链路中断导致基站退服", '
+             '"steps": ["检查 SCTP 偶联状态", "核对对端 IP 与 VLAN", "重启 SCTP 偶联并观察"], '
+             '"escalate": true}\n```\n如需进一步排查请告诉我。', None),
+        ])
+    else:
+        llm = ChatOpenAI(
+            model=os.getenv("AGENT_MODEL", "deepseek-chat"),
+            temperature=0,
+            api_key=os.getenv("AGENT_API_KEY"),
+            base_url=os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1"),
+        )
 
     # ── ③ 创建 Agent，system prompt 里要求输出 JSON ──
     agent = create_agent(

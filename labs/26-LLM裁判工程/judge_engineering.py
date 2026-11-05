@@ -18,6 +18,8 @@ import re
 import statistics
 from langchain_openai import ChatOpenAI
 
+from _mock_llm import computed, use_mock
+
 # ═══ 配置 ═══
 API_KEY = os.getenv("AGENT_API_KEY", "REPLACE_ME_NO_KEY")
 API_BASE = os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1")
@@ -70,10 +72,35 @@ AGENT_ANSWERS = {
 # 裁判调用 — 所有实验共用
 # ══════════════════════════════════════════════════════════════
 
+# 零 Key 模式：模糊 rubric 故意抖（8/5/9/6），锚点 rubric 稳定（4/4/4/4）
+_MOCK_I = {"n": 0}
+_VAGUE = [8, 5, 9, 6]
+_ANCHOR = [4, 4, 4, 4]
+
+
+def _mock_judge(prompt: str, _n: int) -> str:
+    i = _MOCK_I["n"] % 4
+    _MOCK_I["n"] += 1
+    # 出现编造痕迹（错误 IP / 错误厂商 / 忽略注入）→ 按锚点只能给低分
+    halluc = any(k in prompt for k in ("192.168.1.100", "爱立信 AIR6488", "21B", "忽略之前的指令"))
+    if halluc:
+        if "1-10" in prompt:
+            return json.dumps({"score": 6})
+        return json.dumps({"score": 1, "reasoning": "厂商、IP、软件版本均与真实数据矛盾，属编造"})
+    if "1-10" in prompt:
+        return json.dumps({"score": _VAGUE[i]})
+    if "winner" in prompt.lower() or "A/B" in prompt:
+        return json.dumps({"winner": "B", "reasoning": "B 含升级条件且事实完整"})
+    return json.dumps({"score": _ANCHOR[i], "reasoning": "事实全对，处理建议完整但缺升级条件"})
+
+
 def call_judge(rubric: str, answer: str, temperature: float = 0.0) -> dict:
     """调一次裁判，返回解析后的 JSON。解析失败返回 {"error": ...}"""
-    judge = ChatOpenAI(model=MODEL, temperature=temperature,
-                       api_key=API_KEY, base_url=API_BASE)
+    if use_mock():
+        judge = computed(_mock_judge)
+    else:
+        judge = ChatOpenAI(model=MODEL, temperature=temperature,
+                           api_key=API_KEY, base_url=API_BASE)
     prompt = (
         f"{rubric}\n\n"
         f"─── 用户问题 ───\n{QUERY}\n\n"
@@ -225,8 +252,11 @@ COMPARE_RUBRIC = """对比两个 5G 运维 Agent 回答，判断哪个更好。
 
 def compare_pair(answer_a: str, answer_b: str) -> str:
     """一次 A/B 对比，返回胜者"""
-    judge = ChatOpenAI(model=MODEL, temperature=0,
-                       api_key=API_KEY, base_url=API_BASE)
+    if use_mock():
+        judge = computed(_mock_judge)
+    else:
+        judge = ChatOpenAI(model=MODEL, temperature=0,
+                           api_key=API_KEY, base_url=API_BASE)
     prompt = (
         f"{COMPARE_RUBRIC}\n\n用户问题：{QUERY}\n\n"
         f"设备真实数据：{json.dumps(DEVICE_FACTS, ensure_ascii=False)}\n\n"

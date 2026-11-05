@@ -14,6 +14,8 @@
 """
 import os
 from dotenv import load_dotenv
+
+from _mock_llm import use_mock
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))  # 自动读取课程根目录 .env
 
 import json
@@ -70,7 +72,26 @@ class HITLState(TypedDict, total=False):
     messages: Annotated[list, operator.add]
 
 
+_MOCK_REPLIES = {
+    "分析设备状态": ("状态：告警。DEV-0001（华为 AAU5613，望京SOHO）挂 2 条告警，"
+                     "最高 P0 基站退服（SCTP 链路中断）。初步判断为传输侧故障。"),
+    "诊断根因": ("最可能根因：SCTP 链路中断导致基站退服（置信度 0.82）。"
+                 "备选：传输设备端口故障（0.11）、AAU 侧光模块异常（0.07）。"),
+    "评估风险": ("风险等级: high。处置策略：需要对核心链路执行重启与配置下发，"
+                 "将造成小区短时退服，必须人工审批后再执行。"),
+    "生成处置方案": ("处置步骤：① 备份当前 SCTP 配置；② 远程复位 SCTP 偶联；"
+                     "③ 复核对端 IP 与 VLAN；④ 观察 10 分钟确认业务恢复。\n"
+                     "命令：reset sctp-coupling 0/1\n耗时：约 5 分钟\n"
+                     "回滚：若 5 分钟内未恢复，恢复备份配置并转现场处理。"),
+}
+
+
 def _ask(prompt: str) -> str:
+    if use_mock():
+        for k, v in _MOCK_REPLIES.items():
+            if k in prompt:
+                return v
+        return "（零 Key 模式）已完成本步分析。"
     try:
         from langchain_openai import ChatOpenAI
         llm = ChatOpenAI(model=os.getenv("AGENT_MODEL", "deepseek-chat"), temperature=0,
@@ -434,9 +455,11 @@ def run_terminal(device_id="DEV-0001"):
     print(f"{'='*60}")
 
     try:
+        # langgraph 1.x 的 stream 事件可能是 {节点: 更新} 字典，也可能是 (节点, 更新) 元组
         for event in app.stream(initial, config):
-            for node_name, node_output in event.items():
-                risk = node_output.get("risk_level", "")
+            pairs = event.items() if isinstance(event, dict) else [event]
+            for node_name, node_output in pairs:
+                risk = node_output.get("risk_level", "") if isinstance(node_output, dict) else ""
                 print(f"\n  [{node_name}]", end="")
                 if risk:
                     print(f" 风险等级: {risk}")

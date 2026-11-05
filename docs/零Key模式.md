@@ -3,15 +3,23 @@
 > 目的：学员 `clone` 下来不配任何 Key，也能看到 lab 的完整输出。
 > 想用真模型时，填好 `.env` 即可，**代码不用改**。
 
-## 已完成
+## 已接入的 13 个
 
-| Lab | 形态 | 靠什么跑通 |
+| Lab | 形态 | 用哪种假模型 |
 |---|---|---|
-| `01-hello-graph` | StateGraph | 无模型，纯节点 |
-| `02-tools` | 工具循环 | 写死 `tool_calls` 的假 assistant 节点 |
-| `03-memory` | Checkpointer | 无模型，纯计数器 |
-| `05-LangChain智能体` | `create_agent` | `_mock_llm.py` 预设 tool_calls + 最终答复 |
-| `10-RunnableBranch` | LCEL 链 | `_mock_llm.py` 预设三条通道答复 |
+| `01-hello-graph` | StateGraph | 无需模型 |
+| `02-tools` | 工具循环 | 写死 `tool_calls` 的假节点 |
+| `03-memory` | Checkpointer | 无需模型 |
+| `05-LangChain智能体` | `create_agent` | `scripted()` |
+| `06-Prompt工程` | LCEL + 三版对比 | `scripted()`（含幻觉探针对照） |
+| `07-Tool设计规范` | 手写 tool 循环 | `scripted()`（坏工具 vs 好工具各 3 步） |
+| `08-OutputParser` | `create_agent` + JSON | `scripted()`（故意在 JSON 外包话） |
+| `09-Agent类型对比` | `create_agent` × 3 温度 | `rule_based()` + 按温度给不同详略 |
+| `10-RunnableBranch` | LCEL 分支 | `scripted()` |
+| `11-LCEL基础` | LCEL + fallback/retry | `scripted()` + 必失败的 `RunnableLambda` |
+| `18-LLM-Caching` | 自研缓存 | `scripted()` + 按设备给答复 |
+| `24-HITL` | interrupt + 审批 | 关键词匹配（会真的触发 high 风险审批） |
+| `26-LLM裁判工程` | 多次打分 | `computed()`（模糊 rubric 抖、锚点稳定、编造给低分） |
 
 ## 两种做法
 

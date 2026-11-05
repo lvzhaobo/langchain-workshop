@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 from langchain_openai import ChatOpenAI
+
+from _mock_llm import rule_based, use_mock
 from langchain_core.tools import tool
 from langchain.agents import create_agent
 
@@ -65,12 +67,35 @@ MODEL_CONFIGS = {
 }
 
 
+# 零 Key 模式下按温度给不同详略的答复，让「温度影响输出」这个教学点成立
+_MOCK_BY_TEMP = {
+    0: ("DEV-0001 告警，最高 P0 基站退服。先查 SCTP 链路。"),
+    0.7: ("DEV-0001（AAU5613，望京SOHO）当前处于告警状态，共 2 条告警，"
+          "最高为 P0 级基站退服。建议按顺序排查：① SCTP 偶联状态 ② 对端 IP 与 VLAN ③ 天馈与光模块。"),
+    1.2: ("关于这台 DEV-0001（AAU5613，望京SOHO）的情况，可以从几个角度看："
+          "它现在挂 2 条告警，最严重的是 P0 基站退服，影响面不小；"
+          "往上追可能是 SCTP 链路问题，也可能是传输侧闪断，甚至要考虑电源波动；"
+          "建议先按 SCTP 链路 → 传输 → 电源的顺序逐层排除，必要时联系传输专业协同处理。"),
+}
+
+
 def _make_agent(model_name="deepseek-chat", temperature=0):
     config = MODEL_CONFIGS[model_name]
-    llm = ChatOpenAI(
-        model=model_name, temperature=temperature,
-        api_key=config["api_key"], base_url=config.get("base_url"),
-    )
+    if use_mock():
+        # 温度越高，回答越发散 —— 用同一个任务对比三档
+        llm = rule_based(
+            [("哪些", "list_devices", {}),
+             ("列表", "list_devices", {}),
+             ("状态", "query_device", {"device_id": "DEV-0001"}),
+             ("怎么样", "query_device", {"device_id": "DEV-0001"}),
+             ("告警", "get_alarms", {"device_id": "DEV-0001"})],
+            answer=_MOCK_BY_TEMP.get(temperature, _MOCK_BY_TEMP[0]),
+        )
+    else:
+        llm = ChatOpenAI(
+            model=model_name, temperature=temperature,
+            api_key=config["api_key"], base_url=config.get("base_url"),
+        )
     return create_agent(
         llm, [query_device, get_alarms, list_devices],
         system_prompt="你是排障助手。简洁回答。",
@@ -88,8 +113,8 @@ def compare_temperature(task, model_name="deepseek-chat"):
     for temp in [0, 0.7, 1.2]:
         print(f"\n  ── temp={temp} ──")
         config = MODEL_CONFIGS[model_name]
-        if not config["api_key"]:
-            print(f"  API Key 未配置，跳过")
+        if not config["api_key"] and not use_mock():
+            print("  API Key 未配置，跳过")
             continue
         try:
             agent = _make_agent(model_name, temp)
@@ -138,7 +163,7 @@ def compare_models(task):
     print(f"{'='*60}")
 
     for model_name, config in MODEL_CONFIGS.items():
-        if not config["api_key"]:
+        if not config["api_key"] and not use_mock():
             print(f"  {model_name}: API Key 未配置，跳过（可自行追加）")
             continue
         try:
