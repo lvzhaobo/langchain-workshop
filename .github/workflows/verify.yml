@@ -1,0 +1,33 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: 验收 13 个零 Key lab
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装 uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: 建 venv 并装依赖
+        run: ./setup.sh
+
+      - name: 跑验收脚本（不需要任何 API Key）
+        run: ./verify.sh
+
+      - name: 冒烟测试 —— 抽两个 lab 实跑
+        run: |
+          ./run.sh 01
+          ./run.sh 05
+          echo "y" | ./run.sh 24

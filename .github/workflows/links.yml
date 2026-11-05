@@ -1,0 +1,38 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths: ['**.md']
+  pull_request:
+    paths: ['**.md']
+
+jobs:
+  links:
+    name: 检查文档里的相对链接
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 相对链接都能打开
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          bad = []
+          for md in pathlib.Path('.').rglob('*.md'):
+              if '.venv' in md.parts or 'node_modules' in md.parts:
+                  continue
+              here = md.parent
+              for m in re.finditer(r'\[[^\]]*\]\(([^)#][^)]*?)\)', md.read_text(encoding='utf-8')):
+                  target = m.group(1).split('#')[0].strip()
+                  if not target or target.startswith(('http://', 'https://', 'mailto:')):
+                      continue
+                  if not (here / target).exists():
+                      bad.append(f'{md}: {target}')
+
+          if bad:
+              print('\n'.join(bad))
+              sys.exit(1)
+          print(f'✅ 相对链接全部有效')
+          PY
