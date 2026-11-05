@@ -89,7 +89,7 @@ cp .env.example .env
 | [**01**](./labs/01-hello-graph/) | 最小 StateGraph：State / Node / 条件边 | ✅ 离线可跑 |
 | [**02**](./labs/02-tools/) | 工具调用循环：assistant → tools | ✅ 离线可跑 |
 | [**03**](./labs/03-memory/) | Checkpointer 与 thread_id 记忆隔离 | ✅ 离线可跑 |
-| **12 14 16 17 19-23** | RAG / 多 Agent / 生产化 | ⬜ 需配 Key |
+| **12 14 16 17 19-23** | RAG / 多 Agent / 生产化 | ⬜ 需配 Key（已迁移到 1.x API） |
 
 **现在零 Key 就能跑的是 5 个：`01 02 03 05 10`。** 其余 21 个需要配 `.env` 里的 Key。
 `./run.sh 06` 会报"缺 Key"——这是事实，不是 bug。

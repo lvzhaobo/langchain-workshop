@@ -18,8 +18,9 @@ from typing import Literal, Any
 import requests
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.agents import tool, create_tool_calling_agent, AgentExecutor
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langchain.agents import create_agent
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableBranch
 from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 from pydantic import BaseModel, Field, field_validator
@@ -317,24 +318,15 @@ status: running/alarm/maintenance | severity: P0/P1/P2/P3 | vendor: 华为/中�
 _OUTPUT_STYLE = "\n\n输出要求：不要使用 emoji 和装饰符号，用纯文本陈述。"
 
 
-def _make_agent(tools: list, system_prompt: str) -> AgentExecutor:
-    """建一个 tool-calling Agent
+def _make_agent(tools: list, system_prompt: str):
+    """建一个 tool-calling Agent（langchain 1.x 的 create_agent）
 
-    为什么不用 create_react_agent：ReAct 靠文本提示词驱动，它要求
-    agent_scratchpad 是一个字符串（Thought/Action/Observation 拼接），
-    必须配字符串模板 PromptTemplate。而这里用的是 ChatPromptTemplate
-    的 placeholder，它要求值是 message 列表 —— 两者撑不到一起，会报
-    "agent_scratchpad should be a list of base messages, got str"。
-    tool-calling agent 直接走模型原生的 function calling，不靠提示词
-    解析，更可靠，也不需要在 prompt 里手写 {tools} / {tool_names}。
+    走模型原生的 function calling，不靠提示词解析，所以：
+      · 不需要在 prompt 里手写 {tools} / {tool_names}
+      · 不需要 {agent_scratchpad} 占位符
+      · 不需要 AgentExecutor 再包一层循环 —— create_agent 返回的就是可执行的图
     """
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt + _OUTPUT_STYLE),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ])
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=False, max_iterations=8, handle_parsing_errors=True)
+    return create_agent(llm, tools, system_prompt=system_prompt + _OUTPUT_STYLE)
 
 
 # 诊断 Agent：查设备状态 + 告警
@@ -372,8 +364,8 @@ troubleshoot_agent = _make_agent([query_device, search_kb], """你是 5G 基站�
 
 # 通用对话通道：零工具，所以不用 Agent
 # Agent 的价值在于"选工具 + 看结果 + 再决定"的循环。没工具就没循环，
-# 套一层 AgentExecutor 只是白多一轮空转；而且给 create_tool_calling_agent
-# 传空 tools 列表，bind_tools([]) 在部分 OpenAI 兼容网关上会直接报错。
+# 套一层 Agent 只是白多一轮空转；而且给 create_agent 传空 tools 列表，
+# bind_tools([]) 在部分 OpenAI 兼容网关上会直接报错。
 # 一条 prompt | llm | StrOutputParser 的普通链就够了。
 chat_prompt = ChatPromptTemplate.from_messages([
     ("system", """你是 5G 基站运维平台助手。你可以：
@@ -424,11 +416,11 @@ def _format_reply(intent: str, agent_output: str) -> dict:
 # 路由链只建一次：RunnableBranch 本身无状态，每次请求重建是白花开销
 router_chain = RunnableBranch(
     (lambda x: x["intent"] == "diagnose",
-     (lambda x: diagnose_agent.invoke(x)["output"])),
+     (lambda x: diagnose_agent.invoke({"messages": [("user", x["input"])]})["messages"][-1].content)),
     (lambda x: x["intent"] == "query_data",
-     (lambda x: query_data_agent.invoke(x)["output"])),
+     (lambda x: query_data_agent.invoke({"messages": [("user", x["input"])]})["messages"][-1].content)),
     (lambda x: x["intent"] == "troubleshoot",
-     (lambda x: troubleshoot_agent.invoke(x)["output"])),
+     (lambda x: troubleshoot_agent.invoke({"messages": [("user", x["input"])]})["messages"][-1].content)),
     (lambda x: x["intent"] == "chat",
      (lambda x: chat_chain.invoke(x))),
     (lambda x: chat_chain.invoke(x)),  # 兜底：LLM 返回了四类之外的值时不致崩

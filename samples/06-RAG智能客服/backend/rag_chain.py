@@ -3,9 +3,9 @@ RAG Chain 核心模块
 负责构建检索增强生成链
 """
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.schema.output_parser import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 from knowledge_base import KnowledgeBase
 
 class RAGChain:

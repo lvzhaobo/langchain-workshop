@@ -1,8 +1,6 @@
-langchain==0.1.20
-langchain-openai==0.0.8
-langchain-community==0.0.17
-chromadb==0.4.24
-fastapi==0.110.0
-uvicorn==0.27.1
-python-multipart==0.0.7
-pydantic==2.6.1
+# 依赖统一由仓库根目录的 requirements.txt 提供（langchain / langgraph 1.x）
+# 这个 sample 额外需要向量库和 Web 依赖
+chromadb>=1.0.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart>=0.0.9

@@ -9,11 +9,11 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))  # 自�
 
 import time
 from typing import Any, Dict, List
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.agents import tool, create_react_agent, AgentExecutor
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langchain.agents import create_agent
 
 
 # ═══ 自定义 Callback Handler ═══
@@ -33,8 +33,11 @@ class MetricsCallback(BaseCallbackHandler):
         self._current_llm_start = None
         self._tool_names: List[str] = []
 
-    def on_agent_start(self, *args, **kwargs):
-        self.start_time = time.time()
+    def on_chain_start(self, serialized, inputs, **kwargs):
+        # langchain 1.x 的 create_agent 返回的是 LangGraph 图，没有 on_agent_start；
+        # 用第一次 on_chain_start 作为整轮开始时间
+        if self.start_time is None:
+            self.start_time = time.time()
 
     def on_llm_start(self, serialized, prompts, **kwargs):
         self.total_llm_calls += 1
@@ -162,49 +165,27 @@ def search_kb(query: str) -> str:
         return f"知识库检索失败：{str(e)}"
 
 
-def create_agent_with_callbacks(callbacks=None):
-    """创建带 Callback 的 Agent"""
+def create_agent_with_callbacks():
+    """创建 Agent
+
+    注意 langchain 1.x 的两点变化：
+      1. create_agent 返回的就是可执行的图，不再需要 AgentExecutor 包一层
+      2. callbacks 不再传给 AgentExecutor，而是在 invoke 时通过 config 传
+    """
     tools = [query_device, search_kb]
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """你是 5G 基站智能排障助手。你可以使用以下工具：
-
-- query_device：查询指定设备详情
-- list_devices：获取设备列表
-- search_kb：检索排障知识库
-
-工作流程：先查设备状态 → 再搜知识库 → 综合给出诊断建议。
-
-可用工具：{tools}
-工具名称：{tool_names}
-
-格式：
-Question: 用户的问题
-Thought: 分析需要做什么
-Action: 工具名
-Action Input: 参数
-Observation: 结果
-...（可重复）
-Final Answer: 最终回答"""),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ])
-
-    agent = create_react_agent(llm, tools, prompt)
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=True,
-        max_iterations=10,
-        handle_parsing_errors=True,
-        callbacks=callbacks or [],
+    return create_agent(
+        llm,
+        tools,
+        system_prompt="""你是 5G 基站智能排障助手。可以用 query_device 查设备详情、search_kb 检索排障知识库。
+工作流程：先查设备状态 → 再搜知识库 → 综合给出诊断建议。""",
     )
+
 
 
 # ═══ 主程序 ═══
 if __name__ == "__main__":
     cb = MetricsCallback()
-    executor = create_agent_with_callbacks([cb])
+    executor = create_agent_with_callbacks()
 
     TEST_QUERIES = [
         ("简单查设备", "DEV-0001 是什么型号？"),
@@ -223,10 +204,14 @@ if __name__ == "__main__":
 
         cb.reset()
         try:
-            result = executor.invoke({"input": query})
+            # callbacks 在 1.x 里通过 config 传，而不是传给 AgentExecutor
+            result = executor.invoke(
+                {"messages": [("user", query)]},
+                config={"callbacks": [cb]},
+            )
             metrics = cb.summary()
             metrics["标签"] = label
-            metrics["回答长度"] = len(result["output"])
+            metrics["回答长度"] = len(result["messages"][-1].content)
             results.append(metrics)
 
             print(f"\n📊 指标：")

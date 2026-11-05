@@ -187,7 +187,7 @@ def simulate_full_pipeline(tracer: LocalTracer, device_id: str):
 # ══════════════════════════════════════════════════════════════
 
 try:
-    from langchain.callbacks.base import BaseCallbackHandler
+    from langchain_core.callbacks import BaseCallbackHandler
 
     class LangChainTracer(BaseCallbackHandler, LocalTracer):
         """融合 LangChain Callback + 本地 Trace 收集"""

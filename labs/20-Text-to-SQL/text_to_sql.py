@@ -12,8 +12,9 @@ import sqlite3
 from pathlib import Path
 
 from langchain_openai import ChatOpenAI
-from langchain.agents import tool, create_react_agent, AgentExecutor
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langchain.agents import create_agent
+from langchain_core.prompts import ChatPromptTemplate
 
 # ═══ 配置 ═══
 API_KEY = os.getenv("AGENT_API_KEY", "REPLACE_ME_NO_KEY")
@@ -208,33 +209,17 @@ def make_sql_agent():
 
     tools = [query_devices_sql]
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """你是 5G 基站数据分析助手。用 query_devices_sql 工具回答统计/筛选类问题。
+    # langchain 1.x：create_agent 返回可执行的图，不再需要 AgentExecutor 和 {agent_scratchpad}
+    return create_agent(
+        llm,
+        tools,
+        system_prompt="""你是 5G 基站数据分析助手。用 query_devices_sql 工具回答统计/筛选类问题。
 
 限制：
 - 只查询，不修改数据
 - 不确定时先查数据再回答，不要猜测
 - 结果为空时如实告知
-
-可用工具：{tools}
-工具名称：{tool_names}
-
-格式：
-Question: 用户问题
-Thought: 分析需要什么数据
-Action: query_devices_sql
-Action Input: 自然语言描述查询需求
-Observation: SQL 查询结果
-...（可重复）
-Final Answer: 基于数据回答用户问题"""),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ])
-
-    agent = create_react_agent(llm, tools, prompt)
-    return AgentExecutor(
-        agent=agent, tools=tools, verbose=True,
-        max_iterations=8, handle_parsing_errors=True,
+- 回答里带上你实际执行的 SQL，便于核对""",
     )
 
 
@@ -268,8 +253,8 @@ if __name__ == "__main__":
         print(f"\n{'-'*40}")
         print(f"[{i}/{len(TEST_QUERIES)}] 用户问：{query}")
         try:
-            result = executor.invoke({"input": query})
-            answer = result["output"]
+            result = executor.invoke({"messages": [("user", query)]})
+            answer = result["messages"][-1].content
             print(f"\nAgent 回答：\n{answer[:300]}")
             if len(answer) > 300:
                 print(f"  ... (共 {len(answer)} 字符)")
