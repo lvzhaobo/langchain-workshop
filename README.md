@@ -1,5 +1,7 @@
 # LangChain Workshop
 
+[English](README.en.md) · **中文**
+
 > **LangChain / LangGraph / LangSmith / LangServe —— 代码栈全覆盖，不含低代码平台。**
 >
 > 在 macOS 上，`./setup.sh` + `./run.sh 01` 就能跑通 **labs 01–03**。
@@ -25,9 +27,9 @@
 
 一套 **Hands-on Lab** 式的培训材料：
 
-- **`labs/`** —— 15–30 分钟的动手实验。**你来写代码**，每个 lab 有 `solution.py` 兜底。
+- **`labs/`** —— **28 个** 15–30 分钟的动手实验。**你来写代码**，多数 lab 有 `check.py` 自动验收。
 - **`samples/`** —— 完整项目，**你来读代码、看全景**，讲师现场演示。
-- **`docs/`** —— 原理文档 26 篇、CheatSheet、环境准备、lab 设计文档。
+- **`docs/`** —— 39 篇：原理、CheatSheet、环境准备、模型配置、零 Key 模式。
 
 两者的关系：**上午看 sample 的全景，下午用它的一部分做 lab。**
 

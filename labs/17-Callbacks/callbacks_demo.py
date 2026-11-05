@@ -114,12 +114,24 @@ API_KEY = os.getenv("AGENT_API_KEY", "REPLACE_ME_NO_KEY")
 API_BASE = os.getenv("AGENT_API_BASE", "https://api.deepseek.com/v1")
 MODEL = os.getenv("AGENT_MODEL", "deepseek-chat")
 
-llm = ChatOpenAI(
-    model=MODEL,
-    temperature=0,
-    api_key=API_KEY,
-    base_url=API_BASE,
-)
+from _mock_llm import rule_based, use_mock
+
+if use_mock():
+    print("⚠️  没检测到 AGENT_API_KEY —— 用预设回复跑通回调采集（零 Key 模式）")
+    print("   想看真模型：填好 .env 里的 AGENT_API_KEY 再跑，代码不用改。\n")
+    llm = rule_based(
+        [("DEV-0001", "query_device", {"device_id": "DEV-0001"}),
+         ("几台", "list_devices", {"status": "alarm"}),
+         ("告警", "list_devices", {"status": "alarm"})],
+        answer="根据工具返回：DEV-0001 为 P0 基站退服，建议先查 SCTP 链路与对端 IP。",
+    )
+else:
+    llm = ChatOpenAI(
+        model=MODEL,
+        temperature=0,
+        api_key=API_KEY,
+        base_url=API_BASE,
+    )
 
 
 # ═══ 工具定义 ═══
@@ -220,6 +232,10 @@ def search_kb(query: str) -> str:
             )
         return "\n\n---\n".join(parts)
     except Exception as e:
+        if use_mock():
+            return ("[零 Key 模式·本地知识库] SCTP 链路中断常见原因："
+                    "① 传输侧闪断 ② 对端 IP 变更 ③ 光模块收光异常。"
+                    "处置：查偶联状态 → 核对对端 IP/VLAN → 复位偶联 → 30 分钟未恢复则升级。")
         return f"知识库检索失败：{str(e)}"
 
 
