@@ -47,7 +47,9 @@ def init_db(devices_file=DEVICES_FILE) -> sqlite3.Connection:
     """把 devices.json 导入 SQLite 内存数据库"""
     global db_conn
 
-    conn = sqlite3.connect(":memory:")
+    # check_same_thread=False：create_agent 会在工作线程里执行工具，
+    # 而连接是主线程建的。默认值会抛 "SQLite objects created in a thread..."
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
 
     conn.executescript("""

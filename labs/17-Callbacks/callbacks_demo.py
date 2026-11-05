@@ -51,8 +51,24 @@ class MetricsCallback(BaseCallbackHandler):
             self._current_llm_start = None
 
         # 尝试从 response 中提取真实 token 用量
-        token_usage = getattr(response, "llm_output", {}) or {}
-        usage = token_usage.get("token_usage", {})
+        # langchain 1.x：真实用量在 message.usage_metadata / response_metadata，
+        # llm_output["token_usage"] 通常为空，所以三个地方都要看
+        usage = {}
+        try:
+            gen = response.generations[0][0]
+            msg = getattr(gen, "message", None)
+            um = getattr(msg, "usage_metadata", None) or {}
+            if um:
+                usage = {"prompt_tokens": um.get("input_tokens", 0),
+                         "completion_tokens": um.get("output_tokens", 0)}
+            if not usage:
+                rm = getattr(msg, "response_metadata", None) or {}
+                usage = rm.get("token_usage", {}) or {}
+        except Exception:
+            pass
+        if not usage:
+            token_usage = getattr(response, "llm_output", {}) or {}
+            usage = token_usage.get("token_usage", {}) or {}
         if usage:
             # 有真实值就用真实值（覆盖估算）
             self.total_input_tokens += usage.get("prompt_tokens", self._pending_input_tokens)
@@ -86,8 +102,8 @@ class MetricsCallback(BaseCallbackHandler):
             "总耗时（秒）": round(total_time, 2),
             "LLM 调用次数": self.total_llm_calls,
             "工具调用次数": self.total_tool_calls,
-            "输入 Token（估算）": self.total_input_tokens,
-            "输出 Token（估算）": self.total_output_tokens,
+            "输入 Token": self.total_input_tokens,
+            "输出 Token": self.total_output_tokens,
             "LLM 平均延迟（秒）": round(avg_latency, 2),
             "调用工具": " → ".join(self._tool_names) if self._tool_names else "无",
         }
@@ -107,6 +123,21 @@ llm = ChatOpenAI(
 
 
 # ═══ 工具定义 ═══
+def _local_device(device_id: str):
+    """平台没起时的本地兜底：直接读同目录 data/devices.json"""
+    import json
+    from pathlib import Path
+    f = Path(__file__).parent / "data" / "devices.json"
+    if not f.exists():
+        return None
+    raw = json.loads(f.read_text(encoding="utf-8"))
+    devices = raw.get("devices", raw) if isinstance(raw, dict) else raw
+    for d in devices:
+        if d.get("device_id") == device_id:
+            return d
+    return None
+
+
 @tool
 def query_device(device_id: str) -> str:
     """查询 5G 基站设备详情。当用户提到具体设备 ID 时使用。"""
@@ -130,7 +161,34 @@ def query_device(device_id: str) -> str:
             f"告警（{len(alarms)}条）：\n{alarm_info}"
         )
     except Exception as e:
+        d = _local_device(device_id)
+        if d:
+            alarms = d.get("alarms", []) or []
+            alarm_info = "\n".join(
+                f"  [{a.get('severity')}] {a.get('type')}: {a.get('description')}"
+                for a in alarms) if alarms else "无告警"
+            return (f"[本地快照] 设备 {device_id}：{d.get('vendor')} {d.get('model')}，"
+                    f"站点 {d.get('site')}，状态 {d.get('status')}。"
+                    f"告警（{len(alarms)}条）：\n{alarm_info}")
         return f"查询设备失败：{str(e)}"
+
+
+@tool
+def list_devices(status: str = "") -> str:
+    """列出设备清单，可按状态筛选（running / alarm / maintenance）。用户问"有哪些设备""几台告警"时使用。"""
+    import json
+    from pathlib import Path
+    f = Path(__file__).parent / "data" / "devices.json"
+    if not f.exists():
+        return "本地没有设备快照，无法列出设备"
+    raw = json.loads(f.read_text(encoding="utf-8"))
+    devices = raw.get("devices", raw) if isinstance(raw, dict) else raw
+    rows = [d for d in devices if not status or d.get("status") == status]
+    if not rows:
+        return f"没有状态为 {status} 的设备"
+    lines = [f"{d.get('device_id')} | {d.get('vendor')} {d.get('model')} | {d.get('site')} | {d.get('status')}"
+             for d in rows]
+    return f"共 {len(rows)} 台（筛选：{status or '全部'}）\n" + "\n".join(lines)
 
 
 @tool
@@ -172,7 +230,7 @@ def create_agent_with_callbacks():
       1. create_agent 返回的就是可执行的图，不再需要 AgentExecutor 包一层
       2. callbacks 不再传给 AgentExecutor，而是在 invoke 时通过 config 传
     """
-    tools = [query_device, search_kb]
+    tools = [query_device, list_devices, search_kb]
     return create_agent(
         llm,
         tools,
@@ -218,10 +276,10 @@ if __name__ == "__main__":
             print(f"   耗时: {metrics['总耗时（秒）']}s")
             print(f"   LLM 调用: {metrics['LLM 调用次数']}次")
             print(f"   工具调用: {metrics['工具调用次数']}次")
-            print(f"   输入 Token: ~{metrics['输入 Token（估算）']}")
-            print(f"   输出 Token: ~{metrics['输出 Token（估算）']}")
+            print(f"   输入 Token: {metrics['输入 Token']}")
+            print(f"   输出 Token: {metrics['输出 Token']}")
             print(f"   工具链: {metrics['调用工具']}")
-            print(f"   回答预览: {result['output'][:100]}...")
+            print(f"   回答预览: {result['messages'][-1].content[:100]}...")
         except Exception as e:
             print(f"❌ 执行失败：{e}")
 
@@ -232,25 +290,29 @@ if __name__ == "__main__":
     print(f"{'标签':<16} {'耗时(s)':>8} {'LLM':>5} {'工具':>5} {'Token入':>8} {'Token出':>8} {'总Token':>8}")
     print(f"{'-'*80}")
     for r in results:
-        total_tokens = r['输入 Token（估算）'] + r['输出 Token（估算）']
+        total_tokens = r['输入 Token'] + r['输出 Token']
         print(
             f"{r['标签']:<16}"
             f"{r['总耗时（秒）']:>8.2f}"
             f"{r['LLM 调用次数']:>5}"
             f"{r['工具调用次数']:>5}"
-            f"{r['输入 Token（估算）']:>8}"
-            f"{r['输出 Token（估算）']:>8}"
+            f"{r['输入 Token']:>8}"
+            f"{r['输出 Token']:>8}"
             f"{total_tokens:>8}"
         )
 
     # ── 发现 ──
-    print(f"\n📌 发现：")
-    print(f"   - 简单查询（只调一个工具）：Token 最少、最快")
-    print(f"   - 排障查询（调工具 + 搜知识库）：Token 翻倍、慢一倍")
-    print(f"   - 复杂诊断（多次 Thought-Action 循环）：Token 最高、最慢")
+    print(f"\n📌 发现（按本次实测数据）：")
     if results:
-        cheapest = min(results, key=lambda r: r['输入 Token（估算）'] + r['输出 Token（估算）'])
-        priciest = max(results, key=lambda r: r['输入 Token（估算）'] + r['输出 Token（估算）'])
-        print(f"   - 最便宜：{cheapest['标签']}（~{cheapest['输入 Token（估算）'] + cheapest['输出 Token（估算）']} tokens）")
-        print(f"   - 最贵：{priciest['标签']}（~{priciest['输入 Token（估算）'] + priciest['输出 Token（估算）']} tokens）")
-        print(f"   - 差价：{priciest['输入 Token（估算）'] + priciest['输出 Token（估算）'] - cheapest['输入 Token（估算）'] - cheapest['输出 Token（估算）']} tokens")
+        by_tool = sorted(results, key=lambda r: r["工具调用次数"])
+        print(f"   - 工具调用越多，LLM 调用次数和 Token 一般越高："
+              f"0 次工具 ≈ {by_tool[0]['LLM 调用次数']} 次 LLM，"
+              f"{by_tool[-1]['工具调用次数']} 次工具 ≈ {by_tool[-1]['LLM 调用次数']} 次 LLM")
+        print(f"   - 具体数值取决于模型实际决策，同一问题两次跑也可能不同")
+        print(f"   - 这正是 Callback 的价值：不用猜，每次都能看到真实开销")
+    if results:
+        cheapest = min(results, key=lambda r: r['输入 Token'] + r['输出 Token'])
+        priciest = max(results, key=lambda r: r['输入 Token'] + r['输出 Token'])
+        print(f"   - 最便宜：{cheapest['标签']}（{cheapest['输入 Token'] + cheapest['输出 Token']} tokens）")
+        print(f"   - 最贵：{priciest['标签']}（{priciest['输入 Token'] + priciest['输出 Token']} tokens）")
+        print(f"   - 差价：{priciest['输入 Token'] + priciest['输出 Token'] - cheapest['输入 Token'] - cheapest['输出 Token']} tokens")
