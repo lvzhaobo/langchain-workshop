@@ -8,6 +8,7 @@ cd "$(dirname "$0")" || exit 1
 list_labs() { for d in labs/[0-9][0-9]-*; do [ -d "$d" ] && echo "  $(basename "$d")"; done; }
 
 target=${1:-}
+shift 2>/dev/null || true   # 剩余参数透传给脚本
 if [ -z "${target}" ]; then
   echo "用法: ./run.sh <编号|名称>"; echo; echo "可用："; list_labs; exit 0
 fi
@@ -31,4 +32,4 @@ if [ ! -f "${entry}" ]; then
 fi
 
 echo "▶ ${entry}"
-exec .venv/bin/python "${entry}"
+exec .venv/bin/python "${entry}" "$@"

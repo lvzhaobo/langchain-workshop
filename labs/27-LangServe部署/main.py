@@ -176,8 +176,9 @@ def main() -> None:
     print(f"     收到 {chunks} 个 SSE 事件")
 
     print(f"\n⑤ 可视化调试页")
-    print(f"     浏览器打开：http://127.0.0.1:{port}/diagnose/playground")
-    print(f"     （本脚本会退出，长期服务用：python main.py --serve）")
+    print(f"     地址：http://127.0.0.1:{port}/diagnose/playground/   ← 注意结尾的斜杠")
+    print(f"     ⚠️  本脚本跑完就会关掉服务。要常驻，另开一个终端：")
+    print(f"        ./run.sh 27 --serve")
 
     print(f"\n{'=' * 62}")
     print("  核心收获")
@@ -194,7 +195,14 @@ if __name__ == "__main__":
     import sys
 
     if "--serve" in sys.argv:
-        print(f"→ 服务启动在 http://127.0.0.1:{PORT}/diagnose/playground")
+        print("=" * 64, flush=True)
+        print("  LangServe 常驻服务", flush=True)
+        print("=" * 64, flush=True)
+        print(f"  Playground : http://127.0.0.1:{PORT}/diagnose/playground/", flush=True)
+        print(f"  OpenAPI    : http://127.0.0.1:{PORT}/openapi.json", flush=True)
+        print(f"  invoke     : POST http://127.0.0.1:{PORT}/diagnose/invoke", flush=True)
+        print("  Ctrl+C 停止", flush=True)
+        print("=" * 64, flush=True)
         uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="info")
     else:
         main()
