@@ -2,6 +2,9 @@
 
 [English](README.en.md) · **中文**
 
+[![verify](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/verify.yml/badge.svg)](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/verify.yml)
+[![docs](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/links.yml/badge.svg)](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/links.yml)
+
 > **LangChain / LangGraph / LangSmith / LangServe —— 代码栈全覆盖，不含低代码平台。**
 >
 > 在 macOS 上，`./setup.sh` + `./run.sh 01` 就能跑通 **labs 01–03**。

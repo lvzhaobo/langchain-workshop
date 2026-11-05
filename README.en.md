@@ -2,6 +2,9 @@
 
 **English** · [中文](README.md)
 
+[![verify](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/verify.yml/badge.svg)](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/verify.yml)
+[![docs](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/links.yml/badge.svg)](https://github.com/lvzhaobo/langchain-workshop/actions/workflows/links.yml)
+
 > **Hands-on labs for the whole LangChain family — LangChain, LangGraph, LangSmith, LangServe.**
 > Code-first, no low-code platforms.
 
