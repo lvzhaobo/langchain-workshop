@@ -156,7 +156,9 @@ langchain-workshop/
 ├── labs/                  26 个并列编号
 │   ├── _template/
 │   ├── 01-hello-graph … 03-memory    已适配，离线可跑
-│   └── 04-DifyAgent … 26-LLM裁判工程  需配 Key
+│   ├── 04-DifyAgent … 26-LLM裁判工程  需配 Key
+│   ├── 27-LangServe部署             把图变成 HTTP API（零 Key）
+│   └── 28-LangSmith追踪             调用链追踪（零 Key，有 key 则上报）
 └── samples/               8 个完整项目
     ├── 01-LangChain实验集
     ├── 02-BATWork渐进教程    10 步，100% 自包含

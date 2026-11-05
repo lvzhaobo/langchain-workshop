@@ -18,5 +18,12 @@ pydantic
 # ── 观测（lab 25 可选）──
 langfuse
 
-# ── Web（少数 lab 起本地服务）──
+# ── Web / 部署（lab 27 LangServe）──
 flask
+langserve
+fastapi
+uvicorn
+sse-starlette
+
+# ── 类型（Python < 3.12 上 pydantic 要求）──
+typing-extensions
