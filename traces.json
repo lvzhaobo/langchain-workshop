@@ -1,0 +1,114 @@
+[
+  {
+    "trace_id": "trace-1793876228265",
+    "name": "排障流水线-DEV-0001",
+    "start_time": "2026-11-05T18:57:08.265405",
+    "input": {
+      "device_id": "DEV-0001"
+    },
+    "spans": [
+      {
+        "span_id": "detector-0",
+        "name": "detector",
+        "type": "agent",
+        "parent_span_id": null,
+        "depth": 0,
+        "start_ts": "2026-11-05T18:57:08.265491",
+        "elapsed_ms": 301,
+        "end_ts": "2026-11-05T18:57:08.566136",
+        "output": {
+          "device": "DEV-0001",
+          "alarms_found": 2
+        },
+        "tokens": 150
+      },
+      {
+        "span_id": "faiss_search-2",
+        "name": "faiss_search",
+        "type": "tool",
+        "parent_span_id": "diagnoser-1",
+        "depth": 1,
+        "start_ts": "2026-11-05T18:57:08.566219",
+        "elapsed_ms": 151,
+        "end_ts": "2026-11-05T18:57:08.717651",
+        "output": {
+          "hits": 3
+        },
+        "tokens": 80
+      },
+      {
+        "span_id": "diagnoser-1",
+        "name": "diagnoser",
+        "type": "agent",
+        "parent_span_id": null,
+        "depth": 0,
+        "start_ts": "2026-11-05T18:57:08.566203",
+        "elapsed_ms": 356,
+        "end_ts": "2026-11-05T18:57:08.922436",
+        "output": {
+          "root_cause": "SCTP配置错误"
+        },
+        "tokens": 200
+      },
+      {
+        "span_id": "decider-3",
+        "name": "decider",
+        "type": "agent",
+        "parent_span_id": null,
+        "depth": 0,
+        "start_ts": "2026-11-05T18:57:08.922459",
+        "elapsed_ms": 150,
+        "end_ts": "2026-11-05T18:57:09.072317",
+        "output": {
+          "risk": "high"
+        },
+        "tokens": 100
+      },
+      {
+        "span_id": "executor-4",
+        "name": "executor",
+        "type": "agent",
+        "parent_span_id": null,
+        "depth": 0,
+        "start_ts": "2026-11-05T18:57:09.072344",
+        "elapsed_ms": 105,
+        "end_ts": "2026-11-05T18:57:09.177131",
+        "output": {
+          "plan": "重启链路"
+        },
+        "tokens": 120
+      }
+    ],
+    "total_tokens": 650,
+    "end_time": "2026-11-05T18:57:09.178151",
+    "total_elapsed_ms": 912
+  },
+  {
+    "trace_id": "trace-1793876229268",
+    "name": "简单查设备",
+    "start_time": "2026-11-05T18:57:09.275774",
+    "input": {
+      "device_id": "DEV-0002"
+    },
+    "spans": [
+      {
+        "span_id": "detector-0",
+        "name": "detector",
+        "type": "agent",
+        "parent_span_id": null,
+        "depth": 0,
+        "start_ts": "2026-11-05T18:57:09.275948",
+        "elapsed_ms": 303,
+        "end_ts": "2026-11-05T18:57:09.579230",
+        "output": {
+          "device": "DEV-0002",
+          "alarms_found": 2
+        },
+        "tokens": 150
+      }
+    ],
+    "total_tokens": 150,
+    "end_time": "2026-11-05T18:57:09.579262",
+    "total_elapsed_ms": 303
+  }
+]

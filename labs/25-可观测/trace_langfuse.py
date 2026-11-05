@@ -4,8 +4,8 @@
     pip install langfuse langchain langchain-openai
     docker compose up -d  # 启动 Langfuse → http://localhost:3000
 
-对比 trace_demo.py：
-    trace_demo.py — 纯 Python 本地收集（零依赖、零注册）
+对比 main.py：
+    main.py — 纯 Python 本地收集（零依赖、零注册）
     本文件        — Langfuse 自托管（自动采集、Web 可视化、持久化）
 
 运行：python trace_langfuse.py
@@ -35,7 +35,7 @@ class SmartTracer:
     """
     自动选择 Tracer：
     - 如果 LANGFUSE 密钥配置了 → 用 Langfuse CallbackHandler
-    - 否则 → 降级到 trace_demo.py 的 LocalTracer（零依赖可用）
+    - 否则 → 降级到 main.py 的 LocalTracer（零依赖可用）
 
     这样同一个实验文件，学员配不配密钥都能跑。
     """
@@ -66,7 +66,7 @@ class SmartTracer:
 
         # 本地 Tracer 作为兜底
         if self._mode == "local":
-            from trace_demo import LocalTracer
+            from main import LocalTracer
             self._local_tracer = LocalTracer()
 
     def get_callback(self):
@@ -102,11 +102,11 @@ class SmartTracer:
 
 
 # ══════════════════════════════════════════════════════════════
-# 演示：和 trace_demo.py 同一套流水线，但数据上 Langfuse
+# 演示：和 main.py 同一套流水线，但数据上 Langfuse
 # ══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    from trace_demo import (
+    from main import (
         simulate_detector,
         simulate_diagnoser,
         simulate_decider,
@@ -147,7 +147,7 @@ if __name__ == "__main__":
    2. 点进去 → 看到 4 个 Span（detector / diagnoser / decider / executor）
    3. 每个 Span 的耗时柱状图 + 输入输出
 
-   对比 trace_demo.py 的控制台输出：
+   对比 main.py 的控制台输出：
    - 本地：手动写 start_span/end_span，查看用 print
    - Langfuse：Callback 自动采集，Web 面板搜索+聚合+导出
 {"="*60}

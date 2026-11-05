@@ -17,7 +17,8 @@ dir=$(resolve_lab "${target}") || { echo "❌ 找不到 ${target}"; echo "可用
 # 入口：优先 main.py；没有就挑唯一的 py；多个则列出来让用户选
 entry="${dir}/main.py"
 if [ ! -f "${entry}" ]; then
-  pys=$(find "${dir}" -maxdepth 1 -name '*.py' ! -name '_*' | sort)
+  # 排除辅助文件：_ 开头的、check.py（验收脚本）、solution.py（参考答案）
+  pys=$(find "${dir}" -maxdepth 1 -name '*.py' ! -name '_*' ! -name 'check.py' ! -name 'solution.py' | sort)
   n=$(echo "${pys}" | grep -c . || true)
   if [ "${n}" -eq 1 ]; then entry="${pys}"
   elif [ "${n}" -eq 0 ]; then echo "⚠️  ${dir} 没有可运行的 .py（可能是纯文档实验）"; exit 1
