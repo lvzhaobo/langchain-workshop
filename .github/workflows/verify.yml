@@ -8,25 +8,25 @@ on:
 
 jobs:
   verify:
-    name: 验收 13 个零 Key lab
+    name: 验收（不需要任何 API Key）
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: 装 uv
-        uses: astral-sh/setup-uv@v3
+      - name: 装 Python 3.11
+        uses: actions/setup-python@v5
         with:
-          enable-cache: true
+          python-version: '3.11'
 
       - name: 建 venv 并装依赖
         run: ./setup.sh
 
-      - name: 跑验收脚本（不需要任何 API Key）
+      - name: 跑验收脚本
         run: ./verify.sh
 
-      - name: 冒烟测试 —— 抽两个 lab 实跑
+      - name: 冒烟测试 —— 抽三个 lab 实跑
         run: |
           ./run.sh 01
           ./run.sh 05
