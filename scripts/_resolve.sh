@@ -2,6 +2,7 @@
 resolve_lab() {
   local t="${1:-}" d b
   [ -z "$t" ] && return 1
+  t="${t#lab-}"          # 兼容 ./run.sh lab-01 这种旧写法
   for d in labs/[0-9][0-9]-*; do
     [ -d "$d" ] || continue
     b=$(basename "$d")

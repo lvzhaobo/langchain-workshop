@@ -20,4 +20,4 @@ else
   .venv/bin/python -m pip install -q -r requirements.txt
 fi
 
-echo "✅ 装好了。下一步：./run.sh lab-01"
+echo "✅ 装好了。下一步：./run.sh 01"
