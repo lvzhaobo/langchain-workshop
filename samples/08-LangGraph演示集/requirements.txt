@@ -1,0 +1,4 @@
+# 基础依赖（langgraph / langchain）由仓库根 requirements.txt 提供
+flask
+flask-cors
+deepagents   # sample-20 的多 Agent 协作用到

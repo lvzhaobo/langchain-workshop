@@ -1,0 +1,2 @@
+# 基础依赖由仓库根 requirements.txt 提供，这里只列这个 sample 特有的
+flask

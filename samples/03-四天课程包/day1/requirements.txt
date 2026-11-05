@@ -1,5 +1,5 @@
-flask==3.0.3
-python-dotenv==1.0.1
-requests==2.32.3
-langchain-core==0.3.63
-langchain-openai==0.3.18
+# langchain / langgraph 等基础依赖统一由仓库根 requirements.txt 提供（1.x）
+# 这里只列当天特有的
+flask
+python-dotenv
+requests
